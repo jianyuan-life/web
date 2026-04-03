@@ -144,10 +144,7 @@ export default function PricingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-3xl mx-auto">
             {PLANS.chumenji.map((plan) => (
               <div key={plan.code}
-                className={`relative glass rounded-2xl p-6 flex flex-col transition-all ${plan.seasonal ? 'opacity-60' : ''}`}>
-                {plan.seasonal && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-red-accent text-cream text-[10px] font-bold rounded-full">2027年1月開放</div>
-                )}
+                className="relative glass rounded-2xl p-6 flex flex-col transition-all">
                 <div className="text-xs text-gold/70 font-mono mb-1">方案 {plan.code}</div>
                 <h3 className="text-lg font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>{plan.name}</h3>
                 <p className="text-xs text-text-muted mt-1 mb-4">{plan.desc}</p>
@@ -159,12 +156,9 @@ export default function PricingPage() {
                     </li>
                   ))}
                 </ul>
-                <button onClick={() => !plan.seasonal && handleSelect(plan.code)}
-                  disabled={plan.seasonal}
-                  className={`w-full text-center py-2.5 rounded-xl font-semibold text-sm transition-all cursor-pointer ${
-                    plan.seasonal ? 'bg-white/5 text-text-muted/40 cursor-not-allowed' : 'glass text-gold hover:bg-gold/10'
-                  }`}>
-                  {plan.seasonal ? '2027年1月開放' : '需先有命格分析'}
+                <button onClick={() => handleSelect(plan.code)}
+                  className="w-full text-center py-2.5 rounded-xl font-semibold text-sm transition-all cursor-pointer glass text-gold hover:bg-gold/10">
+                  需先有命格分析
                 </button>
               </div>
             ))}
