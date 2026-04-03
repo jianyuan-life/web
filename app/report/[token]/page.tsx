@@ -206,20 +206,29 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   return (
     <div className="min-h-screen pb-16" style={{ background: 'linear-gradient(180deg, #1a110a 0%, #2c1810 40%, #1a110a 100%)' }}>
       <style>{`
-        .report-h3 { font-size: 1rem; font-weight: 600; color: var(--color-gold); margin: 1.25rem 0 0.5rem; font-family: var(--font-sans); }
+        .report-h3 { font-size: 1.05rem; font-weight: 600; color: var(--color-gold); margin: 1.5rem 0 0.6rem; font-family: var(--font-sans); }
         .report-bold { color: var(--color-cream); font-weight: 600; }
-        .report-li { margin-left: 1.5rem; color: var(--color-text-muted); list-style: disc; margin-bottom: 0.35rem; line-height: 1.8; }
-        .report-li-num { margin-left: 1.5rem; color: var(--color-text-muted); list-style: decimal; margin-bottom: 0.35rem; line-height: 1.8; }
-        .report-p { color: var(--color-text-muted); line-height: 1.8; margin-bottom: 0.75rem; }
-        .section-card { border-radius: 12px; padding: 28px; margin-bottom: 20px; }
+        .report-li { margin-left: 1.5rem; color: var(--color-text-muted); list-style: disc; margin-bottom: 0.5rem; line-height: 1.9; font-size: 0.9rem; }
+        .report-li-num { margin-left: 1.5rem; color: var(--color-text-muted); list-style: decimal; margin-bottom: 0.5rem; line-height: 1.9; font-size: 0.9rem; }
+        .report-p { color: var(--color-text-muted); line-height: 1.9; margin-bottom: 0.85rem; font-size: 0.9rem; }
+        .section-card { border-radius: 12px; padding: 28px; margin-bottom: 24px; }
         .score-bar { height: 8px; border-radius: 4px; transition: width 0.6s ease; }
         .score-bar-bg { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.06); width: 100%; }
+        @media print {
+          body { background: white !important; color: #333 !important; }
+          .no-print { display: none !important; }
+          .section-card { border: 1px solid #ddd; page-break-inside: avoid; }
+          .report-h3 { color: #1a2a4a; }
+          .report-bold { color: #333; }
+          .report-li, .report-li-num, .report-p { color: #555; }
+          .score-bar-bg { background: #eee; }
+        }
       `}</style>
 
       <div className="max-w-3xl mx-auto px-6 pt-12">
 
         {/* 品牌標題 */}
-        <div className="text-center mb-3">
+        <div className="text-center mb-3 no-print">
           <span className="text-gold/70 text-xs tracking-[4px]">鑑 源 命 理</span>
         </div>
 
@@ -246,8 +255,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           )}
 
           {/* PDF 下載按鈕 */}
-          {report.pdf_url && (
-            <div className="mt-8">
+          {/* 操作按鈕 */}
+          <div className="mt-8 flex flex-wrap justify-center gap-3 no-print">
+            {report.pdf_url && (
               <a
                 href={report.pdf_url}
                 target="_blank"
@@ -265,8 +275,32 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 </svg>
                 下載 PDF 完整報告
               </a>
-            </div>
-          )}
+            )}
+            <button
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  navigator.clipboard.writeText(window.location.href).then(() => alert('報告連結已複製'))
+                }
+              }}
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold transition-all hover:scale-105"
+              style={{ background: 'rgba(197,150,58,0.15)', border: '1px solid rgba(197,150,58,0.25)', color: 'var(--color-gold)' }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+              </svg>
+              分享報告
+            </button>
+            <button
+              onClick={() => { if (typeof window !== 'undefined') window.print() }}
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold transition-all hover:scale-105"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-text-muted)' }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
+              </svg>
+              列印
+            </button>
+          </div>
         </div>
 
         {/* ──── 快速目錄（超過 5 個章節才顯示）──── */}
@@ -283,6 +317,25 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   {i + 1}. {sec.title}
                 </a>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* ──── 目錄導航 ──── */}
+        {sections.length > 3 && (
+          <div className="glass rounded-xl p-6 mb-8 no-print">
+            <div className="text-gold/70 text-xs tracking-[2px] mb-4">目錄</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {sections.map((sec, i) => {
+                const typeIcons: Record<string, string> = { positive: '&#10003;', caution: '&#9888;', improvement: '&#9881;', general: '&#9672;' }
+                return (
+                  <a key={i} href={`#sec-${i}`}
+                    className="flex items-center gap-2 text-sm text-text-muted hover:text-gold transition-colors py-1.5 px-3 rounded-lg hover:bg-white/5">
+                    <span className="text-xs text-gold/50" dangerouslySetInnerHTML={{ __html: typeIcons[sec.type] || '&#9672;' }} />
+                    <span className="truncate">{sec.title}</span>
+                  </a>
+                )
+              })}
             </div>
           </div>
         )}
@@ -449,23 +502,33 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
         {/* ──── 出門訣推廣 ──── */}
         {!['E1', 'E2', 'E3'].includes(report.plan_code) && (
-          <div className="section-card" style={{ background: 'linear-gradient(135deg, rgba(197,150,58,0.08), rgba(44,24,16,0.6))', border: '1px solid rgba(197,150,58,0.2)' }}>
-            <div className="flex gap-4">
-              <div className="text-3xl">🧭</div>
-              <div>
-                <h3 className="text-gold text-base font-semibold mb-2" style={{ fontFamily: 'var(--font-sans)' }}>讓命理能量落地：出門訣</h3>
-                <p className="text-text-muted text-sm leading-7 mb-3">
-                  報告揭示了您的命格能量，而<strong className="text-cream">出門訣</strong>能讓您在最佳時機、最佳方位行動，
-                  將命理能量轉化為現實中的改變。這是鑑源最核心的實戰工具。
+          <div className="section-card no-print" style={{ background: 'linear-gradient(135deg, rgba(197,150,58,0.1), rgba(26,42,74,0.4))', border: '1px solid rgba(197,150,58,0.25)' }}>
+            <div className="flex flex-col sm:flex-row gap-5 items-start">
+              <div className="text-4xl shrink-0">&#9788;</div>
+              <div className="flex-1">
+                <div className="text-gold/60 text-[10px] tracking-[0.2em] mb-1">下一步行動</div>
+                <h3 className="text-gold text-lg font-semibold mb-3" style={{ fontFamily: 'var(--font-sans)' }}>讓命理能量落地：出門訣</h3>
+                <p className="text-text-muted text-sm leading-7 mb-4">
+                  您的命格報告揭示了先天能量分佈，而<strong className="text-cream">出門訣</strong>是將這些能量轉化為行動的實戰工具。
+                  系統根據奇門遁甲精確排算數百個時辰，套入您的個人命格驗證，找出最適合出行的吉時與方位——
+                  每次約 70 分鐘，效果可持續整個月。
                 </p>
-                <a href="/pricing" className="text-gold text-sm hover:text-gold-light transition-colors">了解出門訣方案 →</a>
+                <div className="flex flex-col sm:flex-row gap-3 items-start">
+                  <a href="/pricing"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-gold text-dark font-bold rounded-lg text-sm btn-glow">
+                    了解出門訣方案
+                  </a>
+                  <span className="text-xs text-text-muted/60 mt-2 sm:mt-0 sm:self-center">
+                    事件出門訣 $119 / 月盤出門訣 $89
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         )}
 
         {/* ──── 底部操作按鈕 ──── */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 my-10">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 my-10 no-print">
           {report.pdf_url ? (
             <a
               href={report.pdf_url}

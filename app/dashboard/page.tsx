@@ -123,6 +123,22 @@ function DashboardContent() {
           </a>
         </div>
 
+        {/* 出門訣推廣 banner — 只對已有其他方案報告但沒有出門訣報告的用戶顯示 */}
+        {!loading && reports.length > 0 &&
+          reports.some(r => r.status === 'completed' && !['E1', 'E2'].includes(r.plan_code)) &&
+          !reports.some(r => ['E1', 'E2'].includes(r.plan_code)) && (
+          <div className="glass rounded-xl p-5 mb-6 flex flex-col sm:flex-row items-center gap-4" style={{ background: 'linear-gradient(135deg, rgba(197,150,58,0.08), rgba(26,42,74,0.2))', border: '1px solid rgba(197,150,58,0.2)' }}>
+            <div className="text-3xl shrink-0">&#9788;</div>
+            <div className="flex-1">
+              <p className="text-sm text-cream font-semibold">想讓命理能量真正落地？</p>
+              <p className="text-xs text-text-muted mt-1">您已完成命格分析，下一步可以試試「出門訣」——根據奇門遁甲找出最適合您的出行吉時與方位，採取行動改變運勢。</p>
+            </div>
+            <a href="/pricing" className="shrink-0 px-4 py-2 bg-gold text-dark font-semibold rounded-lg text-xs btn-glow">
+              了解出門訣
+            </a>
+          </div>
+        )}
+
         {loading ? (
           <div className="glass rounded-2xl p-16 text-center">
             <div className="w-8 h-8 border-2 border-gold/50 border-t-gold rounded-full animate-spin mx-auto mb-4" />
@@ -163,6 +179,20 @@ function DashboardContent() {
                               查看報告
                             </a>
                           )}
+                          {r.access_token && (
+                            <button
+                              onClick={() => {
+                                const url = `${window.location.origin}/report/${r.access_token}`
+                                navigator.clipboard.writeText(url).then(() => {
+                                  alert('報告連結已複製到剪貼簿')
+                                })
+                              }}
+                              className="px-3 py-1.5 glass rounded-lg text-xs text-text-muted hover:text-gold hover:bg-gold/10 transition-colors"
+                              title="複製報告連結"
+                            >
+                              分享
+                            </button>
+                          )}
                           {r.pdf_url && (
                             <a href={r.pdf_url} target="_blank" rel="noopener noreferrer"
                               className="px-3 py-1.5 glass rounded-lg text-xs text-gold hover:bg-gold/10 transition-colors">
@@ -174,7 +204,12 @@ function DashboardContent() {
                     ) : r.status === 'pending' ? (
                       <div className="flex items-center gap-2">
                         <div className="w-4 h-4 border-2 border-gold/50 border-t-gold rounded-full animate-spin" />
-                        <span className="text-xs text-gold/70">分析中</span>
+                        <div className="text-right">
+                          <span className="text-xs text-gold/70 block">分析中</span>
+                          <span className="text-[10px] text-text-muted/50">
+                            {['E1', 'E2'].includes(r.plan_code) ? '約 40 分鐘以上' : '約 30 分鐘以上'}
+                          </span>
+                        </div>
                       </div>
                     ) : (
                       <span className="text-xs text-red-400">生成失敗</span>

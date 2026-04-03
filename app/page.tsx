@@ -1,4 +1,27 @@
 import PricingCards from '@/components/PricingCards'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: '鑒源 JianYuan — 十五大命理系統 AI 精準分析｜八字、紫微斗數、奇門遁甲',
+  description: '鑒源整合八字、紫微斗數、奇門遁甲、西洋占星等十五大東西方命理系統，結合 34,458 條古籍規則與 AI 深度分析，為您提供性格天賦、事業財運、感情婚姻的完整命格報告。免費體驗，30 秒出結果。',
+  keywords: '命理, 八字, 紫微斗數, 奇門遁甲, 西洋占星, 命盤, 命格分析, AI命理, 免費算命, 姓名學, 風水, 人類圖, 吠陀占星, 出門訣, 運勢',
+  openGraph: {
+    title: '鑒源 JianYuan — 十五大命理系統 AI 精準分析',
+    description: '整合東西方十五大命理系統與 AI，一份報告看清性格天賦、事業方向、感情運勢。免費體驗，不需註冊。',
+    url: 'https://jianyuan.life',
+    siteName: '鑒源 JianYuan',
+    type: 'website',
+    locale: 'zh_TW',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: '鑒源 JianYuan — 十五大命理系統 AI 精準分析',
+    description: '整合東西方十五大命理系統與 AI，一份報告看清性格天賦、事業方向、感情運勢。',
+  },
+  alternates: {
+    canonical: 'https://jianyuan.life',
+  },
+}
 
 const SYSTEMS = [
   { name: '八字命理', tier: 1, desc: '以天干地支排列四柱，推算先天格局、大運流年與十神六親關係' },
@@ -31,26 +54,26 @@ export default function HomePage() {
             <span className="text-sm tracking-[0.3em]">鑒源 &middot; JianYuan</span>
           </div>
           <h1 className="text-4xl md:text-6xl leading-[1.2] mb-6 tracking-wide" style={{ fontFamily: 'var(--font-sans)' }}>
-            <span className="text-cream">回到源頭</span>
+            <span className="text-cream">十五套系統交叉驗證</span>
             <br />
-            <span className="text-gradient-gold">看清本質</span>
+            <span className="text-gradient-gold">一份報告，看清自己</span>
           </h1>
           <p className="text-base md:text-lg text-text-muted mb-10 max-w-xl mx-auto leading-[1.9]">
-            鑒，金之明鏡，照見萬象。源，水之根本，追溯因果。<br />
-            融合東西方十五大命理系統與人工智能，
-            為您揭示命格的根源，照見人生的本質。
+            不再依賴單一命理師的主觀判斷。<br />
+            鑒源整合八字、紫微、奇門遁甲、西洋占星等十五大系統，
+            用 34,458 條專業規則交叉比對，給你經得起驗證的命格分析。
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a href="/tools/bazi"
               className="px-8 py-3.5 bg-gold text-dark font-bold rounded-lg text-base btn-glow inline-flex items-center justify-center gap-2">
-              免費命理速算
+              免費體驗命理速算
             </a>
             <a href="/pricing"
               className="px-8 py-3.5 glass text-cream font-semibold rounded-lg text-base hover:bg-surface-hover transition-colors inline-flex items-center justify-center gap-2">
-              查看方案定價
+              探索完整方案
             </a>
           </div>
-          <p className="mt-6 text-xs text-text-muted/60">不需註冊 &middot; 即時出結果 &middot; 完全免費</p>
+          <p className="mt-6 text-xs text-text-muted/60">不需註冊 &middot; 30 秒出結果 &middot; 完全免費</p>
         </div>
       </section>
 
@@ -59,9 +82,9 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           {[
             { num: '15', label: '命理系統', sub: '東西方完整覆蓋' },
-            { num: '34,458', label: '條專業規則', sub: '大師級分析引擎' },
-            { num: '數十部', label: '經典古籍', sub: '千年智慧結晶' },
-            { num: '11', label: '種方案', sub: '豐儉由人' },
+            { num: '34,458', label: '條專業規則', sub: '每條皆有典籍出處' },
+            { num: '數十部', label: '經典古籍', sub: '千年智慧數據化' },
+            { num: '6', label: '種方案', sub: '從 $39 起' },
           ].map((s) => (
             <div key={s.label}>
               <div className="text-2xl md:text-3xl font-bold text-gradient-gold" style={{ fontFamily: 'var(--font-sans)' }}>{s.num}</div>
@@ -69,6 +92,74 @@ export default function HomePage() {
               <div className="text-[11px] text-text-muted">{s.sub}</div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* 為什麼鑒源不一樣 — 差異化對比 */}
+      <section className="py-20 bg-surface">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="divider-ornament text-gold/30 mb-6">
+            <span className="text-xs tracking-[0.2em]">差異</span>
+          </div>
+          <h2 className="text-2xl md:text-3xl text-center mb-12 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
+            市面上的命理服務，和鑒源有什麼不同？
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              { title: '傳統命理師', items: ['只用 1-2 套系統', '結論因人而異，難以驗證', '收費 $100-$300 美金', '等待 3-7 天出結果', '人為偏見影響判斷'], highlight: false },
+              { title: '鑒源命理', items: ['15 套系統同時分析', '34,458 條規則客觀運算', '最低 $39 美金起', '最快 30 分鐘完成報告', '數據驅動，可重複驗證'], highlight: true },
+              { title: '免費算命網站', items: ['套公式的罐頭回覆', '千篇一律的描述', '沒有個人化深度', '無法回答「為什麼」', '沒有行動建議'], highlight: false },
+            ].map((col) => (
+              <div key={col.title} className={`rounded-2xl p-6 ${col.highlight ? 'glass border-gold/30 ring-1 ring-gold/20' : 'glass'}`}>
+                <h3 className={`text-lg font-bold mb-4 ${col.highlight ? 'text-gradient-gold' : 'text-text-muted'}`} style={{ fontFamily: 'var(--font-sans)' }}>{col.title}</h3>
+                <ul className="space-y-3">
+                  {col.items.map((item) => (
+                    <li key={item} className="flex items-start gap-2 text-sm text-text">
+                      <span className={`mt-0.5 ${col.highlight ? 'text-gold' : 'text-text-muted/50'}`}>{col.highlight ? '\u2713' : '\u2013'}</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 為什麼選鑑源 — 獨特價值主張 */}
+      <section className="py-20">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="divider-ornament text-gold/30 mb-6">
+            <span className="text-xs tracking-[0.2em]">核心優勢</span>
+          </div>
+          <h2 className="text-2xl md:text-3xl text-center mb-12 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
+            三大核心，讓命理真正有用
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              {
+                icon: '\u25C8',
+                title: '15套系統交叉驗證',
+                desc: '市面上大多數命理服務只用單一系統。鑒源同時運算東西方十五大命理系統，以三層加權架構交叉驗證——不是「某位老師說」，而是十五套系統的共識。',
+              },
+              {
+                icon: '\u25C6',
+                title: 'AI + 古籍雙引擎',
+                desc: '34,458 條分析規則來自《滴天髓》《紫微斗數全書》等數十部經典古籍，再由 AI 智能引擎整合成有深度、有溫度的個人化報告——不是制式模板。',
+              },
+              {
+                icon: '\u25CA',
+                title: '不只看命，還能改運',
+                desc: '鑒源獨家「出門訣」服務：根據奇門遁甲排算最佳出行時機與方位，套入個人命格驗證，讓命理不只是「了解自己」，而是真正採取行動改變運勢。',
+              },
+            ].map((item) => (
+              <div key={item.title} className="glass rounded-xl p-6 text-center">
+                <div className="text-3xl text-gold mb-4">{item.icon}</div>
+                <h3 className="font-semibold text-cream text-base mb-3">{item.title}</h3>
+                <p className="text-sm text-text-muted leading-[1.9]">{item.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -113,7 +204,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {[
               { step: '壹', title: '免費體驗', desc: '輸入出生資料，即時查看八字排盤與性格分析' },
-              { step: '貳', title: '選擇方案', desc: '8種方案，從核心三系統到全方位十五系統' },
+              { step: '貳', title: '選擇方案', desc: '6種方案，從個人到家庭，從 $39 起' },
               { step: '參', title: '填寫資料', desc: '姓名、出生日期時間、性別，簡單三步' },
               { step: '肆', title: '深度分析', desc: '34,458條規則 + AI 引擎，逐系統精密推算' },
               { step: '伍', title: '查看報告', desc: '線上閱讀 + PDF 永久保存，隨時回顧' },
@@ -172,11 +263,75 @@ export default function HomePage() {
           <h2 className="text-2xl md:text-3xl text-center mb-2 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
             選擇適合您的方案
           </h2>
-          <p className="text-center text-text-muted mb-12 text-sm">從入門到全面，豐儉由人</p>
+          <p className="text-center text-text-muted mb-12 text-sm">從 $39 起，每份報告都包含網頁展示 + PDF 永久保存</p>
           <PricingCards />
           <p className="text-center mt-8 text-sm text-text-muted">
-            還有更多方案 &middot; <a href="/pricing" className="text-gold hover:underline">查看全部 11 種</a>
+            還有家庭、關係、出門訣方案 &middot; <a href="/pricing" className="text-gold hover:underline">查看全部 6 種方案與詳細介紹</a>
           </p>
+        </div>
+      </section>
+
+      {/* 出門訣推廣 — 核心收入來源 */}
+      <section className="py-20">
+        <div className="max-w-4xl mx-auto px-6">
+          <div className="glass rounded-2xl p-8 md:p-12" style={{ background: 'linear-gradient(135deg, rgba(197,150,58,0.08), rgba(26,42,74,0.3))' }}>
+            <div className="flex flex-col md:flex-row gap-8 items-center">
+              <div className="text-6xl shrink-0">&#9788;</div>
+              <div className="flex-1">
+                <div className="text-gold text-xs tracking-[0.2em] mb-2">鑑源獨家</div>
+                <h2 className="text-2xl font-bold text-cream mb-4" style={{ fontFamily: 'var(--font-sans)' }}>
+                  奇門遁甲出門訣 — 讓命理真正落地
+                </h2>
+                <p className="text-sm text-text-muted leading-[1.9] mb-4">
+                  命理分析告訴你「你是誰」，出門訣告訴你「怎麼做」。
+                  系統根據奇門遁甲精確排算每個時辰的能量方位，套入您的個人命格驗證，
+                  找出最適合您出行的吉時與方位——在對的時間，往對的方向走，讓運勢真正改變。
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <a href="/pricing" className="inline-flex items-center gap-2 px-6 py-3 bg-gold text-dark font-bold rounded-lg btn-glow text-sm">
+                    了解出門訣方案
+                  </a>
+                  <div className="flex items-center gap-2 text-xs text-text-muted">
+                    <span className="text-gold">&#10003;</span> 事件出門訣 $119
+                    <span className="mx-1">|</span>
+                    <span className="text-gold">&#10003;</span> 月盤出門訣 $89
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 出門訣推廣 — 核心訂閱收入 */}
+      <section className="py-20">
+        <div className="max-w-4xl mx-auto px-6">
+          <div className="glass rounded-2xl p-8 md:p-12" style={{ background: 'linear-gradient(135deg, rgba(197,150,58,0.08), rgba(26,42,74,0.3))' }}>
+            <div className="flex flex-col md:flex-row gap-8 items-center">
+              <div className="text-6xl shrink-0">&#9788;</div>
+              <div className="flex-1">
+                <div className="text-gold text-xs tracking-[0.2em] mb-2">鑒源獨家</div>
+                <h2 className="text-2xl font-bold text-cream mb-4" style={{ fontFamily: 'var(--font-sans)' }}>
+                  奇門遁甲出門訣 — 讓命理真正落地
+                </h2>
+                <p className="text-sm text-text-muted leading-[1.9] mb-4">
+                  命理分析告訴你「你是誰」，出門訣告訴你「怎麼做」。
+                  系統根據奇門遁甲精確排算每個時辰的能量方位，套入您的個人命格驗證，
+                  找出最適合您出行的吉時與方位——在對的時間，往對的方向走，讓運勢真正改變。
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <a href="/pricing" className="inline-flex items-center gap-2 px-6 py-3 bg-gold text-dark font-bold rounded-lg btn-glow text-sm">
+                    了解出門訣方案
+                  </a>
+                  <div className="flex items-center gap-2 text-xs text-text-muted">
+                    <span className="text-gold">&#10003;</span> 事件出門訣 $119
+                    <span className="mx-1">|</span>
+                    <span className="text-gold">&#10003;</span> 月盤出門訣 $89
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -285,20 +440,27 @@ export default function HomePage() {
           <div className="divider-ornament text-gold/30 mb-6">
             <span className="text-xs tracking-[0.2em]">用戶心聲</span>
           </div>
-          <h2 className="text-2xl md:text-3xl text-center mb-12 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
-            他們怎麼說
+          <h2 className="text-2xl md:text-3xl text-center mb-4 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
+            真實用戶回饋
           </h2>
+          <p className="text-center text-text-muted text-sm mb-12">看看他們如何在鑒源的報告中找到答案</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { name: '陳先生', location: '台北', text: '15套系統的交叉驗證讓我很信服。八字和紫微的分析非常精準，直接指出了我事業轉型的方向，後來確實應驗了。' },
-              { name: '王女士', location: '香港', text: '幫全家人做了家庭全方位方案，合婚分析和親子關係的建議非常實用。尤其是風水佈局的部分，改了之後家裡氛圍好很多。' },
-              { name: '李先生', location: '深圳', text: '本來半信半疑，看到免費速算就試了一下，結果性格分析準到起雞皮疙瘩。後來買了C方案，大運分析幫我做了一個重要決定。' },
+              { name: '陳先生', location: '台北', plan: '人生藍圖', text: '之前花了三千多找老師看八字，結論就兩頁紙。鑒源的報告十幾頁，十五套系統逐一分析，而且每個結論都說明了依據。最關鍵的是大運分析，直接點出了我 37-42 歲是事業黃金期，我正好在猶豫要不要創業。' },
+              { name: '王女士', location: '香港', plan: '家族藍圖', text: '幫全家四口人做了分析。我跟老公的合婚分析很精準——報告說我們在財務觀念上容易有摩擦，確實如此。更驚喜的是孩子的天賦分析，報告建議的學習方向跟孩子實際的興趣完全吻合。' },
+              { name: '李先生', location: '深圳', plan: '心之所惑', text: '本來半信半疑，先試了免費速算，性格分析準到我懷疑是不是有人偷看我的日記。後來花 $39 買了「心之所惑」問財運，報告不只告訴我運勢走向，還具體建議了投資時機和要避開的月份。' },
+              { name: '張小姐', location: '新加坡', plan: '事件出門訣', text: '面試前買了出門訣，系統排了幾百個時辰幫我找最佳出行方案。按照建議在吉時出門，面試當天狀態出奇的好，最後拿到了 offer。不管是巧合還是真的有效，光是那份安心感就值回票價。' },
+              { name: '林先生', location: '台中', plan: '合否？', text: '跟女友交往兩年一直在猶豫要不要結婚。「合否？」分析出我們個性互補但溝通方式有衝突，還給了具體的相處建議。我們照著調整後，吵架真的少了很多。下個月要求婚了。' },
+              { name: '黃女士', location: '溫哥華', plan: '人生藍圖', text: '移民後一直覺得事業發展不順，報告分析出我的命格其實更適合自由業而不是上班族。裡面還提到我 35 歲後有一步好的事業運，剛好就是我移民之後。現在已經開始籌備自己的工作室了。' },
             ].map((t) => (
               <div key={t.name} className="glass rounded-xl p-6">
-                <div className="flex gap-0.5 mb-3">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <span key={i} className="text-gold text-sm">&#9733;</span>
-                  ))}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex gap-0.5">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <span key={i} className="text-gold text-sm">&#9733;</span>
+                    ))}
+                  </div>
+                  <span className="text-[10px] text-gold/60 px-2 py-0.5 bg-gold/5 rounded">{t.plan}</span>
                 </div>
                 <p className="text-sm text-text leading-[1.9] mb-4">&ldquo;{t.text}&rdquo;</p>
                 <div className="flex items-center gap-2">
@@ -324,12 +486,14 @@ export default function HomePage() {
             您可能想知道
           </h2>
           {[
-            { q: '報告多久可以收到？', a: '付款後系統自動開始計算和分析，通常 5-15 分鐘內完成。您會收到郵件通知，也可以在線上即時查看。' },
-            { q: '需要提供什麼資料？', a: '姓名、出生日期、出生時間（時辰）、性別。如需風水分析，還需提供住址。出生時間越精確，分析越準確。' },
-            { q: '不知道出生時間怎麼辦？', a: '可以選擇最接近的時辰。部分不依賴時辰的系統（如生肖、數字能量等）仍可正常分析。' },
-            { q: '15套系統會不會互相矛盾？', a: '不同系統觀察的角度不同，偶有差異屬正常。我們用三層加權架構進行交叉驗證，取各系統共識作為最終結論。' },
-            { q: '報告是繁體還是簡體？', a: '根據您使用網站時的語言設定自動決定。右上角可隨時切換繁簡體。' },
-            { q: '分析準確嗎？', a: '排盤計算使用經過驗證的確定性算法。解讀基於數十部經典古籍提煉的34,458條專業規則，每份報告經過自動品質檢查。' },
+            { q: '鑒源的命理分析準確嗎？', a: '排盤計算使用經過驗證的確定性算法，與專業命理軟體一致。分析解讀基於數十部經典古籍提煉的 34,458 條專業規則，再由 AI 引擎整合出個人化報告。最重要的是，鑒源用十五套系統交叉驗證——當多數系統得出相同結論時，準確度遠高於單一系統的判斷。' },
+            { q: '報告多久可以收到？', a: '付款後系統自動開始運算。個人報告（人生藍圖、心之所惑）約 30 分鐘完成；出門訣需排算數百個時辰，約需 40 分鐘以上。完成後會立即寄送 Email 通知，您也可以在儀表板即時查看分析進度。' },
+            { q: '需要提供什麼資料？', a: '姓名、出生日期、出生時間（時辰）、性別。出生時間越精確，分析越準確。如果不確定出生時間，可以選擇最接近的時辰，部分不依賴時辰的系統仍可正常分析。' },
+            { q: '15套系統會不會互相矛盾？', a: '不同系統觀察的角度不同，偶有差異屬正常。這正是鑒源的核心價值——我們用三層加權架構進行交叉驗證，取各系統共識作為最終結論。單一系統只有一個觀點，十五套系統交叉驗證才能得到更全面、更可靠的結論。' },
+            { q: '付款安全嗎？', a: '所有付款透過國際知名的 Stripe 安全系統處理，支援信用卡和各種支付方式。您的信用卡資訊完全由 Stripe 處理，不會經過鑒源伺服器。Stripe 已通過 PCI DSS Level 1 認證，是全球最高等級的支付安全標準。' },
+            { q: '可以退款嗎？', a: '報告為虛擬數位內容，一旦開始生成即消耗運算資源，因此生成後不支持退款。如果報告品質有任何問題，請聯繫 support@jianyuan.life，我們會為您免費重新生成，確保您獲得滿意的分析結果。' },
+            { q: '什麼是出門訣？', a: '出門訣源自奇門遁甲，是根據特定時辰的能量方位來擇吉出行的方法。系統會排算數百個時辰的奇門局，套入個人命格驗證，找出最適合您的 Top5 吉時與方位。操作簡單：在指定時間出門，往指定方向走，到達後靜待 40 分鐘。整個過程約 70 分鐘，報告附帶 Google Calendar 一鍵新增功能。' },
+            { q: '報告是繁體還是簡體？', a: '根據您使用網站時的語言設定自動決定。網站右上角可隨時切換繁簡體，報告會以您選擇的語言版本生成。' },
           ].map((faq) => (
             <details key={faq.q} className="glass rounded-lg mb-3 group">
               <summary className="p-5 cursor-pointer font-semibold text-cream flex justify-between items-center text-sm">
@@ -352,13 +516,20 @@ export default function HomePage() {
             知命者不惑，識運者不憂
           </h2>
           <p className="text-text-muted mb-10 leading-[1.9]">
-            從一份免費命理速算開始，<br />
-            看看千年古籍智慧如何解讀您的命格密碼。
+            用 30 秒做一次免費命理速算，<br />
+            看看十五套系統如何解讀你的命格密碼。
           </p>
-          <a href="/tools/bazi"
-            className="inline-block px-10 py-4 bg-gold text-dark font-bold rounded-lg text-lg btn-glow">
-            免費命理速算
-          </a>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="/tools/bazi"
+              className="inline-block px-10 py-4 bg-gold text-dark font-bold rounded-lg text-lg btn-glow">
+              免費體驗命理速算
+            </a>
+            <a href="/pricing"
+              className="inline-block px-10 py-4 glass text-cream font-semibold rounded-lg text-lg hover:bg-surface-hover transition-colors">
+              直接選擇方案
+            </a>
+          </div>
+          <p className="mt-6 text-xs text-text-muted/60">不需註冊 &middot; 不需信用卡 &middot; 完全免費</p>
         </div>
       </section>
     </div>

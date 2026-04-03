@@ -99,7 +99,8 @@ function BirthTimeField({ timeMode, setTimeMode, hour, minute, onChange }: Birth
       </div>
       {timeMode === 'unknown' && (
         <div className="bg-white/5 border border-gold/10 rounded-lg px-4 py-3 text-text-muted text-sm">
-          將以正午（12:00）計算，部分時辰相關分析可能有偏差
+          將以正午（12:00）計算，部分時辰相關分析可能有偏差。<br/>
+          <span className="text-[10px] text-text-muted/60">小提示：可詢問父母或查看出生證明，知道大概時段也可以選「知道時辰」。</span>
         </div>
       )}
       {timeMode === 'shichen' && (
@@ -538,7 +539,14 @@ function CheckoutForm() {
         <h1 className="text-3xl font-bold text-center mb-2">
           <span className="text-gradient-gold">確認訂單</span>
         </h1>
-        <p className="text-center text-text-muted mb-10">{PLAN_DESCRIPTIONS[planCode] || '填寫出生資料，完成付款後自動生成報告'}</p>
+        <p className="text-center text-text-muted mb-6">{PLAN_DESCRIPTIONS[planCode] || '填寫出生資料，完成付款後自動生成報告'}</p>
+
+        {/* 安全保證 */}
+        <div className="flex flex-wrap justify-center gap-4 mb-8 text-[10px] text-text-muted/60">
+          <span className="flex items-center gap-1"><span className="text-green-400">&#9679;</span> SSL 加密傳輸</span>
+          <span className="flex items-center gap-1"><span className="text-green-400">&#9679;</span> Stripe 安全付款</span>
+          <span className="flex items-center gap-1"><span className="text-green-400">&#9679;</span> 資料隱私保護</span>
+        </div>
 
         {/* 方案摘要 */}
         <div className="glass rounded-xl p-5 mb-8 flex justify-between items-center">
@@ -1083,6 +1091,19 @@ function CheckoutForm() {
 
             {error && <p className="text-red-400 text-sm text-center">{error}</p>}
 
+            {/* 下一步說明 */}
+            <div className="border-t border-gold/10 pt-4 mt-4">
+              <p className="text-xs text-text-muted mb-2 font-semibold">付款後會發生什麼？</p>
+              <div className="space-y-1.5 text-[11px] text-text-muted/70">
+                <p>1. 跳轉至 Stripe 安全付款頁面完成付款</p>
+                <p>2. 系統自動開始為您排盤運算與 AI 深度分析</p>
+                <p>3. 完整報告平均需 30 分鐘以上{['E1', 'E2'].includes(planCode) ? '，出門訣需 40 分鐘以上' : ''}</p>
+                <p>4. 完成後寄送 Email 通知，也可在儀表板即時查看</p>
+              </div>
+            </div>
+
+            {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+
             <button
               type="submit" disabled={loading}
               className="w-full py-3.5 bg-gold text-dark font-bold rounded-xl text-lg btn-glow disabled:opacity-50 mt-4"
@@ -1091,7 +1112,7 @@ function CheckoutForm() {
             </button>
 
             <p className="text-xs text-text-muted/60 text-center">
-              付款由 Stripe 安全處理。報告平均需 30 分鐘以上，出門訣需 40 分鐘以上。
+              付款由 Stripe 安全處理，您的信用卡資訊不會經過鑑源伺服器
             </p>
           </form>
         )}
