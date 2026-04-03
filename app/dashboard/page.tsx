@@ -4,6 +4,13 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 
+const PLAN_NAMES: Record<string, string> = {
+  C: '全方位十五合一', A: '核心三合一', D: '專項深度分析',
+  G15: '家庭全方位十五合一', G3: '家庭核心三合一', R: '關於我與他',
+  M: '月度運勢分析', Y: '年度運勢分析',
+  E1: '事件出門訣', E2: '月盤出門訣', E3: '年盤出門訣',
+}
+
 type Report = {
   id: string
   client_name: string
@@ -101,8 +108,8 @@ function DashboardContent() {
                   <div>
                     <h3 className="font-semibold text-cream">{r.client_name}</h3>
                     <div className="flex items-center gap-3 text-xs text-text-muted mt-1">
-                      <span>方案 {r.plan_code}</span>
-                      <span>{r.report_result?.systems_count || 15} 系統</span>
+                      <span>{PLAN_NAMES[r.plan_code] || `方案 ${r.plan_code}`}</span>
+                      <span>{r.report_result?.systems_count || 15} 套系統</span>
                       <span>${r.amount_usd}</span>
                       <span>{new Date(r.created_at).toLocaleDateString('zh-TW')}</span>
                     </div>
