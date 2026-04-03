@@ -21,6 +21,7 @@ interface ReportData {
   client_name: string
   plan_code: string
   amount_usd: number
+  pdf_url: string | null
   birth_data: {
     name: string
     year: number
@@ -228,6 +229,29 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 <div className="text-text-muted text-sm">綜合評分</div>
                 <div className="text-text-muted/50 text-xs">{analysesSummary.length} 套系統平均</div>
               </div>
+            </div>
+          )}
+
+          {/* PDF 下載按鈕 */}
+          {report.pdf_url && (
+            <div className="mt-8">
+              <a
+                href={report.pdf_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold transition-all hover:scale-105"
+                style={{
+                  background: 'linear-gradient(135deg, #c9a84c, #e8c87a)',
+                  color: '#1a110a',
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                下載 PDF 完整報告
+              </a>
             </div>
           )}
         </div>
