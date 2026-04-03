@@ -106,14 +106,57 @@ git push origin main
 - 結帳頁有城市搜尋（Nominatim geocoding）
 - lat/lng 需要傳給 Python API 做真太陽時校正（待辦）
 
+## 環境變數完整清單（2026-04-03 全部到位）
+
+| 變數名 | 說明 | 狀態 |
+|:---|:---|:---:|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase 專案 URL | ✅ |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase 匿名金鑰（前端用）| ✅ |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase 服務角色金鑰（伺服器端）| ✅ sb_secret_cRI-P... |
+| `STRIPE_SECRET_KEY` | Stripe 密鑰（目前測試模式）| ✅ sk_test_... |
+| `STRIPE_WEBHOOK_SECRET` | Stripe Webhook 簽名密鑰 | ✅ |
+| `DEEPSEEK_API_KEY` | DeepSeek AI API 金鑰 | ✅ |
+| `NEXT_PUBLIC_API_URL` | Python 排盤 API（Fly.io）| ✅ fortune-reports-api.fly.dev |
+| `NEXT_PUBLIC_SITE_URL` | 網站 URL | ✅ https://jianyuan.life |
+| `RESEND_API_KEY` | Resend 郵件 API 金鑰 | ✅ re_D7EgcneR_... |
+| `ADMIN_KEY` | 後台管理密碼 | ✅ asd566123 |
+
+**重要：所有 env var 必須用 `printf` 設定，不能用 echo（會加換行符）**
+
+## 自動化閉環流水線（2026-04-03 完成）
+
+```
+Stripe 付款
+  ↓
+Webhook → paid_reports 建立記錄（status: pending）
+  ↓
+觸發 /api/generate-report
+  ↓
+Python API（Fly.io）排盤 → 15套命理系統
+  ↓
+DeepSeek AI 深度分析 → 生成報告內容
+  ↓
+回寫 Supabase（status: completed + report_result）
+  ↓
+Resend 寄 Email（含報告連結）← 需域名驗證完成
+  ↓
+客戶訪問 /report/[access_token] 查看報告
+```
+
+## Resend 郵件系統
+
+- **API Key：** re_D7EgcneR_... （已設定）
+- **發信域名：** jianyuan.life（⏳ DNS 驗證中，Tokyo 區）
+- **發信地址：** reports@jianyuan.life
+- **Domain 驗證：** 在 resend.com Domains 頁面確認變綠
+
 ## 待完成（高優先）
 
-1. **方案專屬表單**（D/R/G15/G3/E1 各有不同欄位需求）
-2. **birthCity lat/lng 傳給 Python API**（真太陽時校正）
-3. **Stripe metadata 500字元限制**（改用 Supabase 暫存）
-4. **Stripe 切換 Live 模式**（上線前必做）
-5. **報告閱讀頁** `report/[token]` 完整實作
-6. **客戶儀表板** 完整實作
+1. **Stripe 切換 Live 模式**（上線前必做）
+2. **方案專屬表單**（D/R/G15/G3/E1 各有不同欄位需求）
+3. **birthCity lat/lng 傳給 Python API**（真太陽時校正）
+4. **Stripe metadata 500字元限制**（改用 Supabase 暫存）
+5. **客戶儀表板** 完整實作（需要 Supabase Auth）
 
 ## v1.2 更新紀錄（2026-04-03）
 
