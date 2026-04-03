@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
     const planCode = session.metadata?.plan_code || 'C'
     const birthDataStr = session.metadata?.birth_data
     const amount = (session.amount_total || 0) / 100
+    const customerEmail = session.customer_details?.email || session.customer_email || ''
 
     console.log(`✅ 付款成功！方案${planCode}, $${amount}`)
 
@@ -54,8 +55,9 @@ export async function POST(req: NextRequest) {
         amount_usd: amount,
         stripe_session_id: session.id,
         birth_data: birthData,
+        customer_email: customerEmail,
         status: 'pending',
-      }).select('id').single()
+      }).select('id, access_token').single()
 
       if (insertErr) console.error('Supabase insert error:', insertErr)
       else reportId = insertData?.id || ''
@@ -73,6 +75,8 @@ export async function POST(req: NextRequest) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             reportId,
+            accessToken: insertData?.access_token || '',
+            customerEmail,
             planCode,
             birthData,
             additionalPeople: additionalData,

@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { Resend } from 'resend'
 
 // ============================================================
-// 付費報告生成 API — 排盤 + DeepSeek AI 深度分析
-// 流程：Python API 排盤 → DeepSeek 深度分析 → 存 Supabase
+// 付費報告生成 API — 排盤 + DeepSeek AI 深度分析 + 自動寄信
+// 流程：Python API 排盤 → DeepSeek 深度分析 → 存 Supabase → 寄 Email
 // ============================================================
 
-const PYTHON_API = process.env.NEXT_PUBLIC_API_URL || 'https://fortune-reports-api.fly.dev'
+const PYTHON_API = process.env.PYTHON_API_URL || 'https://fortune-reports-api.fly.dev'
 const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions'
 const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || ''
 
@@ -91,7 +92,7 @@ const PLAN_SYSTEM_PROMPT: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { reportId, planCode, birthData, additionalPeople, topic, question } = await req.json()
+    const { reportId, accessToken, customerEmail, planCode, birthData, additionalPeople, topic, question } = await req.json()
 
     // Step 1: 呼叫 Python API 排盤
     console.log(`開始生成報告: ${reportId}, 方案${planCode}`)
@@ -199,9 +200,96 @@ ${analyses.length}系統排盤摘要：
 
     if (dbError) console.error('Supabase 更新失敗:', dbError)
 
+    // Step 5: 寄送報告 Email
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
+    const reportUrl = `${siteUrl}/report/${accessToken}`
+    const planNames: Record<string, string> = {
+      C: '全方位十五合一命格分析', A: '核心三合一分析', D: '專項深度分析',
+      G15: '家庭全方位分析', G3: '家庭核心三合一', R: '關於我與他',
+      M: '月度運勢分析', Y: '年度運勢分析',
+      E1: '事件出門訣', E2: '月盤出門訣', E3: '年盤出門訣',
+    }
+    const planName = planNames[planCode] || '命理分析報告'
+
+    if (customerEmail && accessToken) {
+      try {
+        const resend = new Resend(process.env.RESEND_API_KEY || '')
+        const previewContent = reportContent.slice(0, 300).replace(/[#*`]/g, '').trim()
+
+        await resend.emails.send({
+          from: '鑑源命理 <reports@jianyuan.life>',
+          to: customerEmail,
+          subject: `【鑑源命理】您的${planName}報告已完成 — ${birthData?.name || ''}`,
+          html: `
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0d1117;font-family:'PingFang TC','Microsoft JhengHei',sans-serif;">
+  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+    <!-- 頂部品牌 -->
+    <div style="text-align:center;margin-bottom:32px;">
+      <div style="color:#c9a84c;font-size:24px;font-weight:700;letter-spacing:4px;">鑑 源</div>
+      <div style="color:#6b7280;font-size:12px;margin-top:4px;">JIANYUAN · 東西方命理整合平台</div>
+    </div>
+
+    <!-- 主卡片 -->
+    <div style="background:linear-gradient(135deg,#1a2a4a,#0d1a2e);border:1px solid #2a3a5a;border-radius:16px;padding:32px;margin-bottom:24px;">
+      <div style="color:#c9a84c;font-size:13px;letter-spacing:2px;margin-bottom:8px;">✦ 報告完成通知</div>
+      <h1 style="color:#ffffff;font-size:22px;margin:0 0 8px 0;">${birthData?.name || ''}，您的報告已完成</h1>
+      <p style="color:#9ca3af;font-size:14px;margin:0 0 24px 0;">${planName} · ${analyses.length} 套命理系統分析</p>
+
+      <!-- 報告預覽 -->
+      <div style="background:rgba(255,255,255,0.05);border-left:3px solid #c9a84c;border-radius:4px;padding:16px;margin-bottom:24px;">
+        <p style="color:#d1d5db;font-size:14px;line-height:1.8;margin:0;">${previewContent}...</p>
+      </div>
+
+      <!-- CTA 按鈕 -->
+      <div style="text-align:center;">
+        <a href="${reportUrl}" style="display:inline-block;background:linear-gradient(135deg,#c9a84c,#e8c87a);color:#0d1117;font-weight:700;font-size:16px;padding:14px 40px;border-radius:8px;text-decoration:none;letter-spacing:1px;">
+          查看完整報告 →
+        </a>
+        <p style="color:#6b7280;font-size:12px;margin:12px 0 0 0;">此連結專屬於您，無需登入即可查看</p>
+      </div>
+    </div>
+
+    <!-- 出門訣推廣（非 E 方案才顯示）-->
+    ${!['E1','E2','E3'].includes(planCode) ? `
+    <div style="background:#1a1a2e;border:1px solid #2a2a4a;border-radius:12px;padding:24px;margin-bottom:24px;">
+      <div style="color:#c9a84c;font-size:13px;font-weight:600;margin-bottom:8px;">🧭 加強您的命理能量</div>
+      <p style="color:#9ca3af;font-size:13px;line-height:1.7;margin:0 0 16px 0;">
+        報告揭示了您的命格能量，而<strong style="color:#e5e7eb;">出門訣</strong>能讓您在最佳時機、最佳方位行動，
+        將命理能量轉化為現實中的改變。許多客戶在使用出門訣後，事業和財運都有顯著提升。
+      </p>
+      <a href="https://jianyuan.life/pricing" style="color:#c9a84c;font-size:13px;text-decoration:none;">了解出門訣方案 →</a>
+    </div>
+    ` : ''}
+
+    <!-- 頁尾 -->
+    <div style="text-align:center;color:#4b5563;font-size:12px;line-height:1.8;">
+      <p>如有任何問題，請聯繫 <a href="mailto:support@jianyuan.life" style="color:#c9a84c;">support@jianyuan.life</a></p>
+      <p style="margin-top:8px;">© 2026 鑑源命理平台 · jianyuan.life</p>
+    </div>
+  </div>
+</body>
+</html>`,
+        })
+
+        // 更新 email_sent_at
+        await supabase.from('paid_reports')
+          .update({ email_sent_at: new Date().toISOString() })
+          .eq('id', reportId)
+
+        console.log(`✅ Email 已寄送至 ${customerEmail}`)
+      } catch (emailErr) {
+        console.error('Email 寄送失敗:', emailErr)
+        // 不讓 email 失敗影響整體回傳
+      }
+    }
+
     return NextResponse.json({
       success: true,
       report_id: reportId,
+      report_url: reportUrl,
       content_length: reportContent.length,
       systems_count: analyses.length,
     })
