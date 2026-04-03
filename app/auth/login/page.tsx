@@ -1,0 +1,85 @@
+'use client'
+
+import { useState } from 'react'
+import { supabase } from '@/lib/supabase'
+
+export default function LoginPage() {
+  const [form, setForm] = useState({ email: '', password: '' })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: form.email,
+      password: form.password,
+    })
+
+    if (error) {
+      setError(error.message === 'Invalid login credentials' ? '帳號或密碼錯誤' : error.message)
+      setLoading(false)
+    } else {
+      window.location.href = '/dashboard'
+    }
+  }
+
+  const handleGoogleLogin = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    })
+  }
+
+  return (
+    <div className="min-h-[80vh] flex items-center justify-center px-6">
+      <div className="w-full max-w-md">
+        <h1 className="text-2xl font-bold text-center text-white mb-2">歡迎回來</h1>
+        <p className="text-center text-text-muted text-sm mb-8">登入你的鑒源帳號</p>
+
+        <form onSubmit={handleLogin} className="glass rounded-2xl p-6 space-y-4">
+          <div>
+            <label className="block text-xs text-text-muted mb-1">Email</label>
+            <input
+              type="email" required placeholder="your@email.com"
+              value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
+              className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-text-muted mb-1">密碼</label>
+            <input
+              type="password" required placeholder="••••••••"
+              value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
+              className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none"
+            />
+          </div>
+
+          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+
+          <button type="submit" disabled={loading}
+            className="w-full py-3 bg-gold text-dark font-bold rounded-xl btn-glow disabled:opacity-50">
+            {loading ? '登入中...' : '登入'}
+          </button>
+        </form>
+
+        <div className="mt-6 text-center space-y-3">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gold/10" /></div>
+            <div className="relative flex justify-center"><span className="px-3 text-xs text-text-muted/60" style={{ background: 'var(--color-dark)' }}>或</span></div>
+          </div>
+          <button onClick={handleGoogleLogin}
+            className="w-full max-w-md py-2.5 glass rounded-xl text-sm text-white hover:bg-white/10 transition-colors">
+            Google 登入
+          </button>
+        </div>
+
+        <p className="mt-6 text-center text-sm text-text-muted">
+          還沒有帳號？ <a href="/auth/signup" className="text-gold hover:underline">立即註冊</a>
+        </p>
+      </div>
+    </div>
+  )
+}

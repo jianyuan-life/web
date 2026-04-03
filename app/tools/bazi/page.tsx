@@ -1,0 +1,578 @@
+'use client'
+
+import { useState } from 'react'
+import { searchCities, type City } from '@/lib/cities'
+
+const SHICHEN = [
+  { label: '子時 (23:00-01:00)', value: 0 }, { label: '丑時 (01:00-03:00)', value: 2 },
+  { label: '寅時 (03:00-05:00)', value: 4 }, { label: '卯時 (05:00-07:00)', value: 6 },
+  { label: '辰時 (07:00-09:00)', value: 8 }, { label: '巳時 (09:00-11:00)', value: 10 },
+  { label: '午時 (11:00-13:00)', value: 12 }, { label: '未時 (13:00-15:00)', value: 14 },
+  { label: '申時 (15:00-17:00)', value: 16 }, { label: '酉時 (17:00-19:00)', value: 18 },
+  { label: '戌時 (19:00-21:00)', value: 20 }, { label: '亥時 (21:00-23:00)', value: 22 },
+]
+const WX_COLORS: Record<string,string> = { 木:'#22c55e', 火:'#ef4444', 土:'#eab308', 金:'#f59e0b', 水:'#3b82f6' }
+
+type Profile = { title:string; personality:string; strengths:string; challenges:string; career:string; love:string; health:string; lucky:string; year2026:string }
+type Result = {
+  pillars: { year:string; month:string; day:string; time:string }
+  day_master:string; day_master_wuxing:string; strength:string; geju:string
+  yongshen:string; xishen:string; shengxiao:string
+  nayin: Record<string,string>; shishen_gan: Record<string,string>
+  wuxing_count: Record<string,number>
+  wuxing_count_full?: Record<string,number>
+  profile: Profile
+  ai_sections: Record<string,string>
+  has_ai: boolean
+  sun_sign?: { name:string; element:string; trait:string }
+  life_path?: { number:number; title:string; desc:string }
+  shengxiao_fortune?: string
+  solar_time?: { original:string; corrected:string; diff_minutes:number; longitude:number } | null
+  lunar_converted?: boolean
+  time_unknown?: boolean
+}
+
+// 分析步驟動畫
+const ANALYSIS_STEPS = [
+  { text: '排列四柱八字...', icon: '&#9776;', duration: 800 },
+  { text: '推算天干地支關係...', icon: '&#9737;', duration: 600 },
+  { text: '計算五行能量分佈...', icon: '&#9672;', duration: 700 },
+  { text: '判定日主身強弱...', icon: '&#9878;', duration: 500 },
+  { text: '推導十神格局...', icon: '&#9733;', duration: 600 },
+  { text: '確認用神喜神...', icon: '&#10004;', duration: 500 },
+  { text: '查詢太陽星座...', icon: '&#9790;', duration: 400 },
+  { text: '計算生命靈數...', icon: '&#35;', duration: 400 },
+  { text: '分析生肖流年運勢...', icon: '&#128009;', duration: 500 },
+  { text: '啟動 AI 深度分析引擎...', icon: '&#129302;', duration: 600 },
+  { text: '交叉比對命盤數據...', icon: '&#128202;', duration: 800 },
+  { text: '生成個人化命格報告...', icon: '&#128221;', duration: 1000 },
+]
+
+export default function FreeToolPage() {
+  const [form, setForm] = useState({
+    name:'', year:'1990', month:'1', day:'1', hour:'12', gender:'M',
+    calendarType:'solar' as 'solar'|'lunar', // 國曆/農曆
+    timeMode:'shichen' as 'unknown'|'shichen'|'exact', // 三種時間模式
+    exactHour:'12', exactMinute:'0', // 精確時間
+    city:'', cityLat:0, cityLng:0, cityTz:8, // 出生城市
+  })
+  const [cityResults, setCityResults] = useState<import('@/lib/cities').City[]>([])
+  const [result, setResult] = useState<Result|null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [currentStep, setCurrentStep] = useState(-1)
+  const [completedSteps, setCompletedSteps] = useState<number[]>([])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.name.trim()) { setError('請輸入姓名'); return }
+    setLoading(true); setError(''); setResult(null)
+    setCurrentStep(0); setCompletedSteps([])
+
+    // 啟動步驟動畫
+    let stepIdx = 0
+    const stepInterval = setInterval(() => {
+      if (stepIdx < ANALYSIS_STEPS.length) {
+        setCompletedSteps(prev => [...prev, stepIdx])
+        stepIdx++
+        setCurrentStep(stepIdx)
+      }
+    }, ANALYSIS_STEPS[Math.min(stepIdx, ANALYSIS_STEPS.length - 1)]?.duration || 600)
+
+    try {
+      const res = await fetch('/api/free-bazi', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          year:parseInt(form.year), month:parseInt(form.month), day:parseInt(form.day),
+          hour: form.timeMode==='exact' ? parseInt(form.exactHour) : form.timeMode==='shichen' ? parseInt(form.hour) : 12,
+          minute: form.timeMode==='exact' ? parseInt(form.exactMinute) : 0,
+          time_unknown: form.timeMode==='unknown',
+          gender:form.gender, name:form.name,
+          calendar_type: form.calendarType,
+          latitude: form.cityLat || undefined,
+          longitude: form.cityLng || undefined,
+          timezone_offset: form.cityTz,
+        }),
+      })
+      clearInterval(stepInterval)
+      // 確保所有步驟都顯示完成
+      setCompletedSteps(ANALYSIS_STEPS.map((_, i) => i))
+      setCurrentStep(ANALYSIS_STEPS.length)
+
+      if (!res.ok) throw new Error((await res.json()).detail || '分析失敗')
+
+      // 短暫停留讓用戶看到最後一步完成
+      await new Promise(r => setTimeout(r, 500))
+      setResult(await res.json())
+    } catch (err: unknown) {
+      clearInterval(stepInterval)
+      setError(err instanceof Error ? err.message : '分析失敗')
+    } finally { setLoading(false) }
+  }
+
+  return (
+    <div className="py-16">
+      <div className="max-w-5xl mx-auto px-6">
+        <h1 className="text-3xl font-bold text-center mb-2"><span className="text-gradient-gold">AI 命理速算</span></h1>
+        <p className="text-center text-text-muted mb-2">精確排盤 + AI 深度分析 + 個人化命格解讀</p>
+        <p className="text-center text-xs text-text-muted/60 mb-10">不需註冊 &middot; 即時出結果 &middot; 完全免費</p>
+
+        {/* 分析進度動畫 */}
+        {loading && !result && (
+          <div className="max-w-lg mx-auto">
+            <div className="glass rounded-2xl p-8">
+              <h3 className="text-lg font-bold text-cream mb-6 text-center" style={{ fontFamily: 'var(--font-sans)' }}>
+                正在為 <span className="text-gold">{form.name}</span> 進行命格分析
+              </h3>
+              <div className="space-y-2">
+                {ANALYSIS_STEPS.map((step, i) => {
+                  const isCompleted = completedSteps.includes(i)
+                  const isCurrent = currentStep === i
+                  return (
+                    <div key={i} className={`flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-300 ${
+                      isCompleted ? 'bg-gold/10' : isCurrent ? 'bg-gold/5' : 'opacity-30'
+                    }`}>
+                      <span className={`w-6 text-center text-sm transition-all ${isCompleted ? 'text-gold' : isCurrent ? 'text-gold/70 animate-pulse' : 'text-text-muted/40'}`}
+                        dangerouslySetInnerHTML={{ __html: isCompleted ? '&#10003;' : step.icon }} />
+                      <span className={`text-sm transition-all ${isCompleted ? 'text-cream' : isCurrent ? 'text-text animate-pulse' : 'text-text-muted/40'}`}>
+                        {step.text}
+                      </span>
+                      {isCurrent && <span className="ml-auto w-4 h-4 border-2 border-gold/50 border-t-gold rounded-full animate-spin" />}
+                      {isCompleted && <span className="ml-auto text-xs text-gold/60">完成</span>}
+                    </div>
+                  )
+                })}
+              </div>
+              {currentStep >= ANALYSIS_STEPS.length && (
+                <p className="text-center text-gold mt-6 animate-pulse text-sm">報告生成完畢，正在載入...</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!result && !loading && (
+          <div className="max-w-lg mx-auto">
+            <form onSubmit={handleSubmit} className="glass rounded-2xl p-8 space-y-5">
+              {/* 姓名 + 性別 */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-sm text-text-muted mb-1.5">姓名 <span className="text-red-accent">*</span></label>
+                  <input type="text" required placeholder="請輸入您的全名" value={form.name}
+                    onChange={(e) => setForm({...form, name:e.target.value})}
+                    className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-3 text-cream text-base focus:border-gold/40 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm text-text-muted mb-1.5">性別</label>
+                  <div className="flex gap-4 pt-2">
+                    {[{v:'M',l:'男'},{v:'F',l:'女'}].map(({v,l})=>(
+                      <label key={v} className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="radio" name="gender" value={v} checked={form.gender===v} onChange={(e)=>setForm({...form,gender:e.target.value})} className="accent-gold" />
+                        <span className="text-base text-text">{l}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* 國曆/農曆切換 */}
+              <div>
+                <label className="block text-sm text-text-muted mb-1.5">曆法</label>
+                <div className="flex rounded-lg overflow-hidden border border-gold/10">
+                  {[{v:'solar' as const,l:'國曆（西曆）'},{v:'lunar' as const,l:'農曆'}].map(({v,l})=>(
+                    <button key={v} type="button"
+                      onClick={()=>setForm({...form, calendarType:v})}
+                      className={`flex-1 py-2.5 text-sm font-medium transition-all ${form.calendarType===v ? 'bg-gold/20 text-gold' : 'bg-white/3 text-text-muted hover:bg-white/5'}`}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+                {form.calendarType==='lunar' && (
+                  <p className="text-xs text-gold/60 mt-1.5">系統將自動轉換為國曆並處理閏月</p>
+                )}
+              </div>
+
+              {/* 出生日期 */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-sm text-text-muted mb-1.5">出生年</label>
+                  <input type="number" min="1920" max="2025" value={form.year} onChange={(e)=>setForm({...form,year:e.target.value})}
+                    className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm text-text-muted mb-1.5">{form.calendarType==='lunar'?'農曆月':'月'}</label>
+                  <select value={form.month} onChange={(e)=>setForm({...form,month:e.target.value})}
+                    className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none">
+                    {Array.from({length:12},(_,i)=><option key={i+1} value={i+1}>{form.calendarType==='lunar'?`${['正','二','三','四','五','六','七','八','九','十','冬','臘'][i]}月`:`${i+1}月`}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-text-muted mb-1.5">{form.calendarType==='lunar'?'農曆日':'日'}</label>
+                  <select value={form.day} onChange={(e)=>setForm({...form,day:e.target.value})}
+                    className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none">
+                    {Array.from({length:30},(_,i)=><option key={i+1} value={i+1}>{form.calendarType==='lunar'?`${['初一','初二','初三','初四','初五','初六','初七','初八','初九','初十','十一','十二','十三','十四','十五','十六','十七','十八','十九','二十','廿一','廿二','廿三','廿四','廿五','廿六','廿七','廿八','廿九','三十'][i]}`:`${i+1}日`}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* 出生時間 — 三選一 */}
+              <div>
+                <label className="block text-sm text-text-muted mb-1.5">出生時間</label>
+                <div className="flex rounded-lg overflow-hidden border border-gold/10 mb-3">
+                  {[
+                    {v:'unknown' as const, l:'不確定'},
+                    {v:'shichen' as const, l:'知道時辰'},
+                    {v:'exact' as const, l:'知道精確時間'},
+                  ].map(({v,l})=>(
+                    <button key={v} type="button"
+                      onClick={()=>setForm({...form, timeMode:v})}
+                      className={`flex-1 py-2.5 text-xs font-medium transition-all ${form.timeMode===v ? 'bg-gold/20 text-gold' : 'bg-white/3 text-text-muted hover:bg-white/5'}`}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+                {form.timeMode==='unknown' && (
+                  <p className="text-xs text-text-muted/70 leading-relaxed">
+                    系統將以午時（12:00）作為預設進行分析。生肖、數字能量、姓名學等不受影響，但八字時柱、上升星座等會有偏差。
+                    <span className="text-gold/70">建議向父母或出生醫院確認出生時間，可獲得更精準的分析。</span>
+                  </p>
+                )}
+                {form.timeMode==='shichen' && (
+                  <select value={form.hour} onChange={(e)=>setForm({...form,hour:e.target.value})}
+                    className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none">
+                    {SHICHEN.map(s=><option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                )}
+                {form.timeMode==='exact' && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <select value={form.exactHour} onChange={(e)=>setForm({...form,exactHour:e.target.value})}
+                      className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none">
+                      {Array.from({length:24},(_,i)=><option key={i} value={i}>{String(i).padStart(2,'0')} 時</option>)}
+                    </select>
+                    <select value={form.exactMinute} onChange={(e)=>setForm({...form,exactMinute:e.target.value})}
+                      className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none">
+                      {Array.from({length:60},(_,i)=><option key={i} value={i}>{String(i).padStart(2,'0')} 分</option>)}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* 出生城市 */}
+              <div className="relative">
+                <label className="block text-sm text-text-muted mb-1.5">出生城市</label>
+                <input type="text" placeholder="輸入城市名（如：台北、香港、上海）" value={form.city}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setForm({...form, city:val})
+                    setCityResults(val.length >= 1 ? searchCities(val) : [])
+                  }}
+                  className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-3 text-cream text-base focus:border-gold/40 focus:outline-none" />
+                {cityResults.length > 0 && (
+                  <div className="absolute z-20 w-full mt-1 glass rounded-lg border border-gold/20 max-h-48 overflow-y-auto">
+                    {cityResults.map((c: City) => (
+                      <button key={c.name_en} type="button"
+                        onClick={() => {
+                          setForm({...form, city:`${c.name}（${c.country}）`, cityLat:c.lat, cityLng:c.lng, cityTz:c.tz})
+                          setCityResults([])
+                        }}
+                        className="w-full text-left px-4 py-2.5 hover:bg-gold/10 transition-colors flex justify-between items-center">
+                        <span className="text-sm text-cream">{c.name} <span className="text-text-muted">({c.country})</span></span>
+                        <span className="text-[10px] text-text-muted/60">UTC{c.tz>=0?'+':''}{c.tz}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {form.cityLat !== 0 && (
+                  <p className="text-[10px] text-text-muted/50 mt-1">經度 {form.cityLng.toFixed(2)}° | 時區 UTC{form.cityTz>=0?'+':''}{form.cityTz} | 將自動校正真太陽時</p>
+                )}
+              </div>
+
+              <button type="submit" disabled={loading}
+                className="w-full py-4 bg-gold text-dark font-bold rounded-xl text-lg btn-glow disabled:opacity-50">
+                開始 AI 命理分析
+              </button>
+              {error && <p className="text-red-400 text-sm text-center mt-2">{error}</p>}
+            </form>
+          </div>
+        )}
+
+        {result && (
+          <div className="space-y-8">
+            <div className="text-center">
+              <button onClick={()=>setResult(null)} className="text-sm text-gold hover:underline">&larr; 重新分析</button>
+            </div>
+
+            {/* ═══ 2026 整體運勢（第一眼！） ═══ */}
+            {result.has_ai && result.ai_sections['2026整體運勢'] && (
+              <div className="rounded-2xl p-8 border border-gold/30" style={{background:'linear-gradient(135deg, rgba(197,150,58,0.1), rgba(44,24,16,0.4))'}}>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1 h-6 bg-gold rounded-full" />
+                  <h2 className="text-lg font-bold text-gradient-gold">2026 丙午年 — {form.name} 的整體運勢</h2>
+                </div>
+                <p className="text-base text-text leading-[2] whitespace-pre-line">{result.ai_sections['2026整體運勢']}</p>
+              </div>
+            )}
+
+            {/* ═══ 校正提示 ═══ */}
+            {(result.solar_time || result.lunar_converted || result.time_unknown) && (
+              <div className="glass rounded-xl p-4 text-xs text-text-muted space-y-1">
+                {result.lunar_converted && (
+                  <p>&#9672; 已將農曆日期自動轉換為國曆進行排盤計算</p>
+                )}
+                {result.solar_time && (
+                  <p>&#9672; 已根據出生地經度（{result.solar_time.longitude.toFixed(1)}°）進行真太陽時校正：{result.solar_time.original} → <strong className="text-gold">{result.solar_time.corrected}</strong>（{result.solar_time.diff_minutes > 0 ? '+' : ''}{result.solar_time.diff_minutes} 分鐘）</p>
+                )}
+                {result.time_unknown && (
+                  <p>&#9888; 未提供出生時間，以午時（12:00）預設。八字時柱、上升星座等可能有偏差。</p>
+                )}
+              </div>
+            )}
+
+            {/* ═══ 命格概述（核心：讓客戶覺得準） ═══ */}
+            <div className="glass rounded-2xl p-8">
+              <div className="text-center mb-6">
+                <div className="inline-block px-4 py-1.5 rounded-full bg-gold/20 text-gold text-sm font-semibold mb-3">
+                  {form.name} 的命格密碼
+                </div>
+                <h2 className="text-2xl font-bold text-white">您是「{result.profile.title}」型人格</h2>
+              </div>
+              <p className="text-base text-text leading-[1.9] mb-6">{result.profile.personality}</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-5">
+                  <h4 className="text-sm font-bold text-green-400 mb-2">&#10003; 您的天生優勢</h4>
+                  <p className="text-sm text-text leading-relaxed">{result.profile.strengths}</p>
+                </div>
+                <div className="rounded-xl bg-orange-500/10 border border-orange-500/20 p-5">
+                  <h4 className="text-sm font-bold text-orange-400 mb-2">&#9888; 需要留意的地方</h4>
+                  <p className="text-sm text-text leading-relaxed">{result.profile.challenges}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* ═══ 六大維度分析 ═══ */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                { title:'事業方向', text:result.profile.career, icon:'&#128188;', color:'border-blue-500/20 bg-blue-500/5' },
+                { title:'感情特質', text:result.profile.love, icon:'&#10084;&#65039;', color:'border-pink-500/20 bg-pink-500/5' },
+                { title:'健康提醒', text:result.profile.health, icon:'&#127973;', color:'border-green-500/20 bg-green-500/5' },
+                { title:'2026年運勢', text:result.profile.year2026, icon:'&#9733;', color:'border-yellow-500/20 bg-yellow-500/5' },
+              ].map(item=>(
+                <div key={item.title} className={`rounded-xl border p-5 ${item.color}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg" dangerouslySetInnerHTML={{__html:item.icon}} />
+                    <h4 className="text-base font-bold text-white">{item.title}</h4>
+                  </div>
+                  <p className="text-sm text-text leading-[1.8]">{item.text}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* ═══ 幸運元素 ═══ */}
+            <div className="glass rounded-2xl p-6">
+              <h3 className="text-base font-bold text-gold mb-3">&#128161; 您的開運指南</h3>
+              <p className="text-base text-text leading-[1.8]">{result.profile.lucky}</p>
+            </div>
+
+            {/* ═══ 太陽星座 ═══ */}
+            {result.sun_sign && (
+              <div className="glass rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1 h-6 bg-purple-500 rounded-full" />
+                  <h2 className="text-lg font-bold text-cream">西洋占星：{result.sun_sign.name}</h2>
+                  <span className="text-xs text-purple-400/70">{result.sun_sign.element}</span>
+                </div>
+                <p className="text-base text-text leading-[1.9]">{result.sun_sign.trait}</p>
+                <p className="text-sm text-text-muted italic mt-3">完整星盤需要精確出生時間和地點，包含月亮星座、上升星座、行星相位等深度分析...</p>
+              </div>
+            )}
+
+            {/* ═══ 生命靈數 ═══ */}
+            {result.life_path && (
+              <div className="glass rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1 h-6 bg-cyan-500 rounded-full" />
+                  <h2 className="text-lg font-bold text-cream">生命靈數：{result.life_path.number} 號 — {result.life_path.title}</h2>
+                </div>
+                <p className="text-base text-text leading-[1.9]">{result.life_path.desc}</p>
+              </div>
+            )}
+
+            {/* ═══ 生肖詳細年運 ═══ */}
+            {result.shengxiao_fortune && (
+              <div className="glass rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1 h-6 bg-red-accent rounded-full" />
+                  <h2 className="text-lg font-bold text-cream">屬{result.shengxiao} — 2026 丙午年運勢</h2>
+                </div>
+                <p className="text-base text-text leading-[1.9]">{result.shengxiao_fortune}</p>
+              </div>
+            )}
+
+            {/* ═══ AI 深度分析 ═══ */}
+            {result.has_ai && (
+              <>
+                {/* 性格深度剖析（2026運勢已在最上面顯示） */}
+                {result.ai_sections['性格深度剖析'] && (
+                  <div className="glass rounded-2xl p-8">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-1 h-6 bg-purple-500 rounded-full" />
+                      <h2 className="text-lg font-bold text-cream">性格深度剖析</h2>
+                    </div>
+                    <p className="text-base text-text leading-[2] whitespace-pre-line">{result.ai_sections['性格深度剖析']}</p>
+                  </div>
+                )}
+
+                {/* 財運方向 */}
+                {result.ai_sections['財運方向'] && (
+                  <div className="glass rounded-2xl p-8 border-l-2 border-green-500/30">
+                    <h2 className="text-lg font-bold text-cream mb-4">財運方向</h2>
+                    <p className="text-base text-text leading-[2] whitespace-pre-line">{result.ai_sections['財運方向']}</p>
+                  </div>
+                )}
+
+                {/* 人際與貴人 */}
+                {result.ai_sections['人際與貴人'] && (
+                  <div className="glass rounded-2xl p-8 border-l-2 border-cyan-500/30">
+                    <h2 className="text-lg font-bold text-cream mb-4">人際與貴人</h2>
+                    <p className="text-base text-text leading-[2] whitespace-pre-line">{result.ai_sections['人際與貴人']}</p>
+                  </div>
+                )}
+
+                {/* 未來機會窗口（轉化鉤子） */}
+                {result.ai_sections['未來機會窗口'] && (
+                  <div className="rounded-2xl p-8 border border-gold/20" style={{background:'linear-gradient(135deg, rgba(197,150,58,0.06), rgba(44,24,16,0.3))'}}>
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-1 h-6 bg-gold rounded-full" />
+                      <h2 className="text-lg font-bold text-gradient-gold">未來機會窗口</h2>
+                    </div>
+                    <p className="text-base text-text leading-[2] whitespace-pre-line">{result.ai_sections['未來機會窗口']}</p>
+                    <p className="text-sm text-gold/50 mt-4 italic">完整報告包含逐年大運分析、12個月流月運勢表、具體把握機會的行動方案...</p>
+                  </div>
+                )}
+
+                {/* 需要留意 */}
+                {result.ai_sections['需要留意的地方'] && (
+                  <div className="glass rounded-2xl p-8 border-l-2 border-orange-500/30">
+                    <h2 className="text-lg font-bold text-orange-300/80 mb-4">需要留意的地方</h2>
+                    <p className="text-base text-text leading-[2] whitespace-pre-line">{result.ai_sections['需要留意的地方']}</p>
+                    <p className="text-sm text-orange-400/50 mt-4 italic">完整報告包含具體的化解方案與改運建議...</p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ═══ 八字排盤數據 ═══ */}
+            <div className="glass rounded-2xl p-6">
+              <div className="flex items-center gap-2 mb-5">
+                <div className="w-1 h-6 bg-gold rounded-full" />
+                <h2 className="text-lg font-bold text-white">八字排盤數據</h2>
+              </div>
+              <div className="grid grid-cols-4 gap-3 mb-5">
+                {(['year','month','day','time'] as const).map(col=>(
+                  <div key={col} className="glass rounded-xl p-5 text-center">
+                    <div className="text-xs text-text-muted mb-2">{col==='year'?'年柱':col==='month'?'月柱':col==='day'?'日柱（命主）':'時柱'}</div>
+                    <div className="text-3xl font-bold text-gold">{result.pillars[col][0]}</div>
+                    <div className="text-3xl font-bold text-white">{result.pillars[col][1]}</div>
+                    <div className="text-xs text-text-muted mt-3">{result.nayin[col]}</div>
+                    {col!=='day'&&<div className="text-xs text-blue-400 mt-1">{result.shishen_gan[col]}</div>}
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {[
+                  {l:'日主',v:`${result.day_master}（${result.day_master_wuxing}）`},
+                  {l:'身強弱',v:result.strength}, {l:'格局',v:result.geju},
+                  {l:'用神',v:result.yongshen,g:true}, {l:'喜神',v:result.xishen,g:true},
+                  {l:'生肖',v:result.shengxiao?`${result.shengxiao}（${result.pillars.year}）`:result.pillars.year},
+                ].map(({l,v,g})=>(
+                  <div key={l} className="glass rounded-lg p-4">
+                    <div className="text-xs text-text-muted">{l}</div>
+                    <div className={`text-base font-semibold mt-1 ${g?'text-gold':'text-white'}`}>{v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ═══ 五行能量 ═══ */}
+            <div className="glass rounded-2xl p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-1 h-6 bg-gold rounded-full" />
+                <h2 className="text-lg font-bold text-white">五行能量分佈</h2>
+              </div>
+              <div className="space-y-3">
+                {(()=>{
+                  const wxData = result.wuxing_count_full || result.wuxing_count
+                  const total = Object.values(wxData).reduce((a,b)=>a+b,0)
+                  return Object.entries(wxData).map(([elem,val])=>{
+                    const pct = total > 0 ? Math.round((val/total)*100) : 0
+                    return (
+                      <div key={elem} className="flex items-center gap-3">
+                        <span className="w-8 text-base font-bold" style={{color:WX_COLORS[elem]}}>{elem}</span>
+                        <div className="flex-1 h-7 bg-white/5 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full flex items-center pl-3" style={{width:`${Math.max(pct,5)}%`,background:WX_COLORS[elem]}}>
+                            <span className="text-xs font-bold text-white">{typeof val==='number'&&val%1!==0?val.toFixed(1):val}</span>
+                          </div>
+                        </div>
+                        <span className="w-12 text-right text-sm text-text-muted">{pct}%</span>
+                        {val===0&&<span className="text-xs text-red-400 font-semibold">缺</span>}
+                      </div>
+                    )
+                  })
+                })()}
+              </div>
+            </div>
+
+            {/* ═══ 升級引導 ═══ */}
+            <div className="rounded-2xl overflow-hidden" style={{background:'linear-gradient(135deg, rgba(184,134,11,0.12), rgba(26,58,92,0.4))'}}>
+              <div className="p-8 md:p-10">
+                <div className="text-center mb-8">
+                  <h3 className="text-2xl md:text-3xl font-bold text-white mb-3">
+                    以上只揭示了您命格的 <span className="text-gradient-gold">6.7%</span>
+                  </h3>
+                  <p className="text-base text-text max-w-2xl mx-auto leading-relaxed">
+                    您剛才體驗的是八字一個系統的簡要分析。完整報告融合
+                    <strong className="text-white">千年東方玄學經典</strong>——
+                    《滴天髓》《窮通寶鑑》《紫微斗數全書》《奇門遁甲統宗》，結合
+                    <strong className="text-white">全球最頂尖的 AI 分析引擎</strong>，
+                    橫跨 15 套東西方命理體系，為您呈現一份前所未有的命格全景報告。
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                  <div className="glass rounded-xl p-5 text-center">
+                    <div className="text-3xl mb-2">&#128218;</div>
+                    <h4 className="font-bold text-white mb-1">千年古籍精髓</h4>
+                    <p className="text-sm text-text-muted">融合數十部命理經典核心理論，34,458 條大師級專業規則</p>
+                  </div>
+                  <div className="glass rounded-xl p-5 text-center">
+                    <div className="text-3xl mb-2">&#129302;</div>
+                    <h4 className="font-bold text-white mb-1">頂級 AI 深度解讀</h4>
+                    <p className="text-sm text-text-muted">使用 Claude AI 最強模型，每句分析精準到您個人命盤</p>
+                  </div>
+                  <div className="glass rounded-xl p-5 text-center">
+                    <div className="text-3xl mb-2">&#127760;</div>
+                    <h4 className="font-bold text-white mb-1">15 系統交叉驗證</h4>
+                    <p className="text-sm text-text-muted">東西方系統互相印證，多系統共識的結論才最可靠</p>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center mb-4">
+                    <a href="/checkout?plan=C" className="px-10 py-4 bg-gold text-dark font-bold rounded-xl text-lg btn-glow">
+                      解鎖完整命格報告 $99
+                    </a>
+                    <a href="/checkout?plan=A" className="px-10 py-4 glass text-white font-semibold rounded-xl text-lg hover:bg-white/10">
+                      先試核心三系統 $29
+                    </a>
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-4 text-xs text-text-muted/60">
+                    <span>&#128274; Stripe 安全支付</span>
+                    <span>&#9889; 5 分鐘出報告</span>
+                    <span>&#128230; PDF 永久保存</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

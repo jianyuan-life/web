@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+@theme {
+  /* 命理風格配色：暖金+深棕+象牙白，成熟穩重 */
+  --color-primary: #2c1810;       /* 深棕（主色） */
+  --color-primary-light: #4a2c20; /* 淺棕 */
+  --color-gold: #c5963a;          /* 暖金（強調色） */
+  --color-gold-light: #d4a84b;    /* 亮金 */
+  --color-dark: #1a110a;          /* 最深背景 */
+  --color-dark-light: #2c1810;    /* 深棕背景 */
+  --color-cream: #faf6f0;         /* 象牙白 */
+  --color-cream-dark: #f0e8dc;    /* 暖白 */
+  --color-surface: rgba(255, 248, 240, 0.06);
+  --color-surface-hover: rgba(255, 248, 240, 0.10);
+  --color-border: rgba(197, 150, 58, 0.15);
+  --color-text: #e8ddd0;          /* 暖灰文字 */
+  --color-text-muted: #a89580;    /* 柔和灰 */
+  --color-red-accent: #c44a3f;    /* 朱紅點綴 */
+  --font-sans: "Noto Serif TC", "Georgia", "Times New Roman", serif;
+  --font-body: "Noto Sans TC", "Inter", system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: linear-gradient(180deg, #1a110a 0%, #2c1810 40%, #1a110a 100%);
+  background-attachment: fixed;
+  color: var(--color-text);
+  min-height: 100vh;
+  font-family: var(--font-body);
+}
+
+/* 標題用宋體/襯線體 */
+h1, h2, h3 {
+  font-family: var(--font-sans);
+}
+
+/* 古典風格卡片 */
+.glass {
+  background: rgba(44, 24, 16, 0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(197, 150, 58, 0.12);
+}
+
+.glass:hover {
+  background: rgba(44, 24, 16, 0.75);
+  border-color: rgba(197, 150, 58, 0.25);
+}
+
+/* 金色漸層文字 */
+.text-gradient-gold {
+  background: linear-gradient(135deg, #c5963a, #d4a84b, #e8c068);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* 按鈕光暈 */
+.btn-glow {
+  box-shadow: 0 4px 20px rgba(197, 150, 58, 0.25);
+  transition: all 0.3s ease;
+}
+.btn-glow:hover {
+  box-shadow: 0 6px 30px rgba(197, 150, 58, 0.4);
+  transform: translateY(-1px);
+}
+
+/* 古典分隔線 */
+.divider-ornament {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: rgba(197, 150, 58, 0.3);
+}
+.divider-ornament::before,
+.divider-ornament::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(197, 150, 58, 0.2), transparent);
+}
+
+/* 紅色印章效果 */
+.stamp {
+  color: var(--color-red-accent);
+  border: 2px solid var(--color-red-accent);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-weight: bold;
+  transform: rotate(-3deg);
+  display: inline-block;
+}

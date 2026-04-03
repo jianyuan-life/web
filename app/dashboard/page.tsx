@@ -1,0 +1,162 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
+
+type Report = {
+  id: string
+  client_name: string
+  plan_code: string
+  amount_usd: number
+  status: string
+  pdf_url: string | null
+  report_result: {
+    systems_count?: number
+    analyses_summary?: { system: string; score: number }[]
+  } | null
+  created_at: string
+}
+
+function DashboardContent() {
+  const params = useSearchParams()
+  const paymentSuccess = params.get('payment') === 'success'
+
+  const [reports, setReports] = useState<Report[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/reports')
+      .then(r => r.json())
+      .then(data => {
+        setReports(data.reports || [])
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
+
+  // 付款成功後輪詢等待報告生成
+  useEffect(() => {
+    if (!paymentSuccess) return
+    const interval = setInterval(() => {
+      fetch('/api/reports')
+        .then(r => r.json())
+        .then(data => {
+          const newReports = data.reports || []
+          setReports(newReports)
+          // 如果最新報告是 completed，停止輪詢
+          if (newReports.length > 0 && newReports[0].status === 'completed') {
+            clearInterval(interval)
+          }
+        })
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [paymentSuccess])
+
+  const avgScore = (report: Report) => {
+    const summary = report.report_result?.analyses_summary
+    if (!summary || summary.length === 0) return 0
+    return Math.round(summary.reduce((a, b) => a + b.score, 0) / summary.length)
+  }
+
+  return (
+    <div className="py-20">
+      <div className="max-w-5xl mx-auto px-6">
+        {/* 付款成功提示 */}
+        {paymentSuccess && (
+          <div className="glass rounded-xl p-5 mb-6 border-l-2 border-green-500/50">
+            <div className="flex items-center gap-3">
+              <span className="text-green-400 text-xl">&#10003;</span>
+              <div>
+                <p className="text-cream font-semibold">付款成功！</p>
+                <p className="text-sm text-text-muted">報告正在生成中，通常需要 1-2 分鐘。頁面會自動更新。</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>我的報告</h1>
+            <p className="text-sm text-text-muted">查看和下載已生成的命理報告</p>
+          </div>
+          <a href="/pricing" className="px-4 py-2 bg-gold text-dark font-semibold rounded-lg text-sm btn-glow">
+            + 新報告
+          </a>
+        </div>
+
+        {loading ? (
+          <div className="glass rounded-2xl p-16 text-center">
+            <div className="w-8 h-8 border-2 border-gold/50 border-t-gold rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-text-muted">載入中...</p>
+          </div>
+        ) : reports.length > 0 ? (
+          <div className="space-y-4">
+            {reports.map((r) => (
+              <div key={r.id} className="glass rounded-xl p-5 flex items-center justify-between transition-all hover:border-gold/30">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-gold/15 flex items-center justify-center text-gold font-bold text-lg" style={{ fontFamily: 'var(--font-sans)' }}>
+                    {r.client_name[0]}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-cream">{r.client_name}</h3>
+                    <div className="flex items-center gap-3 text-xs text-text-muted mt-1">
+                      <span>方案 {r.plan_code}</span>
+                      <span>{r.report_result?.systems_count || 15} 系統</span>
+                      <span>${r.amount_usd}</span>
+                      <span>{new Date(r.created_at).toLocaleDateString('zh-TW')}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  {r.status === 'completed' ? (
+                    <>
+                      {avgScore(r) > 0 && (
+                        <div className="text-right hidden sm:block">
+                          <div className="text-sm font-semibold text-gold">{avgScore(r)}/100</div>
+                          <div className="text-xs text-text-muted">綜合評分</div>
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        {r.pdf_url && (
+                          <a href={r.pdf_url} target="_blank" rel="noopener noreferrer"
+                            className="px-3 py-1.5 glass rounded-lg text-xs text-gold hover:bg-gold/10 transition-colors">
+                            下載 PDF
+                          </a>
+                        )}
+                      </div>
+                    </>
+                  ) : r.status === 'pending' ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-gold/50 border-t-gold rounded-full animate-spin" />
+                      <span className="text-xs text-gold/70">生成中...</span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-red-400">生成失敗</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="glass rounded-2xl p-16 text-center">
+            <div className="text-4xl mb-4" style={{ fontFamily: 'var(--font-sans)' }}>&#9788;</div>
+            <h3 className="text-lg font-semibold text-cream mb-2">還沒有報告</h3>
+            <p className="text-sm text-text-muted mb-6">選擇一個方案，開始你的命理探索之旅</p>
+            <a href="/tools/bazi" className="px-6 py-2.5 bg-gold text-dark font-semibold rounded-lg btn-glow">
+              先免費體驗
+            </a>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="py-20 text-center text-text-muted">載入中...</div>}>
+      <DashboardContent />
+    </Suspense>
+  )
+}
