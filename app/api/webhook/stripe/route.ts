@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
     const session = event.data.object as Stripe.Checkout.Session
     const planCode = session.metadata?.plan_code || 'C'
     const birthDataStr = session.metadata?.birth_data
+    const sessionLocale = session.metadata?.locale || 'zh-TW'
     const amount = (session.amount_total || 0) / 100
     const customerEmail = session.customer_details?.email || session.customer_email || ''
 
@@ -75,6 +76,10 @@ export async function POST(req: NextRequest) {
         console.log('觸發 Fly.io 異步報告生成...')
         const additionalData = birthData.additionalPeople ? JSON.parse(birthData.additionalPeople) : undefined
 
+        // 注入 locale（報告語言：zh-TW 繁體 / zh-CN 簡體）
+        if (!birthData.locale) {
+          birthData.locale = sessionLocale
+        }
         // 確保 customer_note 傳入 birth_data
         if (session.metadata?.customer_note && !birthData.customer_note) {
           birthData.customer_note = session.metadata.customer_note

@@ -226,13 +226,21 @@ function CheckoutForm() {
   const plan = PLANS[planCode] || PLANS.C
 
   const [form, setForm] = useState({
-    name: '', year: '1990', month: '1', day: '1', hour: '12', minute: '0',
-    gender: 'M', address: '', addressLat: 0, addressLng: 0,
+    name: params.get('name') || '',
+    year: params.get('year') || '1990',
+    month: params.get('month') || '1',
+    day: params.get('day') || '1',
+    hour: params.get('hour') || '12',
+    minute: params.get('minute') || '0',
+    gender: params.get('gender') || 'M',
+    address: '', addressLat: 0, addressLng: 0,
     birthCity: '', cityLat: 0, cityLng: 0, cityTz: 8,
-    calendarType: 'solar' as 'solar' | 'lunar',
+    calendarType: (params.get('calendarType') || 'solar') as 'solar' | 'lunar',
     lunarLeap: false,
   })
-  const [timeMode, setTimeMode] = useState<'unknown' | 'shichen' | 'exact'>('shichen')
+  const [timeMode, setTimeMode] = useState<'unknown' | 'shichen' | 'exact'>(
+    (params.get('timeMode') as 'unknown' | 'shichen' | 'exact') || 'shichen'
+  )
   const [cityResults, setCityResults] = useState<City[]>([])
   const [addressResults, setAddressResults] = useState<{ label: string; lat: number; lng: number }[]>([])
   const [addressSearchTimer, setAddressSearchTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
@@ -297,17 +305,32 @@ function CheckoutForm() {
   }
 
   const [authChecked, setAuthChecked] = useState(false)
+  const [previousBirthData, setPreviousBirthData] = useState<Record<string, unknown> | null>(null)
+  const [importedPrevious, setImportedPrevious] = useState(false)
 
-  // Auth guard: 沒登入就跳走
+  // Auth guard + 抓歷史 birth_data
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) {
         sessionStorage.setItem('pending_plan', planCode)
         window.location.href = '/auth/login'
       } else {
         const fullName = data.user.user_metadata?.full_name || ''
-        if (fullName) setForm(f => ({ ...f, name: fullName }))
+        if (fullName && !params.get('name')) setForm(f => ({ ...f, name: fullName }))
         setAuthChecked(true)
+
+        // 若表單沒從 URL 預填，嘗試從上一份報告抓 birth_data
+        if (!params.get('name')) {
+          try {
+            const res = await fetch('/api/reports')
+            const { reports } = await res.json()
+            const prev = (reports || []).find(
+              (r: { birth_data?: Record<string, unknown>; plan_code?: string }) =>
+                r.birth_data && r.plan_code && !['R', 'G15'].includes(r.plan_code as string)
+            )
+            if (prev?.birth_data) setPreviousBirthData(prev.birth_data)
+          } catch { /* 靜默失敗 */ }
+        }
       }
     })
   }, [planCode])
@@ -479,6 +502,9 @@ function CheckoutForm() {
         }
       }
 
+      // 讀取用戶語言偏好（繁體/簡體）
+      const userLocale = (typeof window !== 'undefined' && localStorage.getItem('locale')) || 'zh-TW'
+
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -486,6 +512,7 @@ function CheckoutForm() {
           planCode,
           totalPrice: ['G15', 'G3', 'R'].includes(planCode) ? totalPrice : undefined,
           birthData,
+          locale: userLocale,
         }),
       })
       const data = await res.json()
@@ -714,6 +741,41 @@ function CheckoutForm() {
         ) : (
           /* ── 單人表單 ── */
           <form onSubmit={handleCheckout} className="glass rounded-2xl p-6 space-y-4">
+            {/* 一鍵導入上次資料 */}
+            {previousBirthData && !importedPrevious && (
+              <div className="flex items-center justify-between bg-gold/8 border border-gold/20 rounded-xl px-4 py-3">
+                <div>
+                  <p className="text-sm text-cream font-medium">偵測到上次的資料</p>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    {String(previousBirthData.name || '')}・{String(previousBirthData.year || '')}年{String(previousBirthData.month || '')}月{String(previousBirthData.day || '')}日
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const d = previousBirthData
+                    setForm(f => ({
+                      ...f,
+                      name: String(d.name || f.name),
+                      year: String(d.year || f.year),
+                      month: String(d.month || f.month),
+                      day: String(d.day || f.day),
+                      hour: String(d.hour || f.hour),
+                      minute: String(d.minute || f.minute),
+                      gender: String(d.gender || f.gender) as 'M' | 'F',
+                      birthCity: String(d.birth_city || ''),
+                      calendarType: (d.calendar_type as 'solar' | 'lunar') || f.calendarType,
+                    }))
+                    if (d.time_mode) setTimeMode(d.time_mode as 'unknown' | 'shichen' | 'exact')
+                    setImportedPrevious(true)
+                  }}
+                  className="ml-4 shrink-0 px-4 py-1.5 bg-gold text-dark text-xs font-bold rounded-lg btn-glow"
+                >
+                  一鍵導入
+                </button>
+              </div>
+            )}
+
             <div>
               <label className="block text-xs text-text-muted mb-1">姓名 *</label>
               <input

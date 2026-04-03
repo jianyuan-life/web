@@ -15,7 +15,7 @@ const PRICE_MAP: Record<string, { amount: number; name: string }> = {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { planCode, birthData, totalPrice } = body
+    const { planCode, birthData, totalPrice, locale } = body
 
     const plan = PRICE_MAP[planCode]
     if (!plan) {
@@ -45,6 +45,10 @@ export async function POST(req: NextRequest) {
     params.set('line_items[0][price_data][unit_amount]', finalAmount.toString())
     params.set('line_items[0][quantity]', '1')
     params.set('metadata[plan_code]', planCode)
+    // locale 單獨存，不佔 birth_data 500 字元額度
+    if (locale) {
+      params.set('metadata[locale]', locale)
+    }
     // 存入 birthData 供 webhook 使用（Stripe metadata 上限 500 字元/值）
     if (birthData) {
       const birthDataStr = JSON.stringify(birthData)
