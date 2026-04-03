@@ -16,9 +16,20 @@ const PLANS: Record<string, { name: string; price: number; systems: number }> = 
   E2: { name: '月盤出門訣', price: 89, systems: 1 },
 }
 
-// G15 每加一人的附加費
+// 每加一人的附加費
 const FAMILY_EXTRA_PRICE: Record<string, number> = {
   G15: 69,
+  R: 19,
+}
+
+// 各方案結帳頁說明文字
+const PLAN_DESCRIPTIONS: Record<string, string> = {
+  C: '填寫您的出生資料，我們將為您進行十五套命理系統深度分析',
+  D: '請選擇分析主題並填寫出生資料',
+  G15: '請填寫每位家庭成員的出生資料',
+  R: '請填寫雙方（或多方）的出生資料',
+  E1: '請填寫您的出生資料與事件資訊',
+  E2: '請填寫您的出生資料，我們將排出本月最佳出行時機',
 }
 
 const SHICHEN = [
@@ -232,9 +243,8 @@ function CheckoutForm() {
   const [dTopic, setDTopic] = useState(D_TOPICS[0])
   const [dOtherDesc, setDOtherDesc] = useState('')
 
-  // ── 方案 R 專屬 ──
-  const [rSecondPerson, setRSecondPerson] = useState<FamilyMember>(newMember())
-  const [rSecondTimeMode, setRSecondTimeMode] = useState<'unknown' | 'shichen' | 'exact'>('unknown')
+  // ── 方案 R 專屬（動態多人）──
+  const [rMembers, setRMembers] = useState<FamilyMember[]>([newMember(), newMember()])
   const [rRelationDesc, setRRelationDesc] = useState('')
 
   // ── 方案 G15/G3 專屬 ──
@@ -247,11 +257,14 @@ function CheckoutForm() {
   const [e1EndDate, setE1EndDate] = useState('')
   const [e1EventDesc, setE1EventDesc] = useState('')
 
-  // ── 計算 G15/G3 實際金額 ──
+  // ── 計算實際金額 ──
   const extraMemberCount = Math.max(0, familyMembers.length - 4)
   const extraPrice = FAMILY_EXTRA_PRICE[planCode] ?? 0
+  const rExtraCount = Math.max(0, rMembers.length - 2)
   const totalPrice = ['G15', 'G3'].includes(planCode)
     ? plan.price + extraMemberCount * extraPrice
+    : planCode === 'R'
+    ? plan.price + rExtraCount * 19
     : plan.price
 
   const searchAddress = (query: string) => {
@@ -309,6 +322,21 @@ function CheckoutForm() {
     }
   }
 
+  // ── R 方案成員操作 ──
+  const updateRMember = (index: number, updated: FamilyMember) => {
+    setRMembers(prev => prev.map((m, i) => i === index ? updated : m))
+  }
+  const addRMember = () => {
+    if (rMembers.length < 6) {
+      setRMembers(prev => [...prev, newMember()])
+    }
+  }
+  const removeRMember = (index: number) => {
+    if (index >= 2) {
+      setRMembers(prev => prev.filter((_, i) => i !== index))
+    }
+  }
+
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -326,7 +354,12 @@ function CheckoutForm() {
 
     // R 方案驗證
     if (planCode === 'R') {
-      if (!rSecondPerson.name.trim()) { alert('請輸入第二位當事人姓名'); return }
+      for (let i = 0; i < rMembers.length; i++) {
+        if (!rMembers[i].name.trim()) {
+          alert(`請輸入${i === 0 ? '您' : `第 ${i + 1} 位當事人`}的姓名`)
+          return
+        }
+      }
       if (!rRelationDesc.trim()) { alert('請描述你們的關係與想了解的問題'); return }
     }
 
@@ -390,19 +423,24 @@ function CheckoutForm() {
           }
         }
 
-        // R 方案額外資料
+        // R 方案改為多人格式
         if (planCode === 'R') {
-          birthData.second_person = {
-            name: rSecondPerson.name,
-            year: parseInt(rSecondPerson.year),
-            month: parseInt(rSecondPerson.month),
-            day: parseInt(rSecondPerson.day),
-            hour: rSecondTimeMode === 'unknown' ? 12 : parseInt(rSecondPerson.hour),
-            minute: rSecondTimeMode === 'exact' ? parseInt(rSecondPerson.minute) : 0,
-            gender: rSecondPerson.gender,
-            time_unknown: rSecondTimeMode === 'unknown',
+          birthData = {
+            plan: 'R',
+            members: rMembers.map((m, i) => ({
+              name: m.name,
+              year: parseInt(m.year),
+              month: parseInt(m.month),
+              day: parseInt(m.day),
+              hour: m.timeMode === 'unknown' ? 12 : parseInt(m.hour),
+              minute: m.timeMode === 'exact' ? parseInt(m.minute) : 0,
+              gender: m.gender,
+              time_unknown: m.timeMode === 'unknown',
+              time_mode: m.timeMode,
+              role: i === 0 ? 'self' : 'other',
+            })),
+            relation_description: rRelationDesc,
           }
-          birthData.relation_description = rRelationDesc
         }
 
         // E1 方案額外資料
@@ -418,7 +456,7 @@ function CheckoutForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           planCode,
-          totalPrice: ['G15', 'G3'].includes(planCode) ? totalPrice : undefined,
+          totalPrice: ['G15', 'G3', 'R'].includes(planCode) ? totalPrice : undefined,
           birthData,
         }),
       })
@@ -435,8 +473,9 @@ function CheckoutForm() {
     }
   }
 
-  // ── 判斷是否為家庭方案 ──
+  // ── 判斷方案類型 ──
   const isFamilyPlan = planCode === 'G15' || planCode === 'G3'
+  const isRelationPlan = planCode === 'R'
 
   return (
     <div className="py-20">
@@ -444,7 +483,7 @@ function CheckoutForm() {
         <h1 className="text-3xl font-bold text-center mb-2">
           <span className="text-gradient-gold">確認訂單</span>
         </h1>
-        <p className="text-center text-text-muted mb-10">填寫出生資料，完成付款後自動生成報告</p>
+        <p className="text-center text-text-muted mb-10">{PLAN_DESCRIPTIONS[planCode] || '填寫出生資料，完成付款後自動生成報告'}</p>
 
         {/* 方案摘要 */}
         <div className="glass rounded-xl p-5 mb-8 flex justify-between items-center">
@@ -454,6 +493,8 @@ function CheckoutForm() {
             <div className="text-xs text-text-muted">
               {isFamilyPlan
                 ? `基本 4 人，第 5 人起 +$${extraPrice}/人`
+                : isRelationPlan
+                ? '含兩人分析，每加1人 +$19/人'
                 : `${plan.systems} 套系統分析`}
             </div>
             {isFamilyPlan && extraMemberCount > 0 && (
@@ -461,12 +502,125 @@ function CheckoutForm() {
                 目前 {familyMembers.length} 人，額外 {extraMemberCount} 人 × ${extraPrice} = +${extraMemberCount * extraPrice}
               </div>
             )}
+            {isRelationPlan && rExtraCount > 0 && (
+              <div className="text-xs text-gold mt-1">
+                目前 {rMembers.length} 人，額外 {rExtraCount} 人 × $19 = +${rExtraCount * 19}
+              </div>
+            )}
           </div>
           <PriceTag usd={totalPrice} size="lg" />
         </div>
 
-        {/* ── 家庭方案表單 ── */}
-        {isFamilyPlan ? (
+        {/* ── R 方案多人表單 ── */}
+        {isRelationPlan ? (
+          <form onSubmit={handleCheckout} className="space-y-4">
+            <div className="space-y-4">
+              {rMembers.map((member, index) => {
+                const label = index === 0 ? '我' : index === 1 ? '對方' : `第 ${index + 1} 位當事人`
+                return (
+                  <div key={index} className="border border-gold/20 rounded-xl p-4 space-y-3 bg-white/3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-semibold text-gold">{label}</span>
+                      {index >= 2 && (
+                        <button type="button" onClick={() => removeRMember(index)}
+                          className="text-xs text-red-400 hover:text-red-300 border border-red-400/30 rounded px-2 py-0.5">
+                          移除
+                        </button>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs text-text-muted mb-1">姓名 *</label>
+                      <input type="text" required placeholder={`請輸入${label}的姓名`}
+                        value={member.name}
+                        onChange={(e) => updateRMember(index, { ...member, name: e.target.value })}
+                        className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none text-sm"
+                      />
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs text-text-muted mb-1">出生年</label>
+                        <input type="number" min="1920" max="2025"
+                          value={member.year}
+                          onChange={(e) => updateRMember(index, { ...member, year: e.target.value })}
+                          className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-text-muted mb-1">月</label>
+                        <select value={member.month} onChange={(e) => updateRMember(index, { ...member, month: e.target.value })}
+                          className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none">
+                          {Array.from({ length: 12 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}月</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-text-muted mb-1">日</label>
+                        <select value={member.day} onChange={(e) => updateRMember(index, { ...member, day: e.target.value })}
+                          className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none">
+                          {Array.from({ length: 31 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}日</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-text-muted mb-1">性別 *</label>
+                      <div className="flex gap-6">
+                        {[{ v: 'M', l: '男' }, { v: 'F', l: '女' }].map(({ v, l }) => (
+                          <label key={v} className="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name={`r-gender-${index}`} value={v} checked={member.gender === v}
+                              onChange={() => updateRMember(index, { ...member, gender: v })} className="accent-gold" />
+                            <span className="text-sm text-text">{l}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <BirthTimeField
+                      timeMode={member.timeMode}
+                      setTimeMode={(m) => updateRMember(index, { ...member, timeMode: m })}
+                      hour={member.hour}
+                      minute={member.minute}
+                      onChange={(field, val) => updateRMember(index, { ...member, [field]: val })}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+
+            {rMembers.length < 6 && (
+              <button type="button" onClick={addRMember}
+                className="w-full py-3 border border-gold/30 rounded-xl text-gold text-sm hover:bg-gold/10 transition-all">
+                + 加入第 {rMembers.length + 1} 位當事人
+                <span className="text-text-muted ml-2">（+$19）</span>
+              </button>
+            )}
+
+            {/* 關係說明 */}
+            <div className="border-t border-gold/10 pt-4">
+              <label className="block text-xs text-text-muted mb-1">關係說明 *（最多 200 字）</label>
+              <textarea
+                required
+                maxLength={200}
+                rows={3}
+                placeholder="請描述你們的關係（如：戀人、夫妻、合作夥伴），以及想了解的問題..."
+                value={rRelationDesc}
+                onChange={(e) => setRRelationDesc(e.target.value)}
+                className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-white text-sm focus:border-gold focus:outline-none resize-none"
+              />
+              <p className="text-[10px] text-text-muted/50 text-right mt-1">{rRelationDesc.length}/200</p>
+            </div>
+
+            {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+
+            <button
+              type="submit" disabled={loading}
+              className="w-full py-3.5 bg-gold text-dark font-bold rounded-xl text-lg btn-glow disabled:opacity-50 mt-4"
+            >
+              {loading ? '跳轉付款中...' : `確認付款 — $${totalPrice}`}
+            </button>
+            <p className="text-xs text-text-muted/60 text-center">
+              付款由 Stripe 安全處理。付款後 5-15 分鐘內收到報告。
+            </p>
+          </form>
+        ) : isFamilyPlan ? (
+          /* ── 家庭方案表單 ── */
           <form onSubmit={handleCheckout} className="space-y-4">
             <div className="space-y-4">
               {familyMembers.map((member, index) => (
@@ -691,84 +845,6 @@ function CheckoutForm() {
               </div>
             )}
 
-            {/* ── 方案 R：第二位當事人 ── */}
-            {planCode === 'R' && (
-              <div className="border-t border-gold/10 pt-4 space-y-4">
-                <p className="text-sm font-semibold text-gold">第二位當事人資料</p>
-
-                <div>
-                  <label className="block text-xs text-text-muted mb-1">第二人姓名 *</label>
-                  <input
-                    type="text" required placeholder="請輸入第二位當事人姓名"
-                    value={rSecondPerson.name}
-                    onChange={(e) => setRSecondPerson({ ...rSecondPerson, name: e.target.value })}
-                    className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none text-sm"
-                  />
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-xs text-text-muted mb-1">出生年 *</label>
-                    <input type="number" min="1920" max="2025" required
-                      value={rSecondPerson.year}
-                      onChange={(e) => setRSecondPerson({ ...rSecondPerson, year: e.target.value })}
-                      className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-text-muted mb-1">月 *</label>
-                    <select value={rSecondPerson.month}
-                      onChange={(e) => setRSecondPerson({ ...rSecondPerson, month: e.target.value })}
-                      className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none">
-                      {Array.from({ length: 12 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}月</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-text-muted mb-1">日 *</label>
-                    <select value={rSecondPerson.day}
-                      onChange={(e) => setRSecondPerson({ ...rSecondPerson, day: e.target.value })}
-                      className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none">
-                      {Array.from({ length: 31 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}日</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs text-text-muted mb-1">第二人性別 *</label>
-                  <div className="flex gap-6">
-                    {[{ v: 'M', l: '男' }, { v: 'F', l: '女' }].map(({ v, l }) => (
-                      <label key={v} className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="r-gender-2" value={v} checked={rSecondPerson.gender === v}
-                          onChange={() => setRSecondPerson({ ...rSecondPerson, gender: v })} className="accent-gold" />
-                        <span className="text-sm text-text">{l}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <BirthTimeField
-                  timeMode={rSecondTimeMode}
-                  setTimeMode={setRSecondTimeMode}
-                  hour={rSecondPerson.hour}
-                  minute={rSecondPerson.minute}
-                  onChange={(field, val) => setRSecondPerson({ ...rSecondPerson, [field]: val })}
-                />
-
-                <div>
-                  <label className="block text-xs text-text-muted mb-1">關係說明 *（最多 200 字）</label>
-                  <textarea
-                    required
-                    maxLength={200}
-                    rows={3}
-                    placeholder="請描述你們的關係（如：戀人、夫妻、合作夥伴），以及想了解的問題..."
-                    value={rRelationDesc}
-                    onChange={(e) => setRRelationDesc(e.target.value)}
-                    className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-white text-sm focus:border-gold focus:outline-none resize-none"
-                  />
-                  <p className="text-[10px] text-text-muted/50 text-right mt-1">{rRelationDesc.length}/200</p>
-                </div>
-              </div>
-            )}
 
             {/* ── 方案 E1：事件時間與描述 ── */}
             {planCode === 'E1' && (
