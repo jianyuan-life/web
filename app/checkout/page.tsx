@@ -54,7 +54,6 @@ function CheckoutForm() {
   const [addressSearchTimer, setAddressSearchTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [authChecked, setAuthChecked] = useState(false)
 
   const searchAddress = (query: string) => {
     if (addressSearchTimer) clearTimeout(addressSearchTimer)
@@ -76,6 +75,8 @@ function CheckoutForm() {
     setAddressSearchTimer(timer)
   }
 
+  const [authChecked, setAuthChecked] = useState(false)
+
   // Auth guard: 沒登入就跳走
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -83,7 +84,6 @@ function CheckoutForm() {
         sessionStorage.setItem('pending_plan', planCode)
         window.location.href = '/auth/login'
       } else {
-        // 自動填入用戶名稱
         const fullName = data.user.user_metadata?.full_name || ''
         if (fullName) setForm(f => ({ ...f, name: fullName }))
         setAuthChecked(true)
