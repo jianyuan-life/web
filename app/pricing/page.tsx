@@ -232,8 +232,33 @@ export default function PricingPage() {
             <p><strong className="text-cream">有特定困惑：</strong>「心之所惑」（$39）聚焦一個面向深入剖析。</p>
             <p><strong className="text-cream">全家分析：</strong>「家族藍圖」（$269起）每人獨立報告+家庭互動分析。</p>
             <p><strong className="text-cream">感情/合夥：</strong>「合否？」（$59）兩人命理交叉分析，看你們合不合。</p>
-            <p><strong className="text-cream">想採取行動：</strong>先做「人生藍圖」，再加出門訣，在最好的時機出行改運。</p>
+            <p><strong className="text-cream">想採取行動：</strong>先做「人生藍圖」了解自己，再加出門訣，在最好的時機出行改運。</p>
           </div>
+        </div>
+
+        {/* FAQ */}
+        <div className="max-w-3xl mx-auto mt-16">
+          <div className="divider-ornament text-gold/30 mb-4">
+            <span className="text-xs tracking-[0.2em]">常見問題</span>
+          </div>
+          <p className="text-center text-text-muted text-sm mb-8">購買前您可能想知道的事</p>
+          {[
+            { q: '命理分析真的準確嗎？', a: '鑒源的排盤計算使用確定性算法，與專業命理軟體一致。解讀基於數十部經典古籍提煉的 34,458 條規則，再由 AI 引擎整合。最重要的是，我們用十五套系統交叉驗證——當多數系統得出相同結論時，準確度遠高於單一系統。不同於人為判斷，每次分析的結果都是可重複、可驗證的。' },
+            { q: '報告多久生成？', a: '個人報告（人生藍圖、心之所惑）約 30 分鐘；家族藍圖和合否根據人數而定；出門訣因需排算數百個時辰，約需 40 分鐘以上。付款後系統全自動運算，完成後立即 Email 通知。' },
+            { q: '可以退款嗎？', a: '報告為虛擬數位內容，一旦開始生成即消耗大量運算資源，因此生成後不支持退款。如果報告品質有任何問題，請聯繫 support@jianyuan.life，我們會免費重新生成。' },
+            { q: '付款方式有哪些？安全嗎？', a: '透過 Stripe（PCI DSS Level 1 認證）處理，支援 Visa、Mastercard、AMEX 等主流信用卡。您的卡號不會經過鑒源伺服器，全程加密。' },
+            { q: '人生藍圖和心之所惑有什麼差別？', a: '「人生藍圖」是全面分析——涵蓋性格、事業、財運、感情、健康、大運等所有面向，報告 6,000-10,000 字。「心之所惑」則聚焦在你最在乎的一個問題，深入剖析，報告 3,000-5,000 字。如果你有明確的困惑，心之所惑更精準；如果想全面了解自己，人生藍圖更完整。' },
+            { q: '出門訣適合什麼場合？', a: '任何你希望有好結果的重大事件：面試、簽約、開業、搬家、相親、考試等。事件出門訣（$119）針對單一事件排算；月盤出門訣（$89）則為你排算未來 30 天的最佳出行時機，適合需要持續改運的人。' },
+            { q: '不確定出生時間怎麼辦？', a: '可以選擇最接近的時辰。即使時間不完全精確，十五套系統中有多套不依賴精確時辰（如姓名學、數字能量學、生肖運勢等），仍能提供有價值的分析。' },
+          ].map((faq) => (
+            <details key={faq.q} className="glass rounded-lg mb-3 group">
+              <summary className="p-5 cursor-pointer font-semibold text-cream flex justify-between items-center text-sm">
+                {faq.q}
+                <span className="text-gold group-open:rotate-45 transition-transform text-lg ml-4 shrink-0">+</span>
+              </summary>
+              <div className="px-5 pb-5 text-sm text-text-muted leading-[1.9] border-t border-gold/5 pt-4">{faq.a}</div>
+            </details>
+          ))}
         </div>
       </div>
     </div>

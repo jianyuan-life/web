@@ -555,12 +555,25 @@ export default function FreeToolPage() {
                 </div>
                 <div className="text-center">
                   <div className="flex flex-col sm:flex-row gap-4 justify-center mb-4">
-                    <a href="/checkout?plan=C" className="px-10 py-4 bg-gold text-dark font-bold rounded-xl text-lg btn-glow">
-                      解鎖人生藍圖完整報告 $89
-                    </a>
-                    <a href="/checkout?plan=D" className="px-10 py-4 glass text-white font-semibold rounded-xl text-lg hover:bg-white/10">
-                      聚焦單一困惑深度分析 $39
-                    </a>
+                    {(['C', 'D'] as const).map((plan, idx) => {
+                      const q = new URLSearchParams({
+                        plan,
+                        name: form.name,
+                        year: form.year,
+                        month: form.month,
+                        day: form.day,
+                        hour: form.timeMode === 'exact' ? form.exactHour : form.hour,
+                        minute: form.timeMode === 'exact' ? form.exactMinute : '0',
+                        gender: form.gender,
+                        timeMode: form.timeMode,
+                        calendarType: form.calendarType,
+                      })
+                      const label = idx === 0 ? '解鎖人生藍圖完整報告 $89' : '聚焦單一困惑深度分析 $39'
+                      const cls = idx === 0
+                        ? 'px-10 py-4 bg-gold text-dark font-bold rounded-xl text-lg btn-glow'
+                        : 'px-10 py-4 glass text-white font-semibold rounded-xl text-lg hover:bg-white/10'
+                      return <a key={plan} href={`/checkout?${q}`} className={cls}>{label}</a>
+                    })}
                   </div>
                   <div className="flex flex-wrap justify-center gap-4 text-xs text-text-muted/60">
                     <span>&#128274; Stripe 安全支付</span>

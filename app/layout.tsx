@@ -5,9 +5,33 @@ import Tracker from '@/components/Tracker'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: '鑒源 JianYuan — 回到源頭，看清本質',
-  description: '鑒源命理融合東西方十五大命理系統與 AI 精準分析，以金之精準、水之智慧，為您揭示命格的本質。',
-  keywords: '鑒源, JianYuan, 八字算命, 紫微斗數, 奇門遁甲, 命理分析, 命格分析',
+  title: {
+    default: '鑒源 JianYuan — 十五大命理系統 AI 精準分析',
+    template: '%s | 鑒源 JianYuan',
+  },
+  description: '鑒源整合八字、紫微斗數、奇門遁甲、西洋占星等十五大命理系統，結合 34,458 條古籍規則與 AI 深度分析，為您提供性格天賦、事業財運、感情婚姻的完整命格報告。',
+  keywords: '鑒源, JianYuan, 八字, 紫微斗數, 奇門遁甲, 西洋占星, 命理分析, 命格分析, 命盤, AI命理, 算命, 姓名學, 風水, 出門訣, 人類圖, 吠陀占星, 運勢',
+  metadataBase: new URL('https://jianyuan.life'),
+  openGraph: {
+    title: '鑒源 JianYuan — 十五大命理系統 AI 精準分析',
+    description: '整合東西方十五大命理系統與 AI，一份報告看清性格天賦、事業方向、感情運勢。免費體驗，不需註冊。',
+    url: 'https://jianyuan.life',
+    siteName: '鑒源 JianYuan',
+    type: 'website',
+    locale: 'zh_TW',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: '鑒源 JianYuan — 十五大命理系統 AI 精準分析',
+    description: '整合東西方十五大命理系統與 AI，一份報告看清性格天賦、事業方向、感情運勢。',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  alternates: {
+    canonical: 'https://jianyuan.life',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -17,6 +41,33 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link
           href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap"
           rel="stylesheet"
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'WebApplication',
+              name: '鑒源 JianYuan',
+              url: 'https://jianyuan.life',
+              description: '整合東西方十五大命理系統與 AI 精準分析的命格分析平台',
+              applicationCategory: 'LifestyleApplication',
+              operatingSystem: 'Web',
+              offers: {
+                '@type': 'AggregateOffer',
+                lowPrice: '39',
+                highPrice: '269',
+                priceCurrency: 'USD',
+                offerCount: '6',
+              },
+              creator: {
+                '@type': 'Organization',
+                name: '鑒源 JianYuan',
+                url: 'https://jianyuan.life',
+                email: 'support@jianyuan.life',
+              },
+            }),
+          }}
         />
       </head>
       <body className="antialiased">
