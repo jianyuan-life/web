@@ -7,7 +7,7 @@ import { Resend } from 'resend'
 // 流程：Python API 排盤 → DeepSeek 深度分析 → 存 Supabase → 寄 Email
 // ============================================================
 
-const PYTHON_API = process.env.PYTHON_API_URL || 'https://fortune-reports-api.fly.dev'
+const PYTHON_API = process.env.NEXT_PUBLIC_API_URL || 'https://fortune-reports-api.fly.dev'
 const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions'
 const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || ''
 
