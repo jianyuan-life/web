@@ -150,13 +150,37 @@ Resend 寄 Email（含報告連結）← 需域名驗證完成
 - **發信地址：** reports@jianyuan.life
 - **Domain 驗證：** 在 resend.com Domains 頁面確認變綠
 
-## 待完成（高優先）
+## 待完成（優先順序）
 
-1. **Stripe 切換 Live 模式**（上線前必做）
-2. **方案專屬表單**（D/R/G15/G3/E1 各有不同欄位需求）
-3. **birthCity lat/lng 傳給 Python API**（真太陽時校正）
-4. **Stripe metadata 500字元限制**（改用 Supabase 暫存）
-5. **客戶儀表板** 完整實作（需要 Supabase Auth）
+### 🔴 上線前必做
+1. **Stripe 切換 Live 模式**（sk_test_ → sk_live_）
+2. **Resend 域名驗證**（resend.com 確認 jianyuan.life 變綠）
+
+### 🟡 功能完善
+3. **儀表板系統數顯示**：15套系統那個數字要依方案顯示正確值（不是寫死15）
+4. **方案專屬表單**（D/R/G15/G3/E1 各有不同欄位需求）
+5. **birthCity lat/lng 傳給 Python API**（真太陽時校正）
+6. **Stripe metadata 500字元限制**（改用 Supabase 暫存）
+7. **完成後自動跳轉**：報告生成完成時儀表板自動刷新+跳出報告連結
+
+### 🟢 未來優化
+8. **客戶儀表板進階功能**（歷史報告、下載 PDF）
+9. **退款按鈕**（後台 admin 加 Stripe Refund API）
+10. **Google Analytics**（追蹤用戶行為漏斗）
+
+## v1.3 更新紀錄（2026-04-03）
+
+| 修改項目 | 檔案 | 說明 |
+|:---|:---|:---|
+| 自動化閉環完成 | webhook/generate-report | 付款→排盤→AI→Email全自動 |
+| Resend 郵件接入 | generate-report | Email 含報告連結+出門訣行銷 |
+| 報告閱讀頁 | report/[token]/page.tsx | 無需登入，access_token 存取 |
+| 國曆/農曆切換 | checkout/page.tsx | 與免費工具一致，含閏月選項 |
+| 方案全名顯示 | dashboard/page.tsx | 方案C→全方位十五合一 |
+| 等待文案優化 | dashboard/report頁 | 強調40-60分鐘專業分析 |
+| 模擬進度條 | ReportProgress.tsx | 15系統逐一點亮，依方案顯示正確數量 |
+| TypeScript 修復 | webhook/stripe | insertData 作用域錯誤 |
+| Service Role Key | generate-report | 伺服器端改用 secret key |
 
 ## v1.2 更新紀錄（2026-04-03）
 
