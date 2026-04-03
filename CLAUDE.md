@@ -168,26 +168,43 @@ Resend 寄 Email（含報告連結）← 需域名驗證完成
 | E1 | 事件出門訣 | $119 |
 | E2 | 月盤出門訣 | $89 |
 
-**已更新頁面（2026-04-04）：**
-- ✅ `app/pricing/page.tsx` — 6方案新版定價頁
-- ✅ `app/checkout/page.tsx` — PLANS 更新，移除舊方案
-- ✅ `app/dashboard/page.tsx` — PLAN_NAMES 更新
-- ✅ `app/report/[token]/page.tsx` — PLAN_NAMES 更新
-- ✅ `app/tools/bazi/page.tsx` — CTA 價格修正（$99→$89），方案A改D
-- ✅ `app/api/checkout/route.ts` — PRICE_MAP 更新，siteUrl 改用環境變數
-- components/PricingCards.tsx — 若存在需確認是否還在使用
+### ✅ v1.4 產品功能完整版（2026-04-04 完成）
 
-### 🟡 功能完善
-3. **儀表板系統數顯示**：15套系統那個數字要依方案顯示正確值（不是寫死15）
-4. **方案專屬表單**（D/R/G15/E1 各有不同欄位需求）
-5. **birthCity lat/lng 傳給 Python API**（真太陽時校正）
-6. **Stripe metadata 500字元限制**（改用 Supabase 暫存）
-7. **完成後自動跳轉**：報告生成完成時儀表板自動刷新+跳出報告連結
+**PDF 報告系統**
+- Python API `/api/generate-pdf` — ReportLab 白底品牌 PDF（白底/深藍/金色）
+- 封面、目錄、15系統評分橫條圖、全文、彩色區塊框（綠/橙/藍）
+- 字型：WQY Zen Hei（TrueType，Fly.io 相容）
+- Next.js 接收 base64 → Supabase Storage `reports/` bucket
+- 報告頁和儀表板均顯示「下載 PDF」按鈕
+
+**出門訣 Top5 吉時**
+- E1/E2 prompt 輸出 JSON：rank/title/date/time_start/time_end/direction/reason
+- 報告頁金銀銅排名卡片 + Google Calendar 一鍵新增（純 URL，無需 API key）
+
+**進度條升級**
+- 四階段指示器：排盤運算→命理解析→AI深度分析→整合報告
+- 閃光金色動畫、方案專屬時間估算、剩餘分鐘顯示
+
+**AI Prompt 全面升級（心理陪伴語言框架）**
+- 所有6個方案 prompt 改為「答案型」報告，融入心理陪伴語氣
+- C：10章節 6000-10000字；D：3000-5000字；R：雙人分析；G15：家族動力學
+- E1/E2：奇門排盤邏輯＋命格驗證＋白話說明
+- max_tokens: 4000 → 8000
+
+**月盤出門訣計算說明**
+- 定價/結帳頁說明：30天×12時辰=360個奇門局，套入命格驗證吉位
+- 時間說明：報告30分鐘/人，出門訣40分鐘以上
+
+### 🟡 功能完善（下一階段）
+3. **方案專屬表單**（D/R/G15/E1 各有不同欄位需求）
+4. **birthCity lat/lng 傳給 Python API**（真太陽時校正）
+5. **Stripe metadata 500字元限制**（改用 Supabase 暫存）
+6. **儀表板自動刷新**：報告生成完成後自動顯示報告連結
 
 ### 🟢 未來優化
-8. **客戶儀表板進階功能**（歷史報告、下載 PDF）
-9. **退款按鈕**（後台 admin 加 Stripe Refund API）
-10. **Google Analytics**（追蹤用戶行為漏斗）
+7. **退款按鈕**（後台 admin 加 Stripe Refund API）
+8. **Google Analytics**（追蹤用戶行為漏斗）
+9. **PDF 附件加入 Email**
 
 ## v1.3 更新紀錄（2026-04-03）
 
