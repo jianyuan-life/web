@@ -31,6 +31,23 @@ function DashboardContent() {
 
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
+
+  const handleDelete = async (id: string) => {
+    setDeletingId(id)
+    try {
+      await fetch('/api/reports', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+      setReports(prev => prev.filter(r => r.id !== id))
+    } finally {
+      setDeletingId(null)
+      setConfirmId(null)
+    }
+  }
 
   useEffect(() => {
     fetch('/api/reports')
@@ -121,7 +138,7 @@ function DashboardContent() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3">
                     {r.status === 'completed' ? (
                       <>
                         {avgScore(r) > 0 && (
@@ -147,11 +164,42 @@ function DashboardContent() {
                     ) : (
                       <span className="text-xs text-red-400">生成失敗</span>
                     )}
+                    {/* 刪除按鈕 */}
+                    <button
+                      onClick={() => setConfirmId(confirmId === r.id ? null : r.id)}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted/50 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                      title="刪除報告"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                      </svg>
+                    </button>
                   </div>
                 </div>
                 {/* pending 時顯示進度條 */}
                 {r.status === 'pending' && (
                   <ReportProgress createdAt={r.created_at} planCode={r.plan_code} />
+                )}
+                {/* 刪除確認 */}
+                {confirmId === r.id && (
+                  <div className="mt-3 flex items-center justify-between bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2.5">
+                    <span className="text-sm text-red-300">確定要刪除這份報告嗎？此操作無法復原。</span>
+                    <div className="flex gap-2 ml-4 shrink-0">
+                      <button
+                        onClick={() => setConfirmId(null)}
+                        className="px-3 py-1 text-xs text-text-muted border border-white/10 rounded-lg hover:bg-white/5 transition-colors"
+                      >
+                        取消
+                      </button>
+                      <button
+                        onClick={() => handleDelete(r.id)}
+                        disabled={deletingId === r.id}
+                        className="px-3 py-1 text-xs text-white bg-red-500/80 rounded-lg hover:bg-red-500 transition-colors disabled:opacity-50"
+                      >
+                        {deletingId === r.id ? '刪除中...' : '確認刪除'}
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             ))}
