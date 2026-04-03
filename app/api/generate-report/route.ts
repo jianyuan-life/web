@@ -44,6 +44,16 @@ const PSYCHOLOGY_RULES = `
 
 開場白根據情境選語氣（感情/事業/迷茫/家庭/健康/財務），先讓客戶感到「你懂我」。
 收尾溫暖有力，客戶讀完要覺得「有人陪我」「知道接下來該怎麼做」。
+
+【數據零容忍規範——最高優先級】
+
+1. 每一個分析論點必須能溯源回排盤數據中的具體數值或描述。不得憑空編造命理結論。
+2. 引用排盤數據時，必須指明來自哪個系統（例如「八字命盤顯示你的日主為甲木...」「紫微斗數中你的命宮主星為...」「奇門遁甲盤局中值符落...宮」）。
+3. 如果某個系統的排盤數據不完整或缺失，直接跳過該系統的分析，不要編造。寧可少寫一段，也不要寫錯一句。
+4. 「好的地方」和「需要注意的地方」的每一條，都必須引用至少一個系統的具體排盤結果作為依據。
+5. 禁止使用通用模板語句（如「根據你的命盤，你適合XXX」但不說明是哪個系統的什麼結果）。每句分析都要有具體的數據錨點。
+6. 分數引用：排盤數據中每個系統都有評分（0-100），在分析時可以引用這些分數來支撐論點（例如「你在紫微斗數的得分為85分，顯示...」）。
+7. 如果排盤數據中的好的地方/需要注意的地方已經有具體描述，必須在報告中展開這些描述，而不是另起爐灶寫完全不同的內容。
 `
 
 const PLAN_SYSTEM_PROMPT: Record<string, string> = {
@@ -447,15 +457,24 @@ export async function POST(req: NextRequest) {
     const cd = calcResult.client_data
     const analyses = calcResult.analyses || []
 
-    // 精簡 prompt（避免 Vercel 60秒超時）
+    // 構建完整排盤數據（數據零容忍：傳送所有系統的完整分析結果）
     let userPrompt = `${birthData.name}，${birthData.gender==='M'?'男':'女'}，${birthData.year}年${birthData.month}月${birthData.day}日${birthData.hour}時
 八字：${cd.bazi || ''} | 用神：${cd.yongshen || ''} | 五行：${JSON.stringify(cd.five_elements || {})}
-${analyses.length}系統排盤摘要：
+農曆：${cd.lunar_date || ''} | 納音：${cd.nayin || ''} | 命宮：${cd.ming_gong || ''}
+${analyses.length}套系統排盤完整數據：
 `
     for (const a of analyses.slice(0, 15)) {
-      userPrompt += `${a.system}(${a.score}分)`
-      if (a.good_points?.length) userPrompt += ` 好:${a.good_points[0]?.slice(0,30)}`
-      if (a.bad_points?.length) userPrompt += ` 注意:${a.bad_points[0]?.slice(0,30)}`
+      userPrompt += `\n【${a.system}】評分：${a.score}分`
+      if (a.summary) userPrompt += `\n摘要：${a.summary}`
+      if (a.good_points?.length) {
+        userPrompt += `\n好的地方：`
+        for (const g of a.good_points) userPrompt += `\n- ${g}`
+      }
+      if (a.bad_points?.length) {
+        userPrompt += `\n需要注意：`
+        for (const b of a.bad_points) userPrompt += `\n- ${b}`
+      }
+      if (a.details) userPrompt += `\n詳細：${typeof a.details === 'string' ? a.details.slice(0, 500) : JSON.stringify(a.details).slice(0, 500)}`
       userPrompt += '\n'
     }
 
@@ -480,7 +499,12 @@ ${analyses.length}系統排盤摘要：
       }
     }
 
-    userPrompt += `\n請根據以上所有數據，撰寫完整的分析報告。注意：現在是2026年丙午年。`
+    userPrompt += `\n請根據以上所有排盤數據，撰寫完整的分析報告。
+重要提醒：
+1. 現在是2026年丙午年。
+2. 你的每一個分析論點都必須引用上方排盤數據中的具體結果，不得編造。
+3. 排盤數據中「好的地方」和「需要注意」的每一條都必須在報告中被展開分析，不可遺漏。
+4. 如果某個系統數據不完整，跳過該系統，不要瞎編。`
 
     // Step 3: 呼叫 DeepSeek
     console.log('呼叫 DeepSeek 生成報告...')
