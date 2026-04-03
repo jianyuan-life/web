@@ -147,7 +147,7 @@ function DashboardContent() {
                 </div>
                 {/* pending 時顯示進度條 */}
                 {r.status === 'pending' && (
-                  <ReportProgress createdAt={r.created_at} />
+                  <ReportProgress createdAt={r.created_at} planCode={r.plan_code} />
                 )}
               </div>
             ))}
