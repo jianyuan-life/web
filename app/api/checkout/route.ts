@@ -21,7 +21,7 @@ const PRICE_MAP: Record<string, { amount: number; name: string }> = {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { planCode, birthData } = body
+    const { planCode, birthData, totalPrice } = body
 
     const plan = PRICE_MAP[planCode]
     if (!plan) {
@@ -35,13 +35,20 @@ export async function POST(req: NextRequest) {
 
     const siteUrl = 'https://web-jamie-ho.vercel.app'
 
+    // G15/G3 家庭方案：使用前端動態計算的金額（單位：美元），轉為美分
+    // 其他方案：使用固定金額
+    const isFamilyPlan = planCode === 'G15' || planCode === 'G3'
+    const finalAmount = isFamilyPlan && typeof totalPrice === 'number'
+      ? Math.round(totalPrice * 100)
+      : plan.amount
+
     const params = new URLSearchParams()
     params.set('mode', 'payment')
     params.set('success_url', `${siteUrl}/dashboard?payment=success`)
     params.set('cancel_url', `${siteUrl}/pricing`)
     params.set('line_items[0][price_data][currency]', 'usd')
     params.set('line_items[0][price_data][product_data][name]', `Fortune Report - Plan ${planCode}`)
-    params.set('line_items[0][price_data][unit_amount]', plan.amount.toString())
+    params.set('line_items[0][price_data][unit_amount]', finalAmount.toString())
     params.set('line_items[0][quantity]', '1')
     params.set('metadata[plan_code]', planCode)
     // 存入 birthData 供 webhook 使用（Stripe metadata 上限 500 字元/值）
