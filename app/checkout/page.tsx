@@ -446,16 +446,6 @@ function CheckoutForm() {
         </h1>
         <p className="text-center text-text-muted mb-10">填寫出生資料，完成付款後自動生成報告</p>
 
-        {/* E2/E3 提示框 */}
-        {(planCode === 'E2' || planCode === 'E3') && (
-          <div className="mb-6 bg-yellow-500/10 border border-yellow-400/40 rounded-xl px-5 py-4 flex gap-3 items-start">
-            <span className="text-yellow-400 text-lg mt-0.5">📋</span>
-            <p className="text-yellow-200 text-sm leading-relaxed">
-              購買出門訣前，請確認您已持有 <strong>C 或 A 方案報告</strong>，否則我們無法為您精準排盤。
-            </p>
-          </div>
-        )}
-
         {/* 方案摘要 */}
         <div className="glass rounded-xl p-5 mb-8 flex justify-between items-center">
           <div>
