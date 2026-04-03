@@ -13,7 +13,7 @@ const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || ''
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
 )
 
 const PLAN_SYSTEM_PROMPT: Record<string, string> = {
