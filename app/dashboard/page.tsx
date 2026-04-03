@@ -18,6 +18,7 @@ type Report = {
   amount_usd: number
   status: string
   pdf_url: string | null
+  access_token: string | null
   report_result: {
     systems_count?: number
     analyses_summary?: { system: string; score: number }[]
@@ -33,16 +34,22 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
 
   const handleDelete = async (id: string) => {
     setDeletingId(id)
+    // 先樂觀更新 UI + 記錄已刪除 ID（防止輪詢把它塞回來）
+    setDeletedIds(prev => new Set(prev).add(id))
+    setReports(prev => prev.filter(r => r.id !== id))
     try {
       await fetch('/api/reports', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       })
-      setReports(prev => prev.filter(r => r.id !== id))
+    } catch {
+      // 刪除失敗：從記錄中移除，讓報告重新出現
+      setDeletedIds(prev => { const s = new Set(prev); s.delete(id); return s })
     } finally {
       setDeletingId(null)
       setConfirmId(null)
@@ -66,7 +73,9 @@ function DashboardContent() {
       fetch('/api/reports')
         .then(r => r.json())
         .then(data => {
-          const newReports = data.reports || []
+          const newReports = (data.reports || []).filter(
+            (r: Report) => !deletedIds.has(r.id)
+          )
           setReports(newReports)
           // 如果最新報告是 completed，停止輪詢
           if (newReports.length > 0 && newReports[0].status === 'completed') {
@@ -75,7 +84,7 @@ function DashboardContent() {
         })
     }, 5000)
     return () => clearInterval(interval)
-  }, [paymentSuccess])
+  }, [paymentSuccess, deletedIds])
 
   const avgScore = (report: Report) => {
     const summary = report.report_result?.analyses_summary
@@ -148,6 +157,12 @@ function DashboardContent() {
                           </div>
                         )}
                         <div className="flex gap-2">
+                          {r.access_token && (
+                            <a href={`/report/${r.access_token}`}
+                              className="px-3 py-1.5 bg-gold/15 border border-gold/30 rounded-lg text-xs text-gold hover:bg-gold/25 transition-colors font-medium">
+                              查看報告
+                            </a>
+                          )}
                           {r.pdf_url && (
                             <a href={r.pdf_url} target="_blank" rel="noopener noreferrer"
                               className="px-3 py-1.5 glass rounded-lg text-xs text-gold hover:bg-gold/10 transition-colors">
