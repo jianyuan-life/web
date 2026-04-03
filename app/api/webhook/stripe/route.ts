@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
 
     // 先存入 Supabase（狀態 pending）
     let reportId = ''
+    let accessToken = ''
     try {
       const { data: insertData, error: insertErr } = await supabase.from('paid_reports').insert({
         client_name: birthData?.name || 'Unknown',
@@ -60,7 +61,10 @@ export async function POST(req: NextRequest) {
       }).select('id, access_token').single()
 
       if (insertErr) console.error('Supabase insert error:', insertErr)
-      else reportId = insertData?.id || ''
+      else {
+        reportId = insertData?.id || ''
+        accessToken = insertData?.access_token || ''
+      }
       console.log('✅ 報告記錄已建立:', reportId)
     } catch (err) { console.error('Supabase error:', err) }
 
@@ -75,7 +79,7 @@ export async function POST(req: NextRequest) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             reportId,
-            accessToken: insertData?.access_token || '',
+            accessToken,
             customerEmail,
             planCode,
             birthData,
