@@ -910,16 +910,21 @@ function CheckoutForm() {
             {/* ── E1/E2 可配合時間段（選填）── */}
             {(planCode === 'E1' || planCode === 'E2') && (
               <div className="border-t border-gold/10 pt-4 space-y-3">
-                <p className="text-sm font-semibold text-gold">可配合時間段（選填）</p>
-                <p className="text-xs text-text-muted">
-                  請告知您方便出行的時間段，我們將優先推薦這些時段的吉時。不填則推薦全天最佳時機。
+                <p className="text-sm font-semibold text-gold">可配合出行的時間段（選填）</p>
+                <p className="text-xs text-text-muted leading-relaxed">
+                  奇門遁甲會依據您的命盤，在全天找出最佳吉時。若您的作息有固定限制（如只有晚上有空、或早上某段時間），請填寫您方便的時段——我們將只在這些時間範圍內為您篩選最合適的出行時機。
                 </p>
 
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex items-start gap-2 cursor-pointer">
                   <input type="checkbox" checked={eAllDay}
                     onChange={(e) => setEAllDay(e.target.checked)}
-                    className="accent-gold" />
-                  <span className="text-sm text-text">全時段皆可</span>
+                    className="accent-gold mt-0.5" />
+                  <div>
+                    <span className="text-sm text-text">全時段皆可</span>
+                    {eAllDay && (
+                      <p className="text-[10px] text-text-muted/60 mt-0.5">勾選後，系統將從全天24小時中挑選最強的吉時，不限時段。</p>
+                    )}
+                  </div>
                 </label>
 
                 {!eAllDay && (
