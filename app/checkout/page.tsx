@@ -658,7 +658,7 @@ function CheckoutForm() {
               {loading ? '跳轉付款中...' : `確認付款 — $${totalPrice}`}
             </button>
             <p className="text-xs text-text-muted/60 text-center">
-              付款由 Stripe 安全處理。付款後 5-15 分鐘內收到報告。
+              付款由 Stripe 安全處理。報告平均需 30 分鐘以上，出門訣需 40 分鐘以上。
             </p>
           </form>
         ) : isFamilyPlan ? (
@@ -708,7 +708,7 @@ function CheckoutForm() {
               {loading ? '跳轉付款中...' : `確認付款 — $${totalPrice}`}
             </button>
             <p className="text-xs text-text-muted/60 text-center">
-              付款由 Stripe 安全處理。付款後 5-15 分鐘內收到報告。
+              付款由 Stripe 安全處理。報告平均需 30 分鐘以上，出門訣需 40 分鐘以上。
             </p>
           </form>
         ) : (
@@ -1029,7 +1029,7 @@ function CheckoutForm() {
             </button>
 
             <p className="text-xs text-text-muted/60 text-center">
-              付款由 Stripe 安全處理。付款後 5-15 分鐘內收到報告。
+              付款由 Stripe 安全處理。報告平均需 30 分鐘以上，出門訣需 40 分鐘以上。
             </p>
           </form>
         )}
