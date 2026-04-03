@@ -66,9 +66,10 @@ function parseStructuredContent(markdown: string): ContentSection[] {
     if (!content) continue
 
     let type: ContentSection['type'] = 'general'
-    if (/好的地方|優勢|優點|強項/.test(title)) type = 'positive'
-    else if (/需要注意|注意|風險|挑戰|弱點/.test(title)) type = 'caution'
-    else if (/改善建議|建議|提升|改善|行動/.test(title)) type = 'improvement'
+    // 精確匹配三大核心區塊，避免把「最佳行動時機」「寫給你的建議」等誤判
+    if (/好的地方|天賦優勢|你的優勢|你的強項|這個家的祝福/.test(title)) type = 'positive'
+    else if (/需要注意|需要留意|注意的地方|家庭和諧的挑戰/.test(title)) type = 'caution'
+    else if (/改善方案|改善建議|行動指南|加持你的運勢|讓家更好/.test(title)) type = 'improvement'
 
     sections.push({ type, title, content })
   }
@@ -83,16 +84,28 @@ function parseStructuredContent(markdown: string): ContentSection[] {
 
 // 渲染單個區塊內的 markdown 為 HTML
 function renderSectionMarkdown(content: string): string {
-  return content
+  let html = content
+    // 標題層次
     .replace(/^### (.+)$/gm, '<h3 class="report-h3">$1</h3>')
+    .replace(/^# (.+)$/gm, '<h3 class="report-h3">$1</h3>')
+    // 粗體
     .replace(/\*\*(.+?)\*\*/g, '<strong class="report-bold">$1</strong>')
+    // 表情符號上色
     .replace(/✅/g, '<span style="color:#6ab04c">✅</span>')
     .replace(/⚠️/g, '<span style="color:#e0963a">⚠️</span>')
     .replace(/🔧/g, '<span style="color:#c5963a">🔧</span>')
+    // 列表項
     .replace(/^- (.+)$/gm, '<li class="report-li">$1</li>')
     .replace(/^(\d+)\. (.+)$/gm, '<li class="report-li-num">$2</li>')
+    // 段落分隔
     .replace(/\n\n/g, '</p><p class="report-p">')
     .replace(/\n/g, '<br/>')
+
+  // 將連續的 <li> 包裹在 <ul>/<ol> 中，確保語義正確
+  html = html.replace(/((?:<li class="report-li">.*?<\/li>\s*(?:<br\/>)?)+)/g, '<ul>$1</ul>')
+  html = html.replace(/((?:<li class="report-li-num">.*?<\/li>\s*(?:<br\/>)?)+)/g, '<ol>$1</ol>')
+
+  return html
 }
 
 // 評分等級色彩
@@ -180,12 +193,12 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
     : 0
   const isChumenji = ['E1', 'E2'].includes(report.plan_code)
 
-  // 結構化解析
+  // 報告內容完整性檢查 — 數據零容忍
+  const isContentEmpty = !aiContent || aiContent.trim().length < 100
+  const isContentTruncated = aiContent.length > 500 && !aiContent.includes('寫給你的話') && !aiContent.includes('寫給你們的話') && !aiContent.includes('寫給這個家')
+
+  // 結構化解析 — 保留原始章節順序，各章節依類型套用不同視覺
   const sections = parseStructuredContent(aiContent)
-  const positiveSections = sections.filter(s => s.type === 'positive')
-  const cautionSections = sections.filter(s => s.type === 'caution')
-  const improvementSections = sections.filter(s => s.type === 'improvement')
-  const generalSections = sections.filter(s => s.type === 'general')
 
   // 排序系統評分（高到低）
   const sortedScores = [...analysesSummary].sort((a, b) => b.score - a.score)
@@ -283,6 +296,28 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
+        {/* ──── 內容完整性警告 ──── */}
+        {isContentEmpty && (
+          <div className="section-card" style={{ background: 'rgba(196, 74, 63, 0.08)', border: '1px solid rgba(196, 74, 63, 0.2)' }}>
+            <div className="flex items-center gap-3">
+              <div className="text-2xl">⚠</div>
+              <div>
+                <h3 className="text-cream font-semibold mb-1">報告內容異常</h3>
+                <p className="text-text-muted text-sm">系統偵測到報告內容可能不完整，我們已收到通知並將盡快為您重新生成。如有疑問請聯繫 <a href="mailto:support@jianyuan.life" className="text-gold">support@jianyuan.life</a></p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isContentTruncated && !isContentEmpty && (
+          <div className="section-card" style={{ background: 'rgba(224, 150, 58, 0.06)', border: '1px solid rgba(224, 150, 58, 0.15)' }}>
+            <div className="flex items-center gap-3">
+              <div className="text-xl">📋</div>
+              <p className="text-text-muted text-sm">報告可能尚未完全生成完畢。如內容不完整，請稍後重新整理頁面，或聯繫 <a href="mailto:support@jianyuan.life" className="text-gold">support@jianyuan.life</a></p>
+            </div>
+          </div>
+        )}
+
         {/* ──── Top5 吉時卡片（出門訣 E1/E2 專屬）──── */}
         {isChumenji && top5Timings.length > 0 && (
           <div className="mb-8">
@@ -357,67 +392,37 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
-        {/* ──── 好的地方 ──── */}
-        {positiveSections.length > 0 && (
-          <div className="section-card" style={{ background: 'rgba(106, 176, 76, 0.06)', border: '1px solid rgba(106, 176, 76, 0.15)' }}>
-            <div className="flex items-center gap-2.5 mb-5">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg" style={{ background: 'rgba(106, 176, 76, 0.15)' }}>✦</div>
-              <h2 className="text-lg font-semibold" style={{ color: '#6ab04c', fontFamily: 'var(--font-sans)' }}>好的地方</h2>
-            </div>
-            {positiveSections.map((sec, i) => (
-              <div key={i}>
-                {positiveSections.length > 1 && (
-                  <h3 className="text-sm font-semibold text-cream/80 mb-2">{sec.title}</h3>
-                )}
+        {/* ──── 報告章節（保留原始順序，依類型套用不同視覺）──── */}
+        {sections.map((sec, i) => {
+          // 三大核心區塊的視覺配置
+          const sectionStyles: Record<string, { bg: string; border: string; iconBg: string; icon: string; titleColor: string }> = {
+            positive: { bg: 'rgba(106, 176, 76, 0.06)', border: '1px solid rgba(106, 176, 76, 0.15)', iconBg: 'rgba(106, 176, 76, 0.15)', icon: '✦', titleColor: '#6ab04c' },
+            caution: { bg: 'rgba(224, 150, 58, 0.06)', border: '1px solid rgba(224, 150, 58, 0.15)', iconBg: 'rgba(224, 150, 58, 0.15)', icon: '⚡', titleColor: '#e0963a' },
+            improvement: { bg: 'rgba(197, 150, 58, 0.06)', border: '1px solid rgba(197, 150, 58, 0.15)', iconBg: 'rgba(197, 150, 58, 0.15)', icon: '🔑', titleColor: 'var(--color-gold)' },
+          }
+          const style = sectionStyles[sec.type]
+
+          if (style) {
+            // 三大核心區塊：有圖標、有色彩背景
+            return (
+              <div key={i} className="section-card" style={{ background: style.bg, border: style.border }}>
+                <div className="flex items-center gap-2.5 mb-5">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg" style={{ background: style.iconBg }}>{style.icon}</div>
+                  <h2 className="text-lg font-semibold" style={{ color: style.titleColor, fontFamily: 'var(--font-sans)' }}>{sec.title}</h2>
+                </div>
                 <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
               </div>
-            ))}
-          </div>
-        )}
+            )
+          }
 
-        {/* ──── 需要注意 ──── */}
-        {cautionSections.length > 0 && (
-          <div className="section-card" style={{ background: 'rgba(224, 150, 58, 0.06)', border: '1px solid rgba(224, 150, 58, 0.15)' }}>
-            <div className="flex items-center gap-2.5 mb-5">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg" style={{ background: 'rgba(224, 150, 58, 0.15)' }}>⚡</div>
-              <h2 className="text-lg font-semibold" style={{ color: '#e0963a', fontFamily: 'var(--font-sans)' }}>需要注意</h2>
+          // 一般章節：glass card
+          return (
+            <div key={i} className="glass section-card">
+              <h2 className="text-lg font-semibold text-gold mb-4" style={{ fontFamily: 'var(--font-sans)' }}>{sec.title}</h2>
+              <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
             </div>
-            {cautionSections.map((sec, i) => (
-              <div key={i}>
-                {cautionSections.length > 1 && (
-                  <h3 className="text-sm font-semibold text-cream/80 mb-2">{sec.title}</h3>
-                )}
-                <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ──── 改善建議 ──── */}
-        {improvementSections.length > 0 && (
-          <div className="section-card" style={{ background: 'rgba(197, 150, 58, 0.06)', border: '1px solid rgba(197, 150, 58, 0.15)' }}>
-            <div className="flex items-center gap-2.5 mb-5">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg" style={{ background: 'rgba(197, 150, 58, 0.15)' }}>🔑</div>
-              <h2 className="text-lg font-semibold text-gold" style={{ fontFamily: 'var(--font-sans)' }}>改善建議</h2>
-            </div>
-            {improvementSections.map((sec, i) => (
-              <div key={i}>
-                {improvementSections.length > 1 && (
-                  <h3 className="text-sm font-semibold text-cream/80 mb-2">{sec.title}</h3>
-                )}
-                <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ──── 其他章節 section card ──── */}
-        {generalSections.map((sec, i) => (
-          <div key={i} className="glass section-card">
-            <h2 className="text-lg font-semibold text-gold mb-4" style={{ fontFamily: 'var(--font-sans)' }}>{sec.title}</h2>
-            <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
-          </div>
-        ))}
+          )
+        })}
 
         {/* ──── 出門訣推廣 ──── */}
         {!['E1', 'E2', 'E3'].includes(report.plan_code) && (
