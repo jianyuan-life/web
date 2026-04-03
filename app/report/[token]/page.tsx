@@ -28,10 +28,9 @@ interface ReportData {
 }
 
 const PLAN_NAMES: Record<string, string> = {
-  C: '全方位十五合一', A: '核心三合一', D: '專項深度分析',
-  G15: '家庭全方位', G3: '家庭核心三合一', R: '關於我與他',
-  M: '月度運勢', Y: '年度運勢',
-  E1: '事件出門訣', E2: '月盤出門訣', E3: '年盤出門訣',
+  C: '人生藍圖', D: '心之所惑',
+  G15: '家族藍圖', R: '合否？',
+  E1: '事件出門訣', E2: '月盤出門訣',
 }
 
 function getSystemIcon(system: string): string {

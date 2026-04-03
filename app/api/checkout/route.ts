@@ -1,21 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const PRICE_MAP: Record<string, { amount: number; name: string }> = {
-  C: { amount: 8900, name: '全方位十五合一' },
-  A: { amount: 4900, name: '核心三合一' },
-  G15: { amount: 26900, name: '家庭全方位十五合一' },
-  G3: { amount: 14900, name: '家庭核心三合一' },
-  D: { amount: 2900, name: '專項深度分析' },
-  M: { amount: 1900, name: '月度運勢分析' },
-  Y: { amount: 15900, name: '年度運勢分析' },
-  R: { amount: 5900, name: '關於我與他' },
+  C: { amount: 8900, name: '人生藍圖' },
+  D: { amount: 3900, name: '心之所惑' },
+  G15: { amount: 26900, name: '家族藍圖' },
+  R: { amount: 5900, name: '合否？' },
   E1: { amount: 11900, name: '事件出門訣' },
   E2: { amount: 8900, name: '月盤出門訣' },
-  E3: { amount: 85900, name: '年盤出門訣' },
   // 加人附加費
-  'G15-ADD': { amount: 6900, name: '家庭全方位加1人' },
-  'G3-ADD': { amount: 3900, name: '家庭核心加1人' },
-  'R-ADD': { amount: 1900, name: '關於我與他加1人' },
+  'G15-ADD': { amount: 6900, name: '家族藍圖加1人' },
+  'R-ADD': { amount: 1900, name: '合否？加1人' },
 }
 
 export async function POST(req: NextRequest) {
@@ -33,11 +27,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Stripe 尚未設定' }, { status: 500 })
     }
 
-    const siteUrl = 'https://web-jamie-ho.vercel.app'
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
 
-    // G15/G3 家庭方案：使用前端動態計算的金額（單位：美元），轉為美分
+    // G15 家族藍圖：使用前端動態計算的金額（單位：美元），轉為美分
     // 其他方案：使用固定金額
-    const isFamilyPlan = planCode === 'G15' || planCode === 'G3'
+    const isFamilyPlan = planCode === 'G15'
     const finalAmount = isFamilyPlan && typeof totalPrice === 'number'
       ? Math.round(totalPrice * 100)
       : plan.amount

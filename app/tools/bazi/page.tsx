@@ -556,10 +556,10 @@ export default function FreeToolPage() {
                 <div className="text-center">
                   <div className="flex flex-col sm:flex-row gap-4 justify-center mb-4">
                     <a href="/checkout?plan=C" className="px-10 py-4 bg-gold text-dark font-bold rounded-xl text-lg btn-glow">
-                      解鎖完整命格報告 $99
+                      解鎖人生藍圖完整報告 $89
                     </a>
-                    <a href="/checkout?plan=A" className="px-10 py-4 glass text-white font-semibold rounded-xl text-lg hover:bg-white/10">
-                      先試核心三系統 $29
+                    <a href="/checkout?plan=D" className="px-10 py-4 glass text-white font-semibold rounded-xl text-lg hover:bg-white/10">
+                      聚焦單一困惑深度分析 $39
                     </a>
                   </div>
                   <div className="flex flex-wrap justify-center gap-4 text-xs text-text-muted/60">
