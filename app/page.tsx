@@ -272,7 +272,6 @@ export default function HomePage() {
                 <div>
                   <p className="text-sm font-semibold text-cream">Jamie</p>
                   <p className="text-xs text-gold/70">鑒源創辦人</p>
-                  <p className="text-xs text-text-muted mt-1 leading-relaxed">金融從業者 · 命理研究者 · 親身驗證15套系統的實踐者</p>
                 </div>
               </div>
             </div>
