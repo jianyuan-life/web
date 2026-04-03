@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
+import ReportProgress from '@/components/ReportProgress'
 
 const PLAN_NAMES: Record<string, string> = {
   C: '全方位十五合一', A: '核心三合一', D: '專項深度分析',
@@ -100,48 +101,54 @@ function DashboardContent() {
         ) : reports.length > 0 ? (
           <div className="space-y-4">
             {reports.map((r) => (
-              <div key={r.id} className="glass rounded-xl p-5 flex items-center justify-between transition-all hover:border-gold/30">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-gold/15 flex items-center justify-center text-gold font-bold text-lg" style={{ fontFamily: 'var(--font-sans)' }}>
-                    {r.client_name[0]}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-cream">{r.client_name}</h3>
-                    <div className="flex items-center gap-3 text-xs text-text-muted mt-1">
-                      <span>{PLAN_NAMES[r.plan_code] || `方案 ${r.plan_code}`}</span>
-                      <span>{r.report_result?.systems_count || 15} 套系統</span>
-                      <span>${r.amount_usd}</span>
-                      <span>{new Date(r.created_at).toLocaleDateString('zh-TW')}</span>
+              <div key={r.id} className="glass rounded-xl p-5 transition-all hover:border-gold/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-gold/15 flex items-center justify-center text-gold font-bold text-lg" style={{ fontFamily: 'var(--font-sans)' }}>
+                      {r.client_name[0]}
                     </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  {r.status === 'completed' ? (
-                    <>
-                      {avgScore(r) > 0 && (
-                        <div className="text-right hidden sm:block">
-                          <div className="text-sm font-semibold text-gold">{avgScore(r)}/100</div>
-                          <div className="text-xs text-text-muted">綜合評分</div>
-                        </div>
-                      )}
-                      <div className="flex gap-2">
-                        {r.pdf_url && (
-                          <a href={r.pdf_url} target="_blank" rel="noopener noreferrer"
-                            className="px-3 py-1.5 glass rounded-lg text-xs text-gold hover:bg-gold/10 transition-colors">
-                            下載 PDF
-                          </a>
-                        )}
+                    <div>
+                      <h3 className="font-semibold text-cream">{r.client_name}</h3>
+                      <div className="flex items-center gap-3 text-xs text-text-muted mt-1">
+                        <span>{PLAN_NAMES[r.plan_code] || `方案 ${r.plan_code}`}</span>
+                        <span>{r.report_result?.systems_count || 15} 套系統</span>
+                        <span>${r.amount_usd}</span>
+                        <span>{new Date(r.created_at).toLocaleDateString('zh-TW')}</span>
                       </div>
-                    </>
-                  ) : r.status === 'pending' ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-gold/50 border-t-gold rounded-full animate-spin" />
-                      <span className="text-xs text-gold/70">分析中（40–60 分鐘）</span>
                     </div>
-                  ) : (
-                    <span className="text-xs text-red-400">生成失敗</span>
-                  )}
+                  </div>
+                  <div className="flex items-center gap-4">
+                    {r.status === 'completed' ? (
+                      <>
+                        {avgScore(r) > 0 && (
+                          <div className="text-right hidden sm:block">
+                            <div className="text-sm font-semibold text-gold">{avgScore(r)}/100</div>
+                            <div className="text-xs text-text-muted">綜合評分</div>
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          {r.pdf_url && (
+                            <a href={r.pdf_url} target="_blank" rel="noopener noreferrer"
+                              className="px-3 py-1.5 glass rounded-lg text-xs text-gold hover:bg-gold/10 transition-colors">
+                              下載 PDF
+                            </a>
+                          )}
+                        </div>
+                      </>
+                    ) : r.status === 'pending' ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-gold/50 border-t-gold rounded-full animate-spin" />
+                        <span className="text-xs text-gold/70">分析中</span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-red-400">生成失敗</span>
+                    )}
+                  </div>
                 </div>
+                {/* pending 時顯示進度條 */}
+                {r.status === 'pending' && (
+                  <ReportProgress createdAt={r.created_at} />
+                )}
               </div>
             ))}
           </div>
