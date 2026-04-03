@@ -68,8 +68,8 @@ function DashboardContent() {
             <div className="flex items-center gap-3">
               <span className="text-green-400 text-xl">&#10003;</span>
               <div>
-                <p className="text-cream font-semibold">付款成功！</p>
-                <p className="text-sm text-text-muted">報告正在生成中，通常需要 1-2 分鐘。頁面會自動更新。</p>
+                <p className="text-cream font-semibold">付款成功，命理分析啟動中</p>
+                <p className="text-sm text-text-muted">系統正同步調用東西方十五大命理系統進行排盤運算，並由專業 AI 模型逐一深度解析。完整分析通常需要 40–60 分鐘，完成後系統將自動寄送 Email 通知您查閱報告。</p>
               </div>
             </div>
           </div>
@@ -129,7 +129,7 @@ function DashboardContent() {
                   ) : r.status === 'pending' ? (
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-gold/50 border-t-gold rounded-full animate-spin" />
-                      <span className="text-xs text-gold/70">生成中...</span>
+                      <span className="text-xs text-gold/70">分析中（40–60 分鐘）</span>
                     </div>
                   ) : (
                     <span className="text-xs text-red-400">生成失敗</span>

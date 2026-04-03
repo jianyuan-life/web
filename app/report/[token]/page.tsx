@@ -86,10 +86,11 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d1117' }}>
         <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '48px', textAlign: 'center', maxWidth: '400px' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
-          <h1 style={{ color: '#ffffff', fontSize: '20px', fontWeight: '700', marginBottom: '8px' }}>報告生成中</h1>
-          <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '8px' }}>正在進行15套命理系統排盤與分析</p>
-          <p style={{ color: '#4b5563', fontSize: '12px', marginBottom: '24px' }}>通常需要 3-5 分鐘，完成後會寄 Email 通知您</p>
-          <p style={{ color: '#c9a84c', fontSize: '13px' }}>請稍後重新整理此頁面</p>
+          <h1 style={{ color: '#ffffff', fontSize: '20px', fontWeight: '700', marginBottom: '8px' }}>命理分析進行中</h1>
+          <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '8px' }}>系統正同步調用東西方十五大命理系統，逐一進行排盤運算與 AI 深度解析</p>
+          <p style={{ color: '#4b5563', fontSize: '12px', marginBottom: '4px' }}>完整分析通常需要 40–60 分鐘</p>
+          <p style={{ color: '#4b5563', fontSize: '12px', marginBottom: '24px' }}>完成後將自動寄送 Email 通知您，無需持續等候</p>
+          <p style={{ color: '#c9a84c', fontSize: '13px' }}>如需確認進度，可稍後重新整理此頁面</p>
         </div>
       </div>
     )
