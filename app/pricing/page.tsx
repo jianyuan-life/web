@@ -31,13 +31,13 @@ const PLANS = {
   fortune: [] as never[],
   chumenji: [
     { code: 'E1', name: '事件出門訣', price: 119,
-      desc: '針對特定事件，找出最佳出行時機與方位',
-      features: ['描述事件時間+背景（200字）', 'Top5 吉時方位', 'Google Calendar 邀請', 'PDF+坐盤教學'],
+      desc: '針對特定重要事件，精確排算前後所有時辰的奇門局，套入個人命格驗證，交出最精準的 Top5 出行方案',
+      features: ['描述事件背景+期望結果（200字）', '排算事件前後全時段奇門局', '套入命格找出個人吉位', 'Top5 精選吉時+方向+邏輯說明', 'Google Calendar 一鍵新增', '計算需 40 分鐘以上'],
       hasQuestion: true,
     },
     { code: 'E2', name: '月盤出門訣', price: 89,
-      desc: '本月最佳出行時機 Top5',
-      features: ['當月 Top5 精選吉時', '方位+時間+坐盤原因', 'Google Calendar 邀請', 'PDF+坐盤教學'],
+      desc: '從購買日起，排算未來一個月共 360 個時辰的奇門局，套入您的命格找出最適合出行的時機與方位',
+      features: ['排算未來 30 天 × 12 時辰 = 360 個時辰', '每個時辰獨立起奇門局', '套入個人命格交叉驗證吉位', 'Top5 精選吉時+方向+完整邏輯', 'Google Calendar 一鍵新增', '計算需 40 分鐘以上'],
     },
   ],
 }

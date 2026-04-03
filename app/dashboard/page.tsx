@@ -76,7 +76,12 @@ function DashboardContent() {
               <span className="text-green-400 text-xl">&#10003;</span>
               <div>
                 <p className="text-cream font-semibold">付款成功，命理分析啟動中</p>
-                <p className="text-sm text-text-muted">系統正同步調用東西方十五大命理系統進行排盤運算，並由專業 AI 模型逐一深度解析。完整分析通常需要 40–60 分鐘，完成後系統將自動寄送 Email 通知您查閱報告。</p>
+                <p className="text-sm text-text-muted">
+                  系統已開始為您進行命理排盤與 AI 深度解析。
+                  <strong className="text-gold/80"> 每位成員的完整報告平均需要 30 分鐘以上，出門訣計算需 40 分鐘以上</strong>，
+                  請耐心等候——我們寧可多花時間，也要確保每份報告的準確性與深度。
+                  完成後請刷新此頁面查看報告。
+                </p>
               </div>
             </div>
           </div>
