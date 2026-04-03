@@ -156,24 +156,26 @@ Resend 寄 Email（含報告連結）← 需域名驗證完成
 1. **Stripe 切換 Live 模式**（sk_test_ → sk_live_）
 2. **Resend 域名驗證**（resend.com 確認 jianyuan.life 變綠）
 
-### 🔴 方案重整（2026-04-04 新增，優先處理）
-方案已從11個精簡為6個，需更新網站所有相關頁面：
+### ✅ 方案重整（2026-04-04 完成）
+方案已從11個精簡為6個：
 
 | 代碼 | 新名稱 | 定價 |
 |:---:|:---|:---:|
 | C | 人生藍圖 | $89 |
-| D | 心之所惑 | $29 |
-| G15 | 家族藍圖 | $269起 |
-| R | 合否？ | $59 |
+| D | 心之所惑 | $39 |
+| G15 | 家族藍圖 | $269起（加人 +$69）|
+| R | 合否？ | $59（加人 +$19）|
 | E1 | 事件出門訣 | $119 |
 | E2 | 月盤出門訣 | $89 |
 
-**需更新的頁面：**
-- `app/pricing/page.tsx` — 定價頁（移除砍掉的方案、更新名稱）
-- `app/checkout/page.tsx` — 結帳頁（方案選項更新）
-- `app/dashboard/page.tsx` — 方案全名顯示更新
-- `components/PricingCards.tsx` — 定價卡片更新
-- 備註描述不提命理系統名稱，改為人生面向描述
+**已更新頁面（2026-04-04）：**
+- ✅ `app/pricing/page.tsx` — 6方案新版定價頁
+- ✅ `app/checkout/page.tsx` — PLANS 更新，移除舊方案
+- ✅ `app/dashboard/page.tsx` — PLAN_NAMES 更新
+- ✅ `app/report/[token]/page.tsx` — PLAN_NAMES 更新
+- ✅ `app/tools/bazi/page.tsx` — CTA 價格修正（$99→$89），方案A改D
+- ✅ `app/api/checkout/route.ts` — PRICE_MAP 更新，siteUrl 改用環境變數
+- components/PricingCards.tsx — 若存在需確認是否還在使用
 
 ### 🟡 功能完善
 3. **儀表板系統數顯示**：15套系統那個數字要依方案顯示正確值（不是寫死15）
