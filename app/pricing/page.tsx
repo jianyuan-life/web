@@ -32,13 +32,12 @@ const PLANS = {
   chumenji: [
     { code: 'E1', name: '事件出門訣', price: 119,
       desc: '針對特定事件，找出最佳出行時機與方位',
-      features: ['需先購買人生藍圖方案', '描述事件時間+背景（200字）', 'Top5 吉時方位', 'Google Calendar 邀請', 'PDF+坐盤教學'],
-      locked: true, hasQuestion: true,
+      features: ['描述事件時間+背景（200字）', 'Top5 吉時方位', 'Google Calendar 邀請', 'PDF+坐盤教學'],
+      hasQuestion: true,
     },
     { code: 'E2', name: '月盤出門訣', price: 89,
       desc: '本月最佳出行時機 Top5',
-      features: ['需先購買人生藍圖方案', '當月 Top5 精選吉時', '方位+時間+坐盤原因', 'Google Calendar 邀請', 'PDF+坐盤教學'],
-      locked: true,
+      features: ['當月 Top5 精選吉時', '方位+時間+坐盤原因', 'Google Calendar 邀請', 'PDF+坐盤教學'],
     },
   ],
 }
@@ -138,7 +137,7 @@ export default function PricingPage() {
               如果你想讓命理分析不只停留在「了解自己」，而是真正採取行動改變運勢，出門訣是最直接的方式。
             </p>
             <div className="rounded-xl bg-gold/5 border border-gold/10 p-4 text-xs text-text-muted">
-              <strong className="text-gold">前置條件：</strong>出門訣需要您的個人命盤數據，因此必須先完成「人生藍圖」分析。
+              <strong className="text-gold">操作方式：</strong>購買後填寫出生資料，系統將自動為您排盤並找出最佳出行時機。
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-3xl mx-auto">
@@ -158,7 +157,7 @@ export default function PricingPage() {
                 </ul>
                 <button onClick={() => handleSelect(plan.code)}
                   className="w-full text-center py-2.5 rounded-xl font-semibold text-sm transition-all cursor-pointer glass text-gold hover:bg-gold/10">
-                  需先有命格分析
+                  {loggedIn ? '選擇此方案' : '註冊後購買'}
                 </button>
               </div>
             ))}
