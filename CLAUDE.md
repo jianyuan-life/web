@@ -156,7 +156,7 @@ Resend 寄 Email（含報告連結）← 需域名驗證完成
 1. **Stripe 切換 Live 模式**（sk_test_ → sk_live_）
 2. **Resend 域名驗證**（resend.com 確認 jianyuan.life 變綠）
 
-### ✅ 方案重整（2026-04-04 完成）
+### ✅ 方案重整（2026-04-04 完成並上線 jianyuan.life）
 方案已從11個精簡為6個：
 
 | 代碼 | 新名稱 | 定價 |
