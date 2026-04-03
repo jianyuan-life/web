@@ -250,17 +250,21 @@ const PLAN_SYSTEM_PROMPT: Record<string, string> = {
 簡述客戶的事件和相關命理背景。分析這個事件在命盤中的吉凶趨勢、有利因素和不利因素。
 
 ## 最佳出門時辰
-根據奇門遁甲盤和客戶的八字，精確給出：
-- 首選時辰（精確到幾點幾分到幾點幾分）
-- 備選時辰（如果首選不方便）
-- 絕對要避開的時辰
-- 每個時辰的吉凶分析
+根據奇門遁甲盤和客戶的八字，列出至少5個吉時（按吉利程度排序），每個吉時必須包含完整的命理依據說明：
+- 精確時間範圍（幾點幾分到幾點幾分）
+- 對應方位
+- **詳細命理依據**（這是客戶最想看的部分，必須寫清楚）：
+  - 奇門遁甲盤局分析：當時是什麼局？值符、值使落在哪個宮位？開門/休門/生門等吉門的位置？天盤地盤的星神組合？
+  - 八字用神配合：這個時辰的天干地支如何與客戶的用神配合？是否形成有利的生扶關係？
+  - 如果有其他系統（如擇日學、紫微等）的佐證，一併說明
+  - 用白話總結「所以這個時間好在哪裡」，讓客戶一看就懂
+- 絕對要避開的時辰（同樣說明為什麼不好）
 
 ## 最佳出門方位
 - 首選方位（精確方向，例如「東南偏南」）
 - 備選方位
 - 要避開的方位
-- 方位的奇門遁甲解讀
+- 每個方位的奇門遁甲解讀：吉門、吉神落在哪個宮位，為什麼這個方向有利
 
 ## 行前準備清單
 - 穿著建議（幸運色、款式）
@@ -289,8 +293,27 @@ const PLAN_SYSTEM_PROMPT: Record<string, string> = {
 用1段話，給客戶信心和力量。
 
 語言：繁體中文。
-字數：不限，以實用完整為標準，通常3000-5000字。
-核心原則：所有時辰方位分析必須基於奇門遁甲排盤數據。客戶花 $119 要的是一份「作戰手冊」，不是一篇「運勢文章」。`,
+字數：不限，以實用完整為標準，通常4000-7000字。
+核心原則：所有時辰方位分析必須基於奇門遁甲排盤數據。客戶花 $119 要的是一份「作戰手冊」，不是一篇「運勢文章」。每個吉時的命理說明是這份報告最核心的價值——客戶要的不是「此時吉利」四個字，而是完整的推理邏輯。
+
+## 重要：結構化吉時資料輸出
+在報告正文最後面，必須輸出以下格式的 JSON 區塊（用 ===TOP5_JSON_START=== 和 ===TOP5_JSON_END=== 包圍）。
+這是給系統自動讀取的結構化資料，請精確填寫日期時間和完整命理依據：
+
+===TOP5_JSON_START===
+[
+  {
+    "rank": 1,
+    "title": "第1吉時",
+    "date": "YYYY-MM-DD",
+    "time_start": "HH:MM",
+    "time_end": "HH:MM",
+    "direction": "方位（如：東南）",
+    "reason": "完整命理依據，必須包含：1.奇門遁甲盤局（什麼局、值符值使位置、吉門吉神配置）2.八字用神配合（時辰天干地支與用神的生扶關係）3.白話總結為什麼這個時間方位最好。至少80字。"
+  },
+  ...（共5筆，按吉利程度排序）
+]
+===TOP5_JSON_END===`,
 
   // ========== E2 方案：月盤出門訣（$89）==========
   E2: `你是鑑源命理平台的奇門遁甲月運規劃師。客戶購買了「月盤出門訣」——他們想要一份整個月的能量地圖，知道哪些天適合衝刺、哪些天適合休息、重要的事情安排在哪一天最好。
@@ -312,7 +335,11 @@ const PLAN_SYSTEM_PROMPT: Record<string, string> = {
 - 國曆日期 + 農曆日期 + 星期幾
 - 吉凶等級（大吉/小吉/平/小凶/大凶）
 - 適合做什麼 / 不適合做什麼
-- 最佳時辰
+- 最佳時辰 + 最佳方位
+- **詳細命理依據**（每個吉日都要說清楚為什麼好）：
+  - 奇門遁甲月盤分析：當日是什麼局？值符值使的宮位？吉門吉神的分布？
+  - 與客戶八字用神的配合關係
+  - 白話總結讓客戶一看就懂「為什麼這天特別好/特別要小心」
 
 ## 逐週運勢與行動指南
 （分四週，每週一個小節：）
@@ -350,7 +377,26 @@ const PLAN_SYSTEM_PROMPT: Record<string, string> = {
 
 語言：繁體中文。
 字數：不限，以完整實用為標準，通常4000-6000字。
-核心原則：所有分析基於奇門遁甲月盤排盤數據。這是一份「月度行動日曆」，客戶打開就知道每天該怎麼安排。農曆月份必須標註對應的國曆日期範圍。`,
+核心原則：所有分析基於奇門遁甲月盤排盤數據。這是一份「月度行動日曆」，客戶打開就知道每天該怎麼安排。農曆月份必須標註對應的國曆日期範圍。
+
+## 重要：結構化吉時資料輸出
+在報告最後，必須輸出以下格式的 JSON 區塊（用 ===TOP5_JSON_START=== 和 ===TOP5_JSON_END=== 包圍）。
+選出本月最重要的5個吉時，精確填寫日期時間：
+
+===TOP5_JSON_START===
+[
+  {
+    "rank": 1,
+    "title": "第1吉時",
+    "date": "YYYY-MM-DD",
+    "time_start": "HH:MM",
+    "time_end": "HH:MM",
+    "direction": "方位",
+    "reason": "完整的命理依據說明，包含奇門遁甲月盤分析和八字配合理由"
+  },
+  ...（共5筆，按吉利程度排序）
+]
+===TOP5_JSON_END===`,
 }
 
 export async function POST(req: NextRequest) {
@@ -448,16 +494,35 @@ ${analyses.length}系統排盤摘要：
       return NextResponse.json({ error: 'AI 未回覆' }, { status: 500 })
     }
 
+    // Step 3.5: 解析出門訣 Top5 吉時 JSON（E1/E2 方案）
+    let top5Timings = null
+    const top5Match = reportContent.match(/===TOP5_JSON_START===\s*([\s\S]*?)\s*===TOP5_JSON_END===/)
+    if (top5Match) {
+      try {
+        top5Timings = JSON.parse(top5Match[1])
+        // 從正文中移除 JSON 區塊，保持乾淨
+        reportContent = reportContent.replace(/===TOP5_JSON_START===[\s\S]*?===TOP5_JSON_END===/g, '').trim()
+        console.log(`✅ 解析到 ${top5Timings.length} 筆吉時資料`)
+      } catch (e) {
+        console.error('Top5 JSON 解析失敗:', e)
+      }
+    }
+
     // Step 4: 存入 Supabase
+    const reportResult: Record<string, unknown> = {
+      report_id: reportId,
+      systems_count: analyses.length,
+      analyses_summary: analyses.map((a: { system: string; score: number }) => ({ system: a.system, score: a.score })),
+      ai_content: reportContent,
+      ai_model: 'deepseek-chat',
+      ai_tokens: reportContent.length,
+    }
+    if (top5Timings) {
+      reportResult.top5_timings = top5Timings
+    }
+
     const { error: dbError } = await supabase.from('paid_reports').update({
-      report_result: {
-        report_id: reportId,
-        systems_count: analyses.length,
-        analyses_summary: analyses.map((a: { system: string; score: number }) => ({ system: a.system, score: a.score })),
-        ai_content: reportContent,
-        ai_model: 'deepseek-chat',
-        ai_tokens: reportContent.length,
-      },
+      report_result: reportResult,
       status: 'completed',
     }).eq('id', reportId)
 

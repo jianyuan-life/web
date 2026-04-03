@@ -6,6 +6,16 @@ import { notFound } from 'next/navigation'
 // 全新設計：結構化三大區塊 + 評分橫條圖 + 品牌色系
 // ============================================================
 
+interface Top5Timing {
+  rank: number
+  title: string
+  date: string        // YYYY-MM-DD
+  time_start: string  // HH:MM
+  time_end: string    // HH:MM
+  direction: string
+  reason: string
+}
+
 interface ReportData {
   id: string
   client_name: string
@@ -23,6 +33,7 @@ interface ReportData {
     ai_content: string
     systems_count: number
     analyses_summary: { system: string; score: number }[]
+    top5_timings?: Top5Timing[]
   }
   status: string
   created_at: string
@@ -98,6 +109,34 @@ function getScoreLabel(score: number): string {
   return '需注意'
 }
 
+// Google Calendar URL 生成（純前端，不需要 API key）
+function buildGCalUrl(timing: Top5Timing, clientName: string): string {
+  const dateStr = timing.date.replace(/-/g, '')
+  const startStr = `${dateStr}T${timing.time_start.replace(':', '')}00`
+  const endStr = `${dateStr}T${timing.time_end.replace(':', '')}00`
+  const title = encodeURIComponent(`鑑源出門訣 - ${clientName} ${timing.title}`)
+  const details = encodeURIComponent(
+    `建議方位：${timing.direction}\n\n命理依據：\n${timing.reason}\n\n由鑑源命理平台 jianyuan.life 生成`
+  )
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startStr}/${endStr}&details=${details}&ctz=Asia/Taipei`
+}
+
+// 排名獎牌
+function getRankMedal(rank: number): string {
+  if (rank === 1) return '🥇'
+  if (rank === 2) return '🥈'
+  if (rank === 3) return '🥉'
+  return `#${rank}`
+}
+
+// 格式化日期顯示
+function formatTimingDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-')
+  const date = new Date(Number(y), Number(m) - 1, Number(d))
+  const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+  return `${y}年${Number(m)}月${Number(d)}日（${weekdays[date.getDay()]}）`
+}
+
 export default async function ReportPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
 
@@ -134,9 +173,11 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
   const aiContent = report.report_result?.ai_content || ''
   const analysesSummary = report.report_result?.analyses_summary || []
+  const top5Timings = report.report_result?.top5_timings || []
   const avgScore = analysesSummary.length > 0
     ? Math.round(analysesSummary.reduce((s, a) => s + a.score, 0) / analysesSummary.length)
     : 0
+  const isChumenji = ['E1', 'E2'].includes(report.plan_code)
 
   // 結構化解析
   const sections = parseStructuredContent(aiContent)
@@ -214,6 +255,80 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   </div>
                 )
               })}
+            </div>
+          </div>
+        )}
+
+        {/* ──── Top5 吉時卡片（出門訣 E1/E2 專屬）──── */}
+        {isChumenji && top5Timings.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center text-xl" style={{ background: 'rgba(197,150,58,0.15)' }}>🧭</div>
+              <div>
+                <h2 className="text-lg font-semibold text-gold" style={{ fontFamily: 'var(--font-sans)' }}>
+                  {report.plan_code === 'E1' ? '事件最佳出行時機' : '本月 Top5 最佳出行時機'}
+                </h2>
+                <p className="text-text-muted/50 text-xs mt-0.5">點擊「加入行事曆」可直接同步到 Google Calendar</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {top5Timings.map((timing) => (
+                <div
+                  key={timing.rank}
+                  className="section-card"
+                  style={{
+                    background: timing.rank === 1
+                      ? 'linear-gradient(135deg, rgba(197,150,58,0.12), rgba(44,24,16,0.6))'
+                      : 'rgba(255,255,255,0.03)',
+                    border: timing.rank === 1
+                      ? '1px solid rgba(197,150,58,0.3)'
+                      : '1px solid rgba(255,255,255,0.08)',
+                  }}
+                >
+                  {/* 卡片頂部：排名 + 日期時間 */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{getRankMedal(timing.rank)}</span>
+                      <div>
+                        <div className="text-cream font-semibold">{timing.title}</div>
+                        <div className="text-text-muted text-sm mt-0.5">
+                          {formatTimingDate(timing.date)}&nbsp;&nbsp;{timing.time_start} - {timing.time_end}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-text-muted/50">建議方位</div>
+                      <div className="text-gold font-semibold text-sm">{timing.direction}</div>
+                    </div>
+                  </div>
+
+                  {/* 命理依據 */}
+                  <div className="mb-4 px-4 py-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', borderLeft: '3px solid var(--color-gold)' }}>
+                    <div className="text-text-muted/50 text-xs mb-1">命理依據</div>
+                    <p className="text-text-muted text-sm leading-7">{timing.reason}</p>
+                  </div>
+
+                  {/* Google Calendar 按鈕 */}
+                  <a
+                    href={buildGCalUrl(timing, report.client_name)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all hover:opacity-80"
+                    style={{ background: 'rgba(197,150,58,0.15)', border: '1px solid rgba(197,150,58,0.25)', color: 'var(--color-gold)' }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="3" y1="10" x2="21" y2="10" />
+                      <line x1="12" y1="14" x2="12" y2="18" />
+                      <line x1="10" y1="16" x2="14" y2="16" />
+                    </svg>
+                    加入 Google 行事曆
+                  </a>
+                </div>
+              ))}
             </div>
           </div>
         )}
