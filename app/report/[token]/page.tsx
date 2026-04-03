@@ -269,6 +269,24 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           )}
         </div>
 
+        {/* ──── 快速目錄（超過 5 個章節才顯示）──── */}
+        {sections.length > 5 && (
+          <div className="glass rounded-xl p-5 mb-6">
+            <div className="text-gold/60 text-xs tracking-[2px] mb-3">報告目錄</div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+              {sections.map((sec, i) => (
+                <a
+                  key={i}
+                  href={`#sec-${i}`}
+                  className="text-xs text-text-muted hover:text-gold transition-colors py-1 px-2 rounded hover:bg-gold/5 truncate"
+                >
+                  {i + 1}. {sec.title}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ──── 各系統評分橫條圖 ──── */}
         {sortedScores.length > 0 && (
           <div className="glass rounded-xl p-7 mb-8">
@@ -401,24 +419,29 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             improvement: { bg: 'rgba(197, 150, 58, 0.06)', border: '1px solid rgba(197, 150, 58, 0.15)', iconBg: 'rgba(197, 150, 58, 0.15)', icon: '🔑', titleColor: 'var(--color-gold)' },
           }
           const style = sectionStyles[sec.type]
+          const chapterNum = i + 1
 
           if (style) {
             // 三大核心區塊：有圖標、有色彩背景
             return (
-              <div key={i} className="section-card" style={{ background: style.bg, border: style.border }}>
+              <div id={`sec-${i}`} key={i} className="section-card" style={{ background: style.bg, border: style.border }}>
                 <div className="flex items-center gap-2.5 mb-5">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg" style={{ background: style.iconBg }}>{style.icon}</div>
                   <h2 className="text-lg font-semibold" style={{ color: style.titleColor, fontFamily: 'var(--font-sans)' }}>{sec.title}</h2>
+                  <span className="ml-auto text-xs opacity-30 font-mono">{chapterNum}/{sections.length}</span>
                 </div>
                 <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
               </div>
             )
           }
 
-          // 一般章節：glass card
+          // 一般章節：glass card，左側金色豎條
           return (
-            <div key={i} className="glass section-card">
-              <h2 className="text-lg font-semibold text-gold mb-4" style={{ fontFamily: 'var(--font-sans)' }}>{sec.title}</h2>
+            <div id={`sec-${i}`} key={i} className="glass section-card" style={{ borderLeft: '3px solid rgba(197,150,58,0.4)' }}>
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-xs text-gold/40 font-mono font-bold">{String(chapterNum).padStart(2, '0')}</span>
+                <h2 className="text-lg font-semibold text-gold" style={{ fontFamily: 'var(--font-sans)' }}>{sec.title}</h2>
+              </div>
               <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
             </div>
           )
@@ -441,22 +464,57 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
-        {/* ──── PDF 按鈕 ──── */}
-        <div className="text-center my-10">
+        {/* ──── 底部操作按鈕 ──── */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 my-10">
+          {report.pdf_url ? (
+            <a
+              href={report.pdf_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-semibold transition-all hover:scale-105"
+              style={{ background: 'linear-gradient(135deg, #c9a84c, #e8c87a)', color: '#1a110a' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              下載 PDF 完整報告
+            </a>
+          ) : (
+            <div className="inline-flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-semibold opacity-50"
+              style={{ background: 'rgba(197,150,58,0.15)', border: '1px solid rgba(197,150,58,0.2)', color: 'var(--color-gold)' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+              PDF 報告將寄送至您的信箱
+            </div>
+          )}
           <button
-            disabled
-            className="inline-flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-semibold cursor-not-allowed opacity-50"
-            style={{ background: 'rgba(197,150,58,0.15)', border: '1px solid rgba(197,150,58,0.2)', color: 'var(--color-gold)' }}
+            onClick={undefined}
+            data-copy-url="true"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-80"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-text-muted)' }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="16" y1="13" x2="8" y2="13" />
-              <line x1="16" y1="17" x2="8" y2="17" />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+              <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
             </svg>
-            PDF 報告將寄送至您的信箱
+            複製報告連結
           </button>
         </div>
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function(){
+            var btn = document.querySelector('[data-copy-url]');
+            if(btn) btn.addEventListener('click', function(){
+              navigator.clipboard.writeText(window.location.href).then(function(){
+                btn.textContent = '✓ 已複製！';
+                setTimeout(function(){ btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg> 複製報告連結'; }, 2000);
+              });
+            });
+          })();
+        ` }} />
 
         {/* ──── 頁尾 ──── */}
         <div className="text-center text-text-muted/30 text-xs leading-7">
