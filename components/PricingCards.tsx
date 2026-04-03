@@ -3,9 +3,9 @@
 import PriceTag from './PriceTag'
 
 const PLANS = [
-  { code: 'D', name: '專項深度分析', price: 29, desc: '針對一個問題深入', features: ['財運/事業/感情/健康/學業/搬家', '問事版：描述你的問題', '好的/注意/改善三大建議'], cta: '最低入門' },
-  { code: 'C', name: '全方位十五合一', price: 89, popular: true, desc: '15系統全面人格分析', features: ['全部15套命理系統', '人格+事業+財運+感情+健康', '行業分析+人生機遇', '好的/注意/改善三大建議', '網頁展示+PDF報告'], cta: '最受歡迎' },
-  { code: 'Y', name: '年度運勢分析', price: 159, desc: '12個月逐月分析', features: ['14系統全面分析', '逐月運勢+好/注意/改善', '重要月份和日期提醒', '農曆對照國曆日期'], cta: '長期規劃' },
+  { code: 'D', name: '心之所惑', price: 39, desc: '聚焦你最在乎的一個面向深度剖析', features: ['財運/事業/感情/健康/學業/搬家', '描述你最想釐清的困惑（200字）', '好的/注意/改善三大建議'], cta: '入門首選' },
+  { code: 'C', name: '人生藍圖', price: 89, popular: true, desc: '完整人生面向分析', features: ['性格天賦+事業財運+感情健康', '人際貴人+大運走勢', '好的/注意/改善三大建議', '網頁展示+PDF報告'], cta: '最受歡迎' },
+  { code: 'R', name: '合否？', price: 59, desc: '感情、合婚、合夥關係命理分析', features: ['兩人命盤交叉分析', '對方可只提供年月日', '互動建議+關係走勢', '好的/注意/改善三大建議'], cta: '關係分析' },
 ]
 
 export default function PricingCards() {

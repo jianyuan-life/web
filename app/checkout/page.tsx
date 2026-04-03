@@ -8,23 +8,17 @@ import PriceTag from '@/components/PriceTag'
 import { searchCities, type City } from '@/lib/cities'
 
 const PLANS: Record<string, { name: string; price: number; systems: number }> = {
-  C: { name: '全方位十五合一', price: 89, systems: 15 },
-  A: { name: '核心三合一', price: 49, systems: 3 },
-  D: { name: '專項深度分析', price: 29, systems: 15 },
-  G15: { name: '家庭全方位十五合一', price: 269, systems: 15 },
-  G3: { name: '家庭核心三合一', price: 149, systems: 3 },
-  R: { name: '關於我與他', price: 59, systems: 15 },
-  M: { name: '月度運勢分析', price: 19, systems: 14 },
-  Y: { name: '年度運勢分析', price: 159, systems: 14 },
+  C: { name: '人生藍圖', price: 89, systems: 15 },
+  D: { name: '心之所惑', price: 39, systems: 15 },
+  G15: { name: '家族藍圖', price: 269, systems: 15 },
+  R: { name: '合否？', price: 59, systems: 15 },
   E1: { name: '事件出門訣', price: 119, systems: 1 },
   E2: { name: '月盤出門訣', price: 89, systems: 1 },
-  E3: { name: '年盤出門訣', price: 859, systems: 1 },
 }
 
-// G15/G3 每加一人的附加費
+// G15 每加一人的附加費
 const FAMILY_EXTRA_PRICE: Record<string, number> = {
   G15: 69,
-  G3: 39,
 }
 
 const SHICHEN = [

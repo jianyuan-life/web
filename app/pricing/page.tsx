@@ -6,62 +6,39 @@ import PriceTag from '@/components/PriceTag'
 
 const PLANS = {
   personal: [
-    { code: 'C', name: '全方位十五合一', price: 89, popular: true, systems: 15,
-      desc: '15套東西方命理系統全面人格分析',
-      features: ['人格深度分析+行為模式', '事業方向+行業分析', '財運+投資風格', '感情+婚姻特質', '健康+五行養生', '人際+貴人分析', '人生機遇+大運走勢', '好的/注意/改善 三大建議', '網頁展示+PDF報告'],
+    { code: 'C', name: '人生藍圖', price: 89, popular: true, systems: 15,
+      desc: '涵蓋性格天賦、感情婚姻、事業財運、健康、流年運勢等完整人生面向分析',
+      features: ['性格天賦+行為模式深度解析', '事業方向+行業適配分析', '財運走向+投資風格', '感情婚姻+相處模式', '健康+養生方向', '人際貴人+合作對象', '人生機遇+大運走勢', '好的/注意/改善 三大建議', '網頁展示+PDF報告'],
     },
-    { code: 'A', name: '核心三合一', price: 49, systems: 3,
-      desc: '八字+紫微+奇門三大核心系統',
-      features: ['三大核心系統交叉驗證', '人格分析+事業方向', '財運+感情+健康', '人生機遇分析', '好的/注意/改善 三大建議', '網頁展示+PDF報告'],
-    },
-    { code: 'D', name: '專項深度分析', price: 29, systems: 15,
-      desc: '針對一個問題深入分析',
-      features: ['可選：財運/事業/感情/健康/學業/搬家', '問事版：描述你的問題（200字）', '調用所有相關系統', '好的/注意/改善 三大建議', 'PDF報告'],
+    { code: 'D', name: '心之所惑', price: 39, systems: 15,
+      desc: '聚焦你最在乎的一個面向，深度剖析',
+      features: ['可選：財運/事業/感情/健康/學業/搬家', '描述你最想釐清的困惑（200字）', '針對你的問題全面分析', '好的/注意/改善 三大建議', 'PDF報告'],
       hasQuestion: true,
     },
   ],
   family: [
-    { code: 'G15', name: '家庭全方位十五合一', price: 269, systems: 15,
-      desc: '全家人15系統分析+家庭總方案',
-      features: ['含4人（每加1人+$69）', '每人獨立15系統報告', '家庭動力學分析', '互動建議+家運分析', '好的/注意/改善 三大建議'],
+    { code: 'G15', name: '家族藍圖', price: 269, systems: 15,
+      desc: '涵蓋每位成員的性格天賦、家庭關係互動、共同運勢走向，為全家人做完整的命理規劃',
+      features: ['含4人（每加1人+$69）', '每人獨立完整分析報告', '家庭動力學+互動關係', '家運走勢+共同建議', '好的/注意/改善 三大建議'],
       addPrice: 69,
     },
-    { code: 'G3', name: '家庭核心三合一', price: 149, systems: 3,
-      desc: '全家人3系統分析+家庭總方案',
-      features: ['含4人（每加1人+$39）', '每人獨立3系統報告', '家庭關係分析', '互動建議', '好的/注意/改善 三大建議'],
-      addPrice: 39,
-    },
-    { code: 'R', name: '關於我與他', price: 59, systems: 15,
-      desc: '感情/合婚/合夥/家庭關係',
-      features: ['含3人（每加1人+$19）', '合盤分析+互動建議', '對方可只提供年月日', '問題詳述（200字）', '好的/注意/改善 三大建議'],
+    { code: 'R', name: '合否？', price: 59, systems: 15,
+      desc: '感情交往、合婚、合夥、任何兩人關係——命理上，你們合嗎？',
+      features: ['含兩人分析（每加1人+$19）', '合盤分析+互動建議', '對方可只提供年月日', '描述你的關係問題（200字）', '好的/注意/改善 三大建議'],
       addPrice: 19, hasQuestion: true,
     },
   ],
-  fortune: [
-    { code: 'M', name: '月度運勢分析', price: 19, systems: 14,
-      desc: '當月全面運勢分析',
-      features: ['14系統全面分析（不含出門訣）', '財運/事業/感情/健康', '重要日期提醒', '農曆月份標註國曆日期', '好的/注意/改善 三大建議'],
-    },
-    { code: 'Y', name: '年度運勢分析', price: 159, systems: 14, popular: true,
-      desc: '12個月逐月詳細分析',
-      features: ['14系統全面分析（不含出門訣）', '逐月運勢（12個月）', '每月好的/注意/改善', '農曆月份標註國曆日期', '重要月份和日期提醒'],
-    },
-  ],
+  fortune: [] as never[],
   chumenji: [
     { code: 'E1', name: '事件出門訣', price: 119,
-      desc: '單一事件奇門擇吉 Top5',
-      features: ['需先購買C或A方案', '提供事件時間+背景（200字）', 'Top5 吉時方位', 'Google Calendar 邀請', 'PDF+坐盤教學'],
+      desc: '針對特定事件，找出最佳出行時機與方位',
+      features: ['需先購買人生藍圖方案', '描述事件時間+背景（200字）', 'Top5 吉時方位', 'Google Calendar 邀請', 'PDF+坐盤教學'],
       locked: true, hasQuestion: true,
     },
     { code: 'E2', name: '月盤出門訣', price: 89,
-      desc: '當月 Top5 吉時方位',
-      features: ['需先購買C或A方案', '當月 Top5 精選吉時', '方位+時間+做盤原因', 'Google Calendar 邀請', 'PDF+坐盤教學'],
+      desc: '本月最佳出行時機 Top5',
+      features: ['需先購買人生藍圖方案', '當月 Top5 精選吉時', '方位+時間+坐盤原因', 'Google Calendar 邀請', 'PDF+坐盤教學'],
       locked: true,
-    },
-    { code: 'E3', name: '年盤出門訣', price: 859, systems: 0,
-      desc: '全年月盤+年盤 Top5',
-      features: ['需先購買C或A方案', '2027農曆年前一個月開放（約2027年1月）', '年盤Top5 + 逐月月盤Top5', '全年Google Calendar', 'PDF+完整坐盤教學'],
-      locked: true, seasonal: true,
     },
   ],
 }
@@ -134,7 +111,7 @@ export default function PricingPage() {
           <span className="text-gradient-gold">方案與定價</span>
         </h1>
         <p className="text-center text-text-muted mb-4 max-w-xl mx-auto text-sm">
-          從入門到全面，11種方案滿足不同需求。所有報告含網頁展示+PDF+專業分析。
+          從個人到家庭，6種方案清晰選擇。所有報告含網頁展示+PDF+專業分析。
         </p>
         {!loggedIn && (
           <p className="text-center text-xs text-gold mb-12">
@@ -144,7 +121,6 @@ export default function PricingPage() {
 
         <Section title="個人命格分析" subtitle="了解自己，掌握人生方向" plans={PLANS.personal} />
         <Section title="家庭與關係" subtitle="家人之間的命格交織與互動" plans={PLANS.family} />
-        <Section title="運勢分析" subtitle="把握時機，順勢而為" plans={PLANS.fortune} />
 
         {/* 出門訣特殊區塊 */}
         <div className="mb-16">
@@ -154,19 +130,18 @@ export default function PricingPage() {
           <div className="glass rounded-2xl p-6 mb-8 max-w-3xl mx-auto">
             <h3 className="text-lg font-bold text-gradient-gold mb-3" style={{ fontFamily: 'var(--font-sans)' }}>什麼是出門訣？</h3>
             <p className="text-sm text-text leading-[1.9] mb-4">
-              出門訣源自奇門遁甲古法，是根據您的個人命盤，在特定的時間往特定的方位出行，
-              藉由天地磁場的力量為自己補充正能量。古人稱之為「沐吉氣」——
-              在對的時間、對的方向、定點停留，讓天地之氣滋養身心。
+              在命理上，每個特定的時辰都有一個能量最旺的方位。出門訣就是找到這個時機——
+              在吉時從家出發，往吉利的方位走，到達後靜待 40 分鐘，讓自己沐浴在這股能量之中，再回家或去辦事。
             </p>
             <p className="text-sm text-text leading-[1.9] mb-4">
-              每次出門訣約需 70 分鐘（出行15分鐘 + 定點40分鐘 + 回程15分鐘），
-              簡單易行但效果持久。我們為您精選 Top5 最佳時段，每個時段都經過命盤交叉驗證，確保最適合您。
+              整個過程大約 70 分鐘，但對運勢的影響可以持續整個月。
+              如果你想讓命理分析不只停留在「了解自己」，而是真正採取行動改變運勢，出門訣是最直接的方式。
             </p>
             <div className="rounded-xl bg-gold/5 border border-gold/10 p-4 text-xs text-text-muted">
-              <strong className="text-gold">前置條件：</strong>出門訣需要您的個人命盤數據，因此必須先完成「全方位十五合一」或「核心三合一」分析。
+              <strong className="text-gold">前置條件：</strong>出門訣需要您的個人命盤數據，因此必須先完成「人生藍圖」分析。
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-3xl mx-auto">
             {PLANS.chumenji.map((plan) => (
               <div key={plan.code}
                 className={`relative glass rounded-2xl p-6 flex flex-col transition-all ${plan.seasonal ? 'opacity-60' : ''}`}>
@@ -200,13 +175,12 @@ export default function PricingPage() {
         <div className="max-w-3xl mx-auto glass rounded-2xl p-8">
           <h3 className="text-xl font-bold text-gradient-gold mb-4" style={{ fontFamily: 'var(--font-sans)' }}>不確定選哪個？</h3>
           <div className="space-y-3 text-sm text-text">
-            <p><strong className="text-cream">第一次體驗：</strong>先去<a href="/tools/bazi" className="text-gold underline">免費速算</a>看效果，再選 A 方案（$49）入門。</p>
-            <p><strong className="text-cream">全面了解自己：</strong>C 方案（$89）15系統全開，最完整最超值。</p>
-            <p><strong className="text-cream">有特定問題：</strong>D 方案（$29）針對一個問題深入，還能描述你的具體情況。</p>
-            <p><strong className="text-cream">看看這個月：</strong>M 方案（$19）最便宜，了解當月運勢和注意事項。</p>
-            <p><strong className="text-cream">全家分析：</strong>G15（$269）最完整，包含家庭互動和家運分析。</p>
-            <p><strong className="text-cream">感情/合夥：</strong>R 方案（$59）專門分析你和他人的關係。</p>
-            <p><strong className="text-cream">開運補氣：</strong>先做 C 或 A，再加出門訣，每月補充正能量。</p>
+            <p><strong className="text-cream">第一次體驗：</strong>先去<a href="/tools/bazi" className="text-gold underline">免費速算</a>看效果，再選「心之所惑」（$39）聚焦你最在乎的問題。</p>
+            <p><strong className="text-cream">全面了解自己：</strong>「人生藍圖」（$89）完整分析人生各面向，最超值。</p>
+            <p><strong className="text-cream">有特定困惑：</strong>「心之所惑」（$39）聚焦一個面向深入剖析。</p>
+            <p><strong className="text-cream">全家分析：</strong>「家族藍圖」（$269起）每人獨立報告+家庭互動分析。</p>
+            <p><strong className="text-cream">感情/合夥：</strong>「合否？」（$59）兩人命理交叉分析，看你們合不合。</p>
+            <p><strong className="text-cream">想採取行動：</strong>先做「人生藍圖」，再加出門訣，在最好的時機出行改運。</p>
           </div>
         </div>
       </div>
