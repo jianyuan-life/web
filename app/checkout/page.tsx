@@ -257,6 +257,12 @@ function CheckoutForm() {
   const [e1EndDate, setE1EndDate] = useState('')
   const [e1EventDesc, setE1EventDesc] = useState('')
 
+  // ── 方案 E1/E2 共用：可配合時間段 ──
+  const [eAllDay, setEAllDay] = useState(true)
+  const [eTimeSlots, setETimeSlots] = useState<{ start: string; end: string }[]>([
+    { start: '09:00', end: '12:00' }
+  ])
+
   // ── 計算實際金額 ──
   const extraMemberCount = Math.max(0, familyMembers.length - 4)
   const extraPrice = FAMILY_EXTRA_PRICE[planCode] ?? 0
@@ -369,6 +375,15 @@ function CheckoutForm() {
       if (!e1EventDesc.trim()) { alert('請描述事件背景與目標'); return }
     }
 
+    // E1/E2 時段驗證
+    if ((planCode === 'E1' || planCode === 'E2') && !eAllDay) {
+      const validSlots = eTimeSlots.filter(s => s.start && s.end)
+      if (validSlots.length === 0) {
+        alert('請至少填寫一個可配合時段，或勾選全時段皆可')
+        return
+      }
+    }
+
     setLoading(true)
 
     try {
@@ -448,6 +463,11 @@ function CheckoutForm() {
           birthData.event_start_date = e1StartDate
           birthData.event_end_date = e1EndDate
           birthData.event_description = e1EventDesc
+        }
+
+        // E1/E2 可配合時間段
+        if (planCode === 'E1' || planCode === 'E2') {
+          birthData.available_time_slots = eAllDay ? null : eTimeSlots.filter(s => s.start && s.end)
         }
       }
 
@@ -884,6 +904,63 @@ function CheckoutForm() {
                   />
                   <p className="text-[10px] text-text-muted/50 text-right mt-1">{e1EventDesc.length}/200</p>
                 </div>
+              </div>
+            )}
+
+            {/* ── E1/E2 可配合時間段（選填）── */}
+            {(planCode === 'E1' || planCode === 'E2') && (
+              <div className="border-t border-gold/10 pt-4 space-y-3">
+                <p className="text-sm font-semibold text-gold">可配合時間段（選填）</p>
+                <p className="text-xs text-text-muted">
+                  請告知您方便出行的時間段，我們將優先推薦這些時段的吉時。不填則推薦全天最佳時機。
+                </p>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={eAllDay}
+                    onChange={(e) => setEAllDay(e.target.checked)}
+                    className="accent-gold" />
+                  <span className="text-sm text-text">全時段皆可</span>
+                </label>
+
+                {!eAllDay && (
+                  <div className="space-y-2">
+                    {eTimeSlots.map((slot, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <input type="time" value={slot.start}
+                          onChange={(e) => {
+                            const updated = [...eTimeSlots]
+                            updated[i] = { ...slot, start: e.target.value }
+                            setETimeSlots(updated)
+                          }}
+                          className="bg-white/5 border border-gold/10 rounded-lg px-3 py-2 text-white text-sm focus:border-gold focus:outline-none [color-scheme:dark]"
+                        />
+                        <span className="text-text-muted text-xs">至</span>
+                        <input type="time" value={slot.end}
+                          onChange={(e) => {
+                            const updated = [...eTimeSlots]
+                            updated[i] = { ...slot, end: e.target.value }
+                            setETimeSlots(updated)
+                          }}
+                          className="bg-white/5 border border-gold/10 rounded-lg px-3 py-2 text-white text-sm focus:border-gold focus:outline-none [color-scheme:dark]"
+                        />
+                        {eTimeSlots.length > 1 && (
+                          <button type="button"
+                            onClick={() => setETimeSlots(prev => prev.filter((_, j) => j !== i))}
+                            className="text-xs text-red-400 hover:text-red-300 border border-red-400/30 rounded px-2 py-0.5">
+                            移除
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {eTimeSlots.length < 5 && (
+                      <button type="button"
+                        onClick={() => setETimeSlots(prev => [...prev, { start: '09:00', end: '12:00' }])}
+                        className="text-xs text-gold hover:text-gold/80 border border-gold/20 rounded-lg px-3 py-1.5">
+                        + 新增時段
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
