@@ -24,10 +24,10 @@ export async function DELETE(req: NextRequest) {
   const { id } = await req.json()
   if (!id) return NextResponse.json({ error: '缺少報告 ID' }, { status: 400 })
 
-  // 用 anon key（Row Level Security 保護，只能刪自己的資料）
+  // 用 service role key 確保真正刪除（anon key 會被 RLS 擋住）
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
   )
 
   const { error } = await supabase
