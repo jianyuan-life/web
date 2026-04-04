@@ -157,12 +157,6 @@ export default function PricingPage() {
                 <div className="text-xs text-gold/70 font-mono mb-1">方案 {plan.code}</div>
                 <h3 className="text-lg font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>{plan.name}</h3>
                 <p className="text-xs text-text-muted mt-1 mb-2">{plan.desc}</p>
-            {plan.suitableFor && (
-              <p className="text-[10px] text-gold/70 mb-4 flex items-start gap-1">
-                <span className="shrink-0 mt-px">&#9733;</span>
-                <span>適合：{plan.suitableFor}</span>
-              </p>
-            )}
                 <div className="mb-4"><PriceTag usd={plan.price} size="lg" /></div>
                 <ul className="space-y-2 mb-6 flex-1">
                   {plan.features.map((f) => (
