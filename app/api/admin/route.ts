@@ -57,7 +57,8 @@ export async function GET(req: NextRequest) {
   // 產品銷售排行
   const planCounts: Record<string, { count: number; revenue: number }> = {}
   for (const r of reports) {
-    const plan = r.plan_code || 'unknown'
+    // 正規化：取第一個英數字段（相容舊資料如「C 全方位十五合一」→「C」）
+    const plan = (r.plan_code || 'unknown').split(/\s/)[0]
     if (!planCounts[plan]) planCounts[plan] = { count: 0, revenue: 0 }
     planCounts[plan].count++
     planCounts[plan].revenue += parseFloat(r.amount_usd) || 0
@@ -114,7 +115,7 @@ export async function GET(req: NextRequest) {
     recent_orders: reports.slice(0, 10).map(r => ({
       id: r.id,
       client_name: r.client_name,
-      plan_code: r.plan_code,
+      plan_code: (r.plan_code || '').split(/\s/)[0],
       amount_usd: r.amount_usd,
       status: r.status,
       created_at: r.created_at,

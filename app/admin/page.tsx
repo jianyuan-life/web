@@ -468,7 +468,7 @@ export default function AdminPage() {
                          `$${c.discount_value} 折抵`}
                       </td>
                       <td className="py-2.5 pr-3 text-gray-400 text-xs">
-                        {c.applicable_plans?.length ? c.applicable_plans.join(', ') : '全部方案'}
+                        {c.applicable_plans?.length ? c.applicable_plans.map(p => PLAN_LABELS[p] || p).join('、') : '全部方案'}
                       </td>
                       <td className="py-2.5 pr-3 text-center">
                         <span className={c.max_uses !== null && c.used_count >= c.max_uses ? 'text-red-400' : 'text-gray-300'}>
