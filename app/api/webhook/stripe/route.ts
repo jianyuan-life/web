@@ -30,7 +30,8 @@ export async function POST(req: NextRequest) {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session
     const planCode = session.metadata?.plan_code || 'C'
-    const birthDataStr = session.metadata?.birth_data
+    const draftId = session.metadata?.draft_id
+    const birthDataStr = session.metadata?.birth_data // 向後兼容舊格式
     const sessionLocale = session.metadata?.locale || 'zh-TW'
     const amount = (session.amount_total || 0) / 100
     const customerEmail = session.customer_details?.email || session.customer_email || ''
@@ -41,9 +42,28 @@ export async function POST(req: NextRequest) {
     const supabase = getSupabase()
 
     let birthData = null
-    let reportResult = null
+    const reportResult = null
 
-    if (birthDataStr) {
+    if (draftId) {
+      // 從 Supabase checkout_drafts 取回完整 birthData（無 500 字元限制）
+      const { data: draft, error: draftErr } = await supabase
+        .from('checkout_drafts')
+        .select('birth_data, plan_code, locale')
+        .eq('id', draftId)
+        .single()
+
+      if (draftErr) {
+        console.error('checkout_drafts 讀取失敗:', draftErr)
+      } else if (draft) {
+        birthData = draft.birth_data
+        // 標記已使用，避免重複取用
+        await supabase
+          .from('checkout_drafts')
+          .update({ used_at: new Date().toISOString() })
+          .eq('id', draftId)
+      }
+    } else if (birthDataStr) {
+      // 向後兼容：舊的 Stripe metadata 直接存 JSON 字串格式
       try { birthData = JSON.parse(birthDataStr) } catch { /* ignore */ }
     }
 

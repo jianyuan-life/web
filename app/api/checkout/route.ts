@@ -1,4 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+  )
+}
 
 const PRICE_MAP: Record<string, { amount: number; name: string }> = {
   C: { amount: 8900, name: '人生藍圖' },
@@ -49,10 +57,26 @@ export async function POST(req: NextRequest) {
     if (locale) {
       params.set('metadata[locale]', locale)
     }
-    // 存入 birthData 供 webhook 使用（Stripe metadata 上限 500 字元/值）
+    // 將完整 birthData 存入 Supabase checkout_drafts，避免 Stripe metadata 500 字元限制
     if (birthData) {
-      const birthDataStr = JSON.stringify(birthData)
-      params.set('metadata[birth_data]', birthDataStr.slice(0, 500))
+      const supabase = getSupabase()
+      const { data: draft, error: draftErr } = await supabase
+        .from('checkout_drafts')
+        .insert({
+          plan_code: planCode,
+          birth_data: birthData,
+          locale: locale || 'zh-TW',
+        })
+        .select('id')
+        .single()
+
+      if (draftErr || !draft) {
+        console.error('checkout_drafts insert 失敗:', draftErr)
+        return NextResponse.json({ error: '暫存資料失敗' }, { status: 500 })
+      }
+
+      // Stripe metadata 只存 draft_id（36 字元 UUID，遠低於 500 字元限制）
+      params.set('metadata[draft_id]', draft.id)
     }
 
     const res = await fetch('https://api.stripe.com/v1/checkout/sessions', {
