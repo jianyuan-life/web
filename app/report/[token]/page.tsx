@@ -85,29 +85,76 @@ function parseStructuredContent(markdown: string): ContentSection[] {
   return sections
 }
 
-// 渲染單個區塊內的 markdown 為 HTML
-function renderSectionMarkdown(content: string): string {
-  let html = content
-    // 標題層次
-    .replace(/^### (.+)$/gm, '<h3 class="report-h3">$1</h3>')
-    .replace(/^# (.+)$/gm, '<h3 class="report-h3">$1</h3>')
-    // 粗體
+// 將純文字 markdown 段落轉 HTML（不含 ### 處理）
+function renderInlineMarkdown(text: string): string {
+  let html = text
     .replace(/\*\*(.+?)\*\*/g, '<strong class="report-bold">$1</strong>')
-    // 表情符號上色
     .replace(/✅/g, '<span style="color:#6ab04c">✅</span>')
     .replace(/⚠️/g, '<span style="color:#e0963a">⚠️</span>')
     .replace(/🔧/g, '<span style="color:#c5963a">🔧</span>')
-    // 列表項
+    .replace(/^[•·]\s*(.+)$/gm, '<li class="report-li">$1</li>')
     .replace(/^- (.+)$/gm, '<li class="report-li">$1</li>')
     .replace(/^(\d+)\. (.+)$/gm, '<li class="report-li-num">$2</li>')
-    // 段落分隔
     .replace(/\n\n/g, '</p><p class="report-p">')
     .replace(/\n/g, '<br/>')
-
-  // 將連續的 <li> 包裹在 <ul>/<ol> 中，確保語義正確
   html = html.replace(/((?:<li class="report-li">.*?<\/li>\s*(?:<br\/>)?)+)/g, '<ul>$1</ul>')
   html = html.replace(/((?:<li class="report-li-num">.*?<\/li>\s*(?:<br\/>)?)+)/g, '<ol>$1</ol>')
+  return html
+}
 
+// 彩色框樣式（與 PDF 對應）
+const SUB_BOX_STYLES: Record<string, { bg: string; border: string; titleColor: string; icon: string }> = {
+  positive:    { bg: 'rgba(106,176,76,0.07)',  border: '1.5px solid rgba(106,176,76,0.25)',  titleColor: '#6ab04c', icon: '✦' },
+  caution:     { bg: 'rgba(26,42,74,0.15)',    border: '1.5px solid rgba(26,42,74,0.35)',    titleColor: '#7a9fcf', icon: '⚡' },
+  improvement: { bg: 'rgba(197,150,58,0.07)',  border: '1.5px solid rgba(197,150,58,0.25)', titleColor: '#c9a84c', icon: '🔑' },
+}
+
+function classifySubSection(title: string): 'positive' | 'caution' | 'improvement' | 'general' {
+  if (/好的地方|好的方面|優勢|優點|強項|祝福|相容性/.test(title)) return 'positive'
+  if (/需要注意|需注意|注意的地方|注意|風險|挑戰|弱點|關係張力/.test(title)) return 'caution'
+  if (/改善方案|改善建議|改善|建議|提升|行動|指南/.test(title)) return 'improvement'
+  return 'general'
+}
+
+// 渲染單個區塊內的 markdown 為 HTML（支援 ### 子章節彩色框）
+function renderSectionMarkdown(content: string): string {
+  // 按 ### 分割子章節
+  const subParts = content.split(/^### /m)
+  if (subParts.length <= 1) {
+    // 無子章節，直接渲染
+    return renderInlineMarkdown(content)
+      .replace(/^# (.+)$/gm, '<h3 class="report-h3">$1</h3>')
+  }
+
+  let html = ''
+  // 第一塊（### 之前的引言）
+  if (subParts[0].trim()) {
+    html += `<p class="report-p">${renderInlineMarkdown(subParts[0].trim())}</p>`
+  }
+
+  for (let i = 1; i < subParts.length; i++) {
+    const sub = subParts[i]
+    const nlIdx = sub.indexOf('\n')
+    const subTitle = nlIdx === -1 ? sub.trim() : sub.slice(0, nlIdx).trim()
+    const subBody = nlIdx === -1 ? '' : sub.slice(nlIdx + 1).trim()
+    const subType = classifySubSection(subTitle)
+    const style = SUB_BOX_STYLES[subType]
+
+    if (style && subBody) {
+      // 彩色框子章節
+      html += `
+        <div style="background:${style.bg};border:${style.border};border-radius:8px;padding:12px 16px;margin:12px 0;">
+          <div style="font-size:0.82rem;font-weight:700;color:${style.titleColor};margin-bottom:8px;letter-spacing:0.03em;">
+            ${style.icon} ${subTitle}
+          </div>
+          <div style="font-size:0.88rem;line-height:1.7;color:var(--color-text-muted);">${renderInlineMarkdown(subBody)}</div>
+        </div>`
+    } else {
+      // 普通子章節標題
+      html += `<h3 class="report-h3" style="color:var(--color-gold);margin-top:14px;">${subTitle}</h3>`
+      if (subBody) html += `<p class="report-p">${renderInlineMarkdown(subBody)}</p>`
+    }
+  }
   return html
 }
 
