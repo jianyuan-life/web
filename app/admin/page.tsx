@@ -48,8 +48,8 @@ const PAGE_NAMES: Record<string, string> = {
 }
 
 const PLAN_NAMES: Record<string, string> = {
-  A:'核心三合一', B:'進階六合一', C:'全方位十五合一', D:'專項深度',
-  E:'出門訣', F:'寶寶取名', G:'家庭全方位', H:'投資人格KYC',
+  C:'人生藍圖', D:'心之所惑', G15:'家族藍圖', R:'合否？',
+  E1:'事件出門訣', E2:'月盤出門訣',
 }
 
 const COUNTRY_NAMES: Record<string, string> = {
@@ -229,7 +229,7 @@ export default function AdminPage() {
                     <span className="text-xs text-gray-500 w-4">{i + 1}</span>
                     <div className="flex-1">
                       <div className="flex justify-between mb-1">
-                        <span className="text-sm text-white">方案{p.plan} {PLAN_NAMES[p.plan] || ''}</span>
+                        <span className="text-sm text-white">{PLAN_NAMES[p.plan] || `方案${p.plan}`}</span>
                         <span className="text-sm text-amber-400">${p.revenue}</span>
                       </div>
                       <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
@@ -336,7 +336,7 @@ export default function AdminPage() {
                   {data.recent_orders.map(order => (
                     <tr key={order.id} className="border-b border-white/5 last:border-0">
                       <td className="py-2.5 pr-4 text-white">{order.client_name}</td>
-                      <td className="py-2.5 pr-4 text-gray-400">方案{order.plan_code} {PLAN_NAMES[order.plan_code] || ''}</td>
+                      <td className="py-2.5 pr-4 text-gray-400">{PLAN_NAMES[order.plan_code] || `方案${order.plan_code}`}</td>
                       <td className="py-2.5 pr-4 text-right text-amber-400">${order.amount_usd}</td>
                       <td className="py-2.5 pr-4">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${order.status === 'completed' ? 'bg-green-500/20 text-green-400' : order.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>
