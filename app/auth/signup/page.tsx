@@ -9,6 +9,13 @@ export default function SignupPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
 
+  const handleGoogleLogin = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    })
+  }
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -80,6 +87,17 @@ export default function SignupPage() {
             註冊即表示同意<a href="/terms" className="text-gold">使用條款</a>和<a href="/privacy" className="text-gold">隱私政策</a>
           </p>
         </form>
+
+        <div className="mt-6 text-center space-y-3">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gold/10" /></div>
+            <div className="relative flex justify-center"><span className="px-3 text-xs text-text-muted/60" style={{ background: 'var(--color-dark)' }}>或</span></div>
+          </div>
+          <button onClick={handleGoogleLogin}
+            className="w-full max-w-md py-2.5 glass rounded-xl text-sm text-white hover:bg-white/10 transition-colors">
+            使用 Google 帳號直接註冊
+          </button>
+        </div>
 
         <p className="mt-6 text-center text-sm text-text-muted">
           已有帳號？ <a href="/auth/login" className="text-gold hover:underline">登入</a>

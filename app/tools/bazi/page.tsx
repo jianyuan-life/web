@@ -575,11 +575,16 @@ export default function FreeToolPage() {
                       return <a key={plan} href={`/checkout?${q}`} className={cls}>{label}</a>
                     })}
                   </div>
-                  <div className="flex flex-wrap justify-center gap-4 text-xs text-text-muted/60">
+                  <div className="flex flex-wrap justify-center gap-4 text-xs text-text-muted/60 mb-4">
                     <span>&#128274; Stripe 安全支付</span>
                     <span>&#9889; 5 分鐘出報告</span>
                     <span>&#128230; PDF 永久保存</span>
                   </div>
+                  <p className="text-xs text-text-muted/50">
+                    還沒準備好？{' '}
+                    <a href="/auth/signup" className="text-gold hover:underline">免費註冊帳號</a>
+                    {' '}先收藏命格資料，隨時回來查閱
+                  </p>
                 </div>
               </div>
             </div>
