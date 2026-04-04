@@ -26,6 +26,11 @@ type Report = {
   created_at: string
 }
 
+// 各方案使用的命理系統數量
+const PLAN_SYSTEMS: Record<string, number> = {
+  C: 15, D: 15, G15: 15, R: 15, E1: 1, E2: 1,
+}
+
 function DashboardContent() {
   const params = useSearchParams()
   const paymentSuccess = params.get('payment') === 'success'
@@ -86,6 +91,30 @@ function DashboardContent() {
     return () => clearInterval(interval)
   }, [paymentSuccess, deletedIds])
 
+  // 無論是否剛付款，只要有 pending 報告就持續輪詢（每15秒）
+  useEffect(() => {
+    if (loading) return
+    const hasPending = reports.some(r => r.status === 'pending')
+    if (!hasPending) return
+
+    const interval = setInterval(() => {
+      fetch('/api/reports')
+        .then(r => r.json())
+        .then(data => {
+          const newReports = (data.reports || []).filter(
+            (r: Report) => !deletedIds.has(r.id)
+          )
+          setReports(newReports)
+          if (!newReports.some((r: Report) => r.status === 'pending')) {
+            clearInterval(interval)
+          }
+        })
+        .catch(() => {/* 靜默失敗 */})
+    }, 15000)
+
+    return () => clearInterval(interval)
+  }, [reports, deletedIds, loading])
+
   const avgScore = (report: Report) => {
     const summary = report.report_result?.analyses_summary
     if (!summary || summary.length === 0) return 0
@@ -106,7 +135,7 @@ function DashboardContent() {
                   系統已開始為您進行命理排盤與 AI 深度解析。
                   <strong className="text-gold/80"> 每位成員的完整報告平均需要 30 分鐘以上，出門訣計算需 40 分鐘以上</strong>，
                   請耐心等候——我們寧可多花時間，也要確保每份報告的準確性與深度。
-                  完成後請刷新此頁面查看報告。
+                  完成後此頁面將自動更新，無需手動刷新。
                 </p>
               </div>
             </div>
@@ -157,7 +186,11 @@ function DashboardContent() {
                       <h3 className="font-semibold text-cream">{r.client_name}</h3>
                       <div className="flex items-center gap-3 text-xs text-text-muted mt-1">
                         <span>{PLAN_NAMES[r.plan_code] || `方案 ${r.plan_code}`}</span>
-                        <span>{r.report_result?.systems_count || 15} 套系統</span>
+                        <span>
+                          {['E1', 'E2'].includes(r.plan_code)
+                            ? '奇門遁甲出門訣'
+                            : `${r.report_result?.systems_count ?? PLAN_SYSTEMS[r.plan_code] ?? 15} 套系統`}
+                        </span>
                         <span>${r.amount_usd}</span>
                         <span>{new Date(r.created_at).toLocaleDateString('zh-TW')}</span>
                       </div>
