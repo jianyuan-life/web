@@ -2,6 +2,20 @@
 
 import { useEffect, useState } from 'react'
 
+type Coupon = {
+  id: string
+  code: string
+  discount_type: 'percentage' | 'fixed' | 'free'
+  discount_value: number
+  applicable_plans: string[] | null
+  max_uses: number | null
+  used_count: number
+  expires_at: string | null
+  is_active: boolean
+  note: string
+  created_at: string
+}
+
 type AdminData = {
   range: string
   overview: {
@@ -48,12 +62,80 @@ const COUNTRY_NAMES: Record<string, string> = {
   '':'未知',
 }
 
+const PLAN_OPTIONS = ['C', 'D', 'G15', 'R', 'E1', 'E2']
+const PLAN_LABELS: Record<string, string> = { C:'人生藍圖', D:'心之所惑', G15:'家族藍圖', R:'合否？', E1:'事件出門訣', E2:'月盤出門訣' }
+
+function generateCode(prefix = 'JY') {
+  return `${prefix}${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+}
+
 export default function AdminPage() {
   const [data, setData] = useState<AdminData | null>(null)
   const [range, setRange] = useState('7d')
   const [key, setKey] = useState('')
   const [authed, setAuthed] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  // 優惠碼管理
+  const [coupons, setCoupons] = useState<Coupon[]>([])
+  const [couponLoading, setCouponLoading] = useState(false)
+  const [showCouponForm, setShowCouponForm] = useState(false)
+  const [newCoupon, setNewCoupon] = useState({
+    code: '', discount_type: 'percentage' as 'percentage' | 'fixed' | 'free',
+    discount_value: 20, applicable_plans: [] as string[],
+    max_uses: '', expires_at: '', note: '',
+  })
+
+  const fetchCoupons = async (k: string) => {
+    setCouponLoading(true)
+    try {
+      const res = await fetch(`/api/admin/coupons?key=${k}`)
+      if (res.ok) { const d = await res.json(); setCoupons(d.coupons || []) }
+    } finally { setCouponLoading(false) }
+  }
+
+  const createCoupon = async () => {
+    if (!newCoupon.code && !confirm('未填優惠碼，將自動生成')) return
+    const code = newCoupon.code || generateCode()
+    const res = await fetch(`/api/admin/coupons?key=${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code,
+        discount_type: newCoupon.discount_type,
+        discount_value: newCoupon.discount_type === 'free' ? 0 : Number(newCoupon.discount_value),
+        applicable_plans: newCoupon.applicable_plans,
+        max_uses: newCoupon.max_uses ? Number(newCoupon.max_uses) : null,
+        expires_at: newCoupon.expires_at || null,
+        note: newCoupon.note,
+      }),
+    })
+    const d = await res.json()
+    if (d.coupon) {
+      setCoupons(prev => [d.coupon, ...prev])
+      setShowCouponForm(false)
+      setNewCoupon({ code: '', discount_type: 'percentage', discount_value: 20, applicable_plans: [], max_uses: '', expires_at: '', note: '' })
+    } else { alert(d.error || '建立失敗') }
+  }
+
+  const toggleCoupon = async (id: string) => {
+    const res = await fetch(`/api/admin/coupons?key=${key}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, action: 'toggle' }),
+    })
+    if (res.ok) fetchCoupons(key)
+  }
+
+  const deleteCoupon = async (id: string, code: string) => {
+    if (!confirm(`確定刪除優惠碼 ${code}？`)) return
+    await fetch(`/api/admin/coupons?key=${key}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, action: 'delete' }),
+    })
+    setCoupons(prev => prev.filter(c => c.id !== id))
+  }
 
   const fetchData = async (r: string, k: string) => {
     setLoading(true)
@@ -62,6 +144,7 @@ export default function AdminPage() {
       if (res.ok) {
         setData(await res.json())
         setAuthed(true)
+        fetchCoupons(k)
       } else {
         alert('密碼錯誤')
       }
@@ -267,6 +350,150 @@ export default function AdminPage() {
               </table>
             </div>
           ) : <p className="text-sm text-gray-500">暫無訂單</p>}
+        </div>
+
+        {/* ══════════════════════════════════════════════════ */}
+        {/* 優惠碼管理 */}
+        {/* ══════════════════════════════════════════════════ */}
+        <div className="mt-8 bg-[#1a1a1a] rounded-xl p-6 border border-white/5">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="text-sm font-semibold text-white">優惠碼管理</h3>
+            <button onClick={() => setShowCouponForm(v => !v)}
+              className="px-4 py-1.5 bg-amber-600 text-white text-xs font-medium rounded-lg hover:bg-amber-500">
+              + 新增優惠碼
+            </button>
+          </div>
+
+          {/* 新增表單 */}
+          {showCouponForm && (
+            <div className="mb-6 p-4 bg-white/5 rounded-xl border border-white/10 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">優惠碼（留空自動生成）</label>
+                  <div className="flex gap-2">
+                    <input value={newCoupon.code} onChange={e => setNewCoupon(p => ({ ...p, code: e.target.value.toUpperCase() }))}
+                      placeholder="例：VIP2026" className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+                    <button type="button" onClick={() => setNewCoupon(p => ({ ...p, code: generateCode() }))}
+                      className="px-3 py-2 bg-white/10 rounded-lg text-xs text-gray-300 hover:bg-white/20 whitespace-nowrap">自動</button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">折扣類型</label>
+                  <select value={newCoupon.discount_type} onChange={e => setNewCoupon(p => ({ ...p, discount_type: e.target.value as 'percentage' | 'fixed' | 'free' }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
+                    <option value="percentage">百分比折扣（%）</option>
+                    <option value="fixed">固定折抵金額（$）</option>
+                    <option value="free">完全免費</option>
+                  </select>
+                </div>
+                {newCoupon.discount_type !== 'free' && (
+                  <div>
+                    <label className="text-xs text-gray-400 mb-1 block">
+                      {newCoupon.discount_type === 'percentage' ? '折扣比例（%）' : '折抵金額（USD）'}
+                    </label>
+                    <input type="number" value={newCoupon.discount_value}
+                      onChange={e => setNewCoupon(p => ({ ...p, discount_value: Number(e.target.value) }))}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+                  </div>
+                )}
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">使用次數上限（留空=無限）</label>
+                  <input type="number" value={newCoupon.max_uses} placeholder="留空=無限"
+                    onChange={e => setNewCoupon(p => ({ ...p, max_uses: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">到期日（留空=永不過期）</label>
+                  <input type="date" value={newCoupon.expires_at}
+                    onChange={e => setNewCoupon(p => ({ ...p, expires_at: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">備注（僅自己看）</label>
+                  <input value={newCoupon.note} onChange={e => setNewCoupon(p => ({ ...p, note: e.target.value }))}
+                    placeholder="例：給VIP朋友的試用" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">適用方案（不選=全部方案適用）</label>
+                <div className="flex flex-wrap gap-2">
+                  {PLAN_OPTIONS.map(p => (
+                    <label key={p} className="flex items-center gap-1.5 cursor-pointer">
+                      <input type="checkbox" checked={newCoupon.applicable_plans.includes(p)}
+                        onChange={e => setNewCoupon(prev => ({
+                          ...prev,
+                          applicable_plans: e.target.checked
+                            ? [...prev.applicable_plans, p]
+                            : prev.applicable_plans.filter(x => x !== p)
+                        }))} className="accent-amber-500" />
+                      <span className="text-xs text-gray-300">{p} {PLAN_LABELS[p]}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={createCoupon} className="px-4 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-500">建立優惠碼</button>
+                <button onClick={() => setShowCouponForm(false)} className="px-4 py-2 bg-white/10 text-gray-300 text-sm rounded-lg hover:bg-white/20">取消</button>
+              </div>
+            </div>
+          )}
+
+          {/* 優惠碼列表 */}
+          {couponLoading ? (
+            <p className="text-sm text-gray-500">載入中...</p>
+          ) : coupons.length === 0 ? (
+            <p className="text-sm text-gray-500">尚無優惠碼</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs text-gray-500 border-b border-white/5">
+                    <th className="text-left py-2 pr-3">優惠碼</th>
+                    <th className="text-left py-2 pr-3">折扣</th>
+                    <th className="text-left py-2 pr-3">適用方案</th>
+                    <th className="text-center py-2 pr-3">已用/上限</th>
+                    <th className="text-left py-2 pr-3">到期</th>
+                    <th className="text-left py-2 pr-3">備注</th>
+                    <th className="text-center py-2 pr-3">狀態</th>
+                    <th className="text-center py-2">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {coupons.map(c => (
+                    <tr key={c.id} className="border-b border-white/5 last:border-0">
+                      <td className="py-2.5 pr-3 font-mono text-amber-400 font-bold">{c.code}</td>
+                      <td className="py-2.5 pr-3 text-white">
+                        {c.discount_type === 'free' ? '完全免費' :
+                         c.discount_type === 'percentage' ? `${c.discount_value}% 折扣` :
+                         `$${c.discount_value} 折抵`}
+                      </td>
+                      <td className="py-2.5 pr-3 text-gray-400 text-xs">
+                        {c.applicable_plans?.length ? c.applicable_plans.join(', ') : '全部方案'}
+                      </td>
+                      <td className="py-2.5 pr-3 text-center">
+                        <span className={c.max_uses !== null && c.used_count >= c.max_uses ? 'text-red-400' : 'text-gray-300'}>
+                          {c.used_count} / {c.max_uses ?? '∞'}
+                        </span>
+                      </td>
+                      <td className="py-2.5 pr-3 text-xs text-gray-400">
+                        {c.expires_at ? new Date(c.expires_at).toLocaleDateString('zh-TW') : '永不'}
+                      </td>
+                      <td className="py-2.5 pr-3 text-xs text-gray-500 max-w-[120px] truncate">{c.note || '—'}</td>
+                      <td className="py-2.5 pr-3 text-center">
+                        <button onClick={() => toggleCoupon(c.id)}
+                          className={`text-xs px-2 py-0.5 rounded-full ${c.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                          {c.is_active ? '啟用中' : '已停用'}
+                        </button>
+                      </td>
+                      <td className="py-2.5 text-center">
+                        <button onClick={() => deleteCoupon(c.id, c.code)} className="text-xs text-red-400 hover:text-red-300">刪除</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         <p className="text-center text-xs text-gray-600 mt-8">鑒源 JianYuan 管理後台 | 數據每次刷新即時更新</p>

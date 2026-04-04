@@ -112,6 +112,28 @@ export async function POST(req: NextRequest) {
           birthData.question = session.metadata.question
         }
 
+        // 記錄優惠碼使用
+        const couponCodeUsed = session.metadata?.coupon_code
+        if (couponCodeUsed) {
+          try {
+            const { data: couponRow } = await supabase.from('coupons').select('id, used_count').eq('code', couponCodeUsed).single()
+            if (couponRow) {
+              await supabase.from('coupons').update({ used_count: (couponRow.used_count || 0) + 1 }).eq('id', couponRow.id)
+              await supabase.from('coupon_uses').insert({
+                coupon_id: couponRow.id,
+                coupon_code: couponCodeUsed,
+                order_id: session.id,
+                customer_email: customerEmail,
+                plan_code: planCode,
+                original_amount: (session.amount_subtotal || session.amount_total || 0) / 100,
+                discount_applied: ((session.amount_subtotal || 0) - (session.amount_total || 0)) / 100,
+              })
+            }
+          } catch (couponErr) {
+            console.error('優惠碼記錄失敗:', couponErr)
+          }
+        }
+
         // fire-and-forget 到 Fly.io
         fetch(`${PYTHON_API}/api/generate-report-async`, {
           method: 'POST',

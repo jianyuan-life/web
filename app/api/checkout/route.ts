@@ -23,7 +23,7 @@ const PRICE_MAP: Record<string, { amount: number; name: string }> = {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { planCode, birthData, totalPrice, locale } = body
+    const { planCode, birthData, totalPrice, locale, couponCode, couponDiscount } = body
 
     const plan = PRICE_MAP[planCode]
     if (!plan) {
@@ -40,9 +40,76 @@ export async function POST(req: NextRequest) {
     // G15 家族藍圖：使用前端動態計算的金額（單位：美元），轉為美分
     // 其他方案：使用固定金額
     const isFamilyPlan = planCode === 'G15'
-    const finalAmount = isFamilyPlan && typeof totalPrice === 'number'
+    let baseAmount = isFamilyPlan && typeof totalPrice === 'number'
       ? Math.round(totalPrice * 100)
       : plan.amount
+
+    // 套用優惠碼折扣（伺服器端二次驗證）
+    let finalAmount = baseAmount
+    let verifiedCouponCode = ''
+    if (couponCode) {
+      const supabase = getSupabase()
+      const { data: coupon } = await supabase
+        .from('coupons')
+        .select('*')
+        .eq('code', couponCode.trim().toUpperCase())
+        .eq('is_active', true)
+        .single()
+
+      if (coupon) {
+        const now = new Date()
+        const notExpired = !coupon.expires_at || new Date(coupon.expires_at) > now
+        const notExhausted = coupon.max_uses === null || coupon.used_count < coupon.max_uses
+        const planAllowed = !coupon.applicable_plans || coupon.applicable_plans.includes(planCode)
+
+        if (notExpired && notExhausted && planAllowed) {
+          verifiedCouponCode = coupon.code
+          const baseUsd = baseAmount / 100
+          if (coupon.discount_type === 'percentage') {
+            finalAmount = Math.round(baseAmount * (1 - coupon.discount_value / 100))
+          } else if (coupon.discount_type === 'fixed') {
+            finalAmount = Math.max(0, baseAmount - Math.round(coupon.discount_value * 100))
+          } else if (coupon.discount_type === 'free') {
+            finalAmount = 0
+          }
+        }
+      }
+    }
+
+    // 免費方案：跳過 Stripe，直接建立訂單
+    if (finalAmount === 0 && verifiedCouponCode) {
+      const supabase = getSupabase()
+      const draftRes = await supabase.from('checkout_drafts').insert({
+        plan_code: planCode, birth_data: birthData, locale: locale || 'zh-TW',
+      }).select('id').single()
+
+      if (!draftRes.data) return NextResponse.json({ error: '暫存資料失敗' }, { status: 500 })
+
+      // 直接插入訂單並觸發報告生成
+      const fakeSessionId = `free_${Date.now()}`
+      await supabase.from('orders').insert({
+        stripe_session_id: fakeSessionId,
+        plan_code: planCode,
+        amount_usd: 0,
+        status: 'pending',
+        customer_email: birthData?.email || '',
+        birth_data: birthData,
+        coupon_code: verifiedCouponCode,
+      })
+
+      // 記錄優惠碼使用
+      const { data: couponRow } = await supabase.from('coupons').select('id').eq('code', verifiedCouponCode).single()
+      if (couponRow) {
+        await supabase.from('coupons').update({ used_count: supabase.rpc('increment', { x: 1 }) }).eq('id', couponRow.id)
+        await supabase.from('coupon_uses').insert({
+          coupon_id: couponRow.id, coupon_code: verifiedCouponCode,
+          order_id: fakeSessionId, customer_email: birthData?.email || '',
+          plan_code: planCode, original_amount: baseAmount / 100, discount_applied: baseAmount / 100,
+        })
+      }
+
+      return NextResponse.json({ url: `${siteUrl}/dashboard?payment=success&free=1` })
+    }
 
     const params = new URLSearchParams()
     params.set('mode', 'payment')
@@ -53,6 +120,7 @@ export async function POST(req: NextRequest) {
     params.set('line_items[0][price_data][unit_amount]', finalAmount.toString())
     params.set('line_items[0][quantity]', '1')
     params.set('metadata[plan_code]', planCode)
+    if (verifiedCouponCode) params.set('metadata[coupon_code]', verifiedCouponCode)
     // locale 單獨存，不佔 birth_data 500 字元額度
     if (locale) {
       params.set('metadata[locale]', locale)

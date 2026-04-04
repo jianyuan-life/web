@@ -248,6 +248,12 @@ function CheckoutForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // ── 優惠碼 ──
+  const [couponInput, setCouponInput] = useState('')
+  const [couponApplied, setCouponApplied] = useState<{ code: string; discountAmount: number; message: string } | null>(null)
+  const [couponLoading, setCouponLoading] = useState(false)
+  const [couponError, setCouponError] = useState('')
+
   // ── 備注欄（所有方案共用）──
   const [customerNote, setCustomerNote] = useState('')
 
@@ -284,6 +290,27 @@ function CheckoutForm() {
     : planCode === 'R'
     ? plan.price + rExtraCount * 19
     : plan.price
+  const finalPrice = couponApplied ? Math.max(0, totalPrice - couponApplied.discountAmount) : totalPrice
+
+  const applyCoupon = async () => {
+    if (!couponInput.trim()) return
+    setCouponLoading(true)
+    setCouponError('')
+    setCouponApplied(null)
+    try {
+      const res = await fetch(`/api/coupons/validate?code=${encodeURIComponent(couponInput)}&plan=${planCode}&amount=${totalPrice}`)
+      const data = await res.json()
+      if (data.valid) {
+        setCouponApplied({ code: couponInput.trim().toUpperCase(), discountAmount: data.discountAmount, message: data.message })
+      } else {
+        setCouponError(data.message || '優惠碼無效')
+      }
+    } catch {
+      setCouponError('驗證失敗，請稍後再試')
+    } finally {
+      setCouponLoading(false)
+    }
+  }
 
   const searchAddress = (query: string) => {
     if (addressSearchTimer) clearTimeout(addressSearchTimer)
@@ -511,9 +538,11 @@ function CheckoutForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           planCode,
-          totalPrice: ['G15', 'G3', 'R'].includes(planCode) ? totalPrice : undefined,
+          totalPrice: ['G15', 'G3', 'R'].includes(planCode) ? finalPrice : undefined,
           birthData,
           locale: userLocale,
+          couponCode: couponApplied?.code || undefined,
+          couponDiscount: couponApplied?.discountAmount || undefined,
         }),
       })
       const data = await res.json()
@@ -571,7 +600,41 @@ function CheckoutForm() {
               </div>
             )}
           </div>
-          <PriceTag usd={totalPrice} size="lg" />
+          <div className="text-right">
+            {couponApplied && (
+              <div className="text-xs text-green-400 line-through mb-0.5">${totalPrice}</div>
+            )}
+            <PriceTag usd={finalPrice} size="lg" />
+            {couponApplied && finalPrice === 0 && (
+              <div className="text-xs text-green-400 font-bold mt-0.5">免費體驗</div>
+            )}
+          </div>
+        </div>
+
+        {/* ── 優惠碼 ── */}
+        <div className="mb-4">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="輸入優惠碼"
+              value={couponInput}
+              onChange={(e) => { setCouponInput(e.target.value); setCouponError(''); if (couponApplied) setCouponApplied(null) }}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), applyCoupon())}
+              className="flex-1 bg-white/5 border border-gold/10 rounded-lg px-4 py-2 text-cream text-sm focus:border-gold/40 focus:outline-none uppercase"
+            />
+            <button type="button" onClick={applyCoupon} disabled={couponLoading || !couponInput.trim()}
+              className="px-4 py-2 bg-gold/20 border border-gold/30 text-gold text-sm rounded-lg hover:bg-gold/30 disabled:opacity-40 whitespace-nowrap">
+              {couponLoading ? '...' : '套用'}
+            </button>
+          </div>
+          {couponError && <p className="text-red-400 text-xs mt-1">{couponError}</p>}
+          {couponApplied && (
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-green-400 text-xs">{couponApplied.message}</p>
+              <button type="button" onClick={() => { setCouponApplied(null); setCouponInput('') }}
+                className="text-xs text-text-muted/50 hover:text-red-400 ml-2">移除</button>
+            </div>
+          )}
         </div>
 
         {/* ── R 方案多人表單 ── */}
@@ -690,7 +753,7 @@ function CheckoutForm() {
               type="submit" disabled={loading}
               className="w-full py-3.5 bg-gold text-dark font-bold rounded-xl text-lg btn-glow disabled:opacity-50 mt-4"
             >
-              {loading ? '跳轉付款中...' : `確認付款 — $${totalPrice}`}
+              {loading ? '跳轉付款中...' : finalPrice === 0 ? '免費領取報告' : `確認付款 — $${finalPrice}`}
             </button>
             <p className="text-xs text-text-muted/60 text-center">
               付款由 Stripe 安全處理。報告平均需 30 分鐘以上，出門訣需 40 分鐘以上。
@@ -740,7 +803,7 @@ function CheckoutForm() {
               type="submit" disabled={loading}
               className="w-full py-3.5 bg-gold text-dark font-bold rounded-xl text-lg btn-glow disabled:opacity-50 mt-4"
             >
-              {loading ? '跳轉付款中...' : `確認付款 — $${totalPrice}`}
+              {loading ? '跳轉付款中...' : finalPrice === 0 ? '免費領取報告' : `確認付款 — $${finalPrice}`}
             </button>
             <p className="text-xs text-text-muted/60 text-center">
               付款由 Stripe 安全處理。報告平均需 30 分鐘以上，出門訣需 40 分鐘以上。
