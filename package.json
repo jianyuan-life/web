@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "type-check": "tsc --noEmit",
+    "pre-deploy": "npm run type-check && npm run build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.0",

@@ -250,6 +250,49 @@ Resend 寄 Email（含報告連結）← 需域名驗證完成
 | 後台國家中文化 | `app/admin/page.tsx` | PAGE_NAMES + 30+國 COUNTRY_NAMES |
 | 地理追蹤修正 | `app/api/track/route.ts` | 改讀 CF-IPCountry |
 
+## 部署守則（TypeScript Build 守門機制）
+
+### 為什麼需要這個機制
+過去曾發生連續 12 個 commit 含有 TypeScript 錯誤但靜默通過的問題。為避免再次發生，所有程式碼推送前必須通過型別檢查。
+
+### 部署前必須執行
+```bash
+npm run pre-deploy
+```
+此指令會依序執行：
+1. `npm run type-check` — TypeScript 型別檢查（`tsc --noEmit`）
+2. `npm run build` — Next.js 完整建置
+
+**兩步都通過才能推送到 GitHub。**
+
+### 快速定位 TypeScript 錯誤
+```bash
+# 只跑型別檢查（不建置，速度較快）
+npm run type-check
+
+# 輸出範例：
+# app/api/checkout/route.ts(42,5): error TS2345: Argument of type 'string' is not assignable...
+# 格式：檔案路徑(行號,欄號): 錯誤說明
+```
+
+### 常見 TS 錯誤修復方式
+| 錯誤碼 | 說明 | 修復方式 |
+|:---|:---|:---|
+| TS2345 | 型別不匹配 | 檢查函式參數型別，加上正確的型別斷言或修正傳入值 |
+| TS2322 | 賦值型別錯誤 | 檢查變數宣告的型別與實際值是否一致 |
+| TS7006 | 隱式 any | 為參數加上明確型別註解 |
+| TS2304 | 找不到名稱 | 檢查 import 是否遺漏 |
+| TS18046 | 可能為 undefined | 加上 null check 或用 `!` / `??` 處理 |
+
+### CI 自動檢查
+每次 push 到 main 或發起 PR，GitHub Actions 會自動執行 `npm run type-check`。若失敗會阻擋合併。
+設定檔：`.github/workflows/type-check.yml`
+
+### 開發流程總結
+```
+寫程式碼 → npm run type-check → 修復錯誤 → npm run pre-deploy → git push
+```
+
 ## 注意事項
 - 修改後自動 commit + push GitHub（Vercel 會自動部署）
 - .env.local 含真實金鑰，不推到 GitHub（已加入 .gitignore）
