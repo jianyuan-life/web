@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import ReportClientButtons from './ReportClientButtons'
-import ReportCopyButton from './ReportCopyButton'
 
 // ============================================================
 // 報告閱讀頁 — 透過 access_token 讀取真實報告（無需登入）
@@ -67,11 +66,13 @@ function parseStructuredContent(markdown: string): ContentSection[] {
     const content = part.slice(newlineIdx + 1).trim()
     if (!content) continue
 
+    // 過濾掉「假標題」：超過 35 字元或含中文句子標點的片段是 AI 段落文字，不是章節標題
+    if (title.length > 35 || /[。，！？；：、「」【】]/.test(title)) continue
+
     let type: ContentSection['type'] = 'general'
-    // 精確匹配三大核心區塊，避免把「最佳行動時機」「寫給你的建議」等誤判
-    if (/好的地方|天賦優勢|你的優勢|你的強項|這個家的祝福/.test(title)) type = 'positive'
-    else if (/需要注意|需要留意|注意的地方|家庭和諧的挑戰/.test(title)) type = 'caution'
-    else if (/改善方案|改善建議|行動指南|加持你的運勢|讓家更好/.test(title)) type = 'improvement'
+    if (/好的地方|好的方面|天賦優勢|你的優勢|你的強項|這個家的祝福|相容性/.test(title)) type = 'positive'
+    else if (/需要注意|需要留意|注意的地方|家庭和諧的挑戰|需注意|關係張力/.test(title)) type = 'caution'
+    else if (/改善方案|改善建議|行動指南|加持你的運勢|讓家更好|建議詳解|集體建議/.test(title)) type = 'improvement'
 
     sections.push({ type, title, content })
   }
@@ -246,7 +247,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             {new Date(report.created_at).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })}
           </div>
 
-          {avgScore > 0 && (
+          {avgScore > 0 && !isChumenji && (
             <div className="mt-8 inline-flex items-center gap-4">
               <div className="text-6xl font-extrabold text-gradient-gold">{avgScore}</div>
               <div className="text-left">
@@ -257,26 +258,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           )}
 
           {/* 操作按鈕（Client Component 處理 onClick）*/}
-          <ReportClientButtons pdfUrl={report.pdf_url} />
+          <ReportClientButtons pdfUrl={report.pdf_url} planCode={report.plan_code} />
         </div>
-
-        {/* ──── 快速目錄（超過 5 個章節才顯示）──── */}
-        {sections.length > 5 && (
-          <div className="glass rounded-xl p-5 mb-6">
-            <div className="text-gold/60 text-xs tracking-[2px] mb-3">報告目錄</div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-              {sections.map((sec, i) => (
-                <a
-                  key={i}
-                  href={`#sec-${i}`}
-                  className="text-xs text-text-muted hover:text-gold transition-colors py-1 px-2 rounded hover:bg-gold/5 truncate"
-                >
-                  {i + 1}. {sec.title}
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* ──── 目錄導航 ──── */}
         {sections.length > 3 && (
@@ -297,8 +280,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
-        {/* ──── 各系統評分橫條圖 ──── */}
-        {sortedScores.length > 0 && (
+        {/* ──── 各系統評分橫條圖（出門訣方案不顯示）──── */}
+        {sortedScores.length > 0 && !isChumenji && (
           <div className="glass rounded-xl p-7 mb-8">
             <div className="text-gold/70 text-xs tracking-[2px] mb-5">各系統評分</div>
             <div className="space-y-4">
@@ -484,9 +467,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
-        {/* ──── 底部操作按鈕 ──── */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 my-10 no-print">
-          {report.pdf_url ? (
+        {/* ──── 底部 PDF 按鈕（出門訣不顯示 PDF，分享已在頂部）──── */}
+        {report.pdf_url && !isChumenji && (
+          <div className="flex justify-center my-10">
             <a
               href={report.pdf_url}
               target="_blank"
@@ -501,29 +484,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               </svg>
               下載 PDF 完整報告
             </a>
-          ) : (
-            <div className="inline-flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-semibold opacity-50"
-              style={{ background: 'rgba(197,150,58,0.15)', border: '1px solid rgba(197,150,58,0.2)', color: 'var(--color-gold)' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-              </svg>
-              PDF 報告將寄送至您的信箱
-            </div>
-          )}
-          <ReportCopyButton />
-        </div>
-        <script dangerouslySetInnerHTML={{ __html: `
-          (function(){
-            var btn = document.querySelector('[data-copy-url]');
-            if(btn) btn.addEventListener('click', function(){
-              navigator.clipboard.writeText(window.location.href).then(function(){
-                btn.textContent = '✓ 已複製！';
-                setTimeout(function(){ btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg> 複製報告連結'; }, 2000);
-              });
-            });
-          })();
-        ` }} />
+          </div>
+        )}
 
         {/* ──── 頁尾 ──── */}
         <div className="text-center text-text-muted/30 text-xs leading-7">
