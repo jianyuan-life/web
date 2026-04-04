@@ -166,7 +166,7 @@ function FamilyMemberField({ index, member, canDelete, onChange, onDelete }: Fam
       <div className="grid grid-cols-3 gap-3">
         <div>
           <label className="block text-xs text-text-muted mb-1">出生年</label>
-          <input type="number" min="1920" max="2025"
+          <input type="number" min="1920" max="2030"
             value={member.year}
             onChange={(e) => onChange({ ...member, year: e.target.value })}
             className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none"
@@ -602,7 +602,7 @@ function CheckoutForm() {
                     <div className="grid grid-cols-3 gap-3">
                       <div>
                         <label className="block text-xs text-text-muted mb-1">出生年</label>
-                        <input type="number" min="1920" max="2025"
+                        <input type="number" min="1920" max="2030"
                           value={member.year}
                           onChange={(e) => updateRMember(index, { ...member, year: e.target.value })}
                           className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none"
@@ -819,7 +819,7 @@ function CheckoutForm() {
               <div>
                 <label className="block text-xs text-text-muted mb-1">出生年</label>
                 <input
-                  type="number" min="1920" max="2025"
+                  type="number" min="1920" max="2030"
                   value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })}
                   className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none"
                 />

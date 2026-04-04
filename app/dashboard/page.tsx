@@ -83,7 +83,7 @@ function DashboardContent() {
           )
           setReports(newReports)
           // 如果最新報告是 completed，停止輪詢
-          if (newReports.length > 0 && newReports[0].status === 'completed') {
+          if (!newReports.some((r: Report) => r.status === 'pending')) {
             clearInterval(interval)
           }
         })
