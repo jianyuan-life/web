@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import {
+  getAgeGroup,
+  buildCall1Prompt, buildCall2Prompt, buildCall3Prompt, buildCall4Prompt,
+  buildUserPrompt, SYSTEM_GROUPS,
+} from '@/prompts/c_plan_v2'
 
 // ============================================================
-// 付費報告生成 API — 排盤 + DeepSeek AI 深度分析 + 自動寄信
-// 流程：Python API 排盤 → DeepSeek 深度分析 → 存 Supabase → 寄 Email
+// 付費報告生成 API — 排盤 + AI 深度分析 + 自動寄信
+// C 方案：Claude Opus 4.6 多步並行生成
+// 其他方案：DeepSeek
 // ============================================================
 
 // Vercel Pro 方案最長 300 秒
@@ -13,6 +19,72 @@ export const maxDuration = 300
 const PYTHON_API = process.env.NEXT_PUBLIC_API_URL || 'https://fortune-reports-api.fly.dev'
 const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions'
 const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || ''
+const CLAUDE_API = 'https://api.anthropic.com/v1/messages'
+const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY || ''
+
+// ── Claude API 串流呼叫函式 ──
+async function callClaudeStreaming(
+  systemPrompt: string,
+  userPrompt: string,
+  maxTokens: number,
+): Promise<string> {
+  const res = await fetch(CLAUDE_API, {
+    method: 'POST',
+    headers: {
+      'x-api-key': CLAUDE_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'claude-opus-4-6',
+      max_tokens: maxTokens,
+      stream: true,
+      messages: [
+        { role: 'user', content: userPrompt },
+      ],
+      system: systemPrompt,
+      temperature: 0.7,
+    }),
+  })
+
+  if (!res.ok) {
+    const errText = await res.text()
+    throw new Error(`Claude API 錯誤 ${res.status}: ${errText}`)
+  }
+
+  // 解析 SSE 串流
+  const reader = res.body?.getReader()
+  if (!reader) throw new Error('Claude API 無回應串流')
+
+  const decoder = new TextDecoder()
+  let result = ''
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() || ''
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue
+      const data = line.slice(6).trim()
+      if (data === '[DONE]') continue
+      try {
+        const event = JSON.parse(data)
+        if (event.type === 'content_block_delta' && event.delta?.text) {
+          result += event.delta.text
+        }
+      } catch {
+        // 忽略無法解析的行
+      }
+    }
+  }
+
+  return result
+}
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -511,92 +583,170 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '排盤計算失敗' }, { status: 500 })
     }
 
-    // Step 2: 構建 DeepSeek prompt
-    const systemPrompt = PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C']
+    // Step 2: 構建 prompt 並呼叫 AI
     const cd = calcResult.client_data
     const analyses = calcResult.analyses || []
 
-    // 構建完整排盤數據（數據零容忍：傳送所有系統的完整分析結果）
-    let userPrompt = `${birthData.name}，${birthData.gender==='M'?'男':'女'}，${birthData.year}年${birthData.month}月${birthData.day}日${birthData.hour}時
+    let reportContent = ''
+
+    if (planCode === 'C') {
+      // ============================================================
+      // C 方案：Claude Opus 4.6 多步並行生成
+      // ============================================================
+      console.log('C 方案：使用 Claude Opus 4.6 多步並行生成...')
+      const ageGroup = getAgeGroup(birthData.year)
+      console.log(`年齡分層：${ageGroup}（出生年：${birthData.year}）`)
+
+      // 構建每個 call 的 user prompt（完整數據，不截斷）
+      const userPrompt1 = buildUserPrompt(cd, analyses, SYSTEM_GROUPS.call1, birthData)
+      const userPrompt2 = buildUserPrompt(cd, analyses, SYSTEM_GROUPS.call2, birthData)
+      const userPrompt3 = buildUserPrompt(cd, analyses, SYSTEM_GROUPS.call3, birthData)
+      // Call 4 需要所有系統的摘要
+      const allSystems = [...SYSTEM_GROUPS.call1, ...SYSTEM_GROUPS.call2, ...SYSTEM_GROUPS.call3]
+      const userPrompt4 = buildUserPrompt(cd, analyses, allSystems, birthData)
+
+      const clientNeed = question || topic || undefined
+
+      try {
+        // 4 個 call 並行執行
+        const [result1, result2, result3, result4] = await Promise.all([
+          callClaudeStreaming(buildCall1Prompt(ageGroup, clientNeed), userPrompt1, 12288),
+          callClaudeStreaming(buildCall2Prompt(ageGroup), userPrompt2, 8192),
+          callClaudeStreaming(buildCall3Prompt(ageGroup), userPrompt3, 6144),
+          callClaudeStreaming(buildCall4Prompt(ageGroup, birthData.name), userPrompt4, 8192),
+        ])
+
+        console.log(`Claude Call 1: ${result1.length} 字`)
+        console.log(`Claude Call 2: ${result2.length} 字`)
+        console.log(`Claude Call 3: ${result3.length} 字`)
+        console.log(`Claude Call 4: ${result4.length} 字`)
+
+        // 按順序拼接完整報告
+        reportContent = [result1, result2, result3, result4].join('\n\n')
+        console.log(`C 方案報告總長：${reportContent.length} 字`)
+      } catch (e) {
+        console.error('Claude 多步生成失敗:', e)
+        await markReportFailed(reportId, `AI 生成失敗：Claude API 錯誤 — ${e instanceof Error ? e.message : '未知錯誤'}`)
+        return NextResponse.json({ error: 'AI 生成失敗' }, { status: 500 })
+      }
+    } else {
+      // ============================================================
+      // 其他方案：DeepSeek（保持原有邏輯）
+      // ============================================================
+      const systemPrompt = PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C']
+
+      // 構建完整排盤數據（不截斷）
+      let userPrompt = `${birthData.name}，${birthData.gender==='M'?'男':'女'}，${birthData.year}年${birthData.month}月${birthData.day}日${birthData.hour}時
 八字：${cd.bazi || ''} | 用神：${cd.yongshen || ''} | 五行：${JSON.stringify(cd.five_elements || {})}
 農曆：${cd.lunar_date || ''} | 納音：${cd.nayin || ''} | 命宮：${cd.ming_gong || ''}
 ${analyses.length}套系統排盤完整數據：
 `
-    for (const a of analyses.slice(0, 15)) {
-      userPrompt += `\n【${a.system}】評分：${a.score}分`
-      if (a.summary) userPrompt += `\n摘要：${a.summary}`
-      if (a.good_points?.length) {
-        userPrompt += `\n好的地方：`
-        for (const g of a.good_points) userPrompt += `\n- ${g}`
+      for (const a of analyses.slice(0, 15)) {
+        userPrompt += `\n【${a.system}】評分：${a.score}分`
+        if (a.summary) userPrompt += `\n摘要：${a.summary}`
+        if (a.good_points?.length) {
+          userPrompt += `\n好的地方：`
+          for (const g of a.good_points) userPrompt += `\n- ${g}`
+        }
+        if (a.bad_points?.length) {
+          userPrompt += `\n需要注意：`
+          for (const b of a.bad_points) userPrompt += `\n- ${b}`
+        }
+        if (a.warnings?.length) {
+          userPrompt += `\n注意事項：`
+          for (const w of a.warnings) userPrompt += `\n- ${w}`
+        }
+        if (a.improvements?.length) {
+          userPrompt += `\n改善建議：`
+          for (const imp of a.improvements) userPrompt += `\n- ${imp}`
+        }
+        // 完整傳送 tables
+        if (a.tables?.length) {
+          for (const t of a.tables) {
+            userPrompt += `\n表格「${t.title}」：\n`
+            if (t.headers) userPrompt += `| ${t.headers.join(' | ')} |\n`
+            if (t.rows) {
+              for (const row of t.rows) userPrompt += `| ${row.join(' | ')} |\n`
+            }
+          }
+        }
+        // 完整傳送 details（不截斷）
+        if (a.details) {
+          const detail = typeof a.details === 'string' ? a.details : JSON.stringify(a.details)
+          userPrompt += `\n詳細排盤：\n${detail}\n`
+        }
+        // info_boxes
+        if (a.info_boxes?.length) {
+          for (const box of a.info_boxes) {
+            userPrompt += `\n${box.title || '補充'}：\n`
+            if (box.items) {
+              for (const item of box.items) userPrompt += `- ${item}\n`
+            }
+          }
+        }
+        userPrompt += '\n'
       }
-      if (a.bad_points?.length) {
-        userPrompt += `\n需要注意：`
-        for (const b of a.bad_points) userPrompt += `\n- ${b}`
+
+      // 住址風水資料
+      if (birthData.address) {
+        userPrompt += `\n住址：${birthData.address}`
+        if (birthData.address_lat && birthData.address_lng) {
+          userPrompt += `（精確坐標：北緯 ${birthData.address_lat.toFixed(4)}°，東經 ${birthData.address_lng.toFixed(4)}°）`
+        }
+        userPrompt += `\n請在風水分析部分，根據住址坐向和五行環境給出具體建議。\n`
       }
-      if (a.details) userPrompt += `\n詳細：${typeof a.details === 'string' ? a.details.slice(0, 500) : JSON.stringify(a.details).slice(0, 500)}`
-      userPrompt += '\n'
-    }
 
-    // 住址風水資料
-    if (birthData.address) {
-      userPrompt += `\n住址：${birthData.address}`
-      if (birthData.address_lat && birthData.address_lng) {
-        userPrompt += `（精確坐標：北緯 ${birthData.address_lat.toFixed(4)}°，東經 ${birthData.address_lng.toFixed(4)}°）`
+      // 專項/關係方案附加問題
+      if (topic) userPrompt += `\n分析方向：${topic}\n`
+      if (question) userPrompt += `客戶問題描述：${question}\n`
+
+      // 多人方案
+      if (additionalPeople?.length) {
+        userPrompt += `\n其他人資料：\n`
+        for (const p of additionalPeople) {
+          userPrompt += `- ${p.name}，${p.gender === 'M' ? '男' : '女'}，${p.year}年${p.month}月${p.day}日${p.hour === 'unknown' || p.time_unknown ? '（時辰不確定）' : ` ${p.hour}時`}\n`
+        }
       }
-      userPrompt += `\n請在風水分析部分，根據住址坐向和五行環境給出具體建議。\n`
-    }
 
-    // 專項/關係方案附加問題
-    if (topic) userPrompt += `\n分析方向：${topic}\n`
-    if (question) userPrompt += `客戶問題描述：${question}\n`
-
-    // 多人方案
-    if (additionalPeople?.length) {
-      userPrompt += `\n其他人資料：\n`
-      for (const p of additionalPeople) {
-        userPrompt += `- ${p.name}，${p.gender === 'M' ? '男' : '女'}，${p.year}年${p.month}月${p.day}日${p.hour === 'unknown' || p.time_unknown ? '（時辰不確定）' : ` ${p.hour}時`}\n`
-      }
-    }
-
-    userPrompt += `\n請根據以上所有排盤數據，撰寫完整的分析報告。
+      userPrompt += `\n請根據以上所有排盤數據，撰寫完整的分析報告。
 重要提醒：
 1. 現在是2026年丙午年。
 2. 你的每一個分析論點都必須引用上方排盤數據中的具體結果，不得編造。
 3. 排盤數據中「好的地方」和「需要注意」的每一條都必須在報告中被展開分析，不可遺漏。
 4. 如果某個系統數據不完整，跳過該系統，不要瞎編。`
 
-    // Step 3: 呼叫 DeepSeek（含超時控制）
-    console.log('呼叫 DeepSeek 生成報告...')
-    let reportContent = ''
-    try {
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 180000) // 180 秒超時
-      const res = await fetch(DEEPSEEK_API, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${DEEPSEEK_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'deepseek-chat',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
-          max_tokens: 8000,
-          temperature: 0.7,
-        }),
-        signal: controller.signal,
-      })
-      clearTimeout(timeout)
-      const data = await res.json()
-      reportContent = data.choices?.[0]?.message?.content || ''
-      console.log(`DeepSeek 回覆: ${reportContent.length} 字`)
-    } catch (e) {
-      console.error('DeepSeek 失敗:', e)
-      await markReportFailed(reportId, 'AI 生成失敗：DeepSeek API 無回應或超時')
-      return NextResponse.json({ error: 'AI 生成失敗' }, { status: 500 })
+      // 呼叫 DeepSeek（含超時控制）
+      console.log('呼叫 DeepSeek 生成報告...')
+      try {
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), 180000) // 180 秒超時
+        const res = await fetch(DEEPSEEK_API, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${DEEPSEEK_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+            max_tokens: 8000,
+            temperature: 0.7,
+          }),
+          signal: controller.signal,
+        })
+        clearTimeout(timeout)
+        const data = await res.json()
+        reportContent = data.choices?.[0]?.message?.content || ''
+        console.log(`DeepSeek 回覆: ${reportContent.length} 字`)
+      } catch (e) {
+        console.error('DeepSeek 失敗:', e)
+        await markReportFailed(reportId, 'AI 生成失敗：DeepSeek API 無回應或超時')
+        return NextResponse.json({ error: 'AI 生成失敗' }, { status: 500 })
+      }
     }
 
     if (!reportContent) {
-      await markReportFailed(reportId, 'AI 未回覆：DeepSeek 回傳空內容')
+      await markReportFailed(reportId, 'AI 未回覆：AI 回傳空內容')
       return NextResponse.json({ error: 'AI 未回覆' }, { status: 500 })
     }
 
@@ -620,7 +770,7 @@ ${analyses.length}套系統排盤完整數據：
       systems_count: analyses.length,
       analyses_summary: analyses.map((a: { system: string; score: number }) => ({ system: a.system, score: a.score })),
       ai_content: reportContent,
-      ai_model: 'deepseek-chat',
+      ai_model: planCode === 'C' ? 'claude-opus-4-6' : 'deepseek-chat',
       ai_tokens: reportContent.length,
     }
     if (top5Timings) {
