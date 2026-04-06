@@ -687,14 +687,7 @@ ${analyses.length}套系統排盤完整數據：
         userPrompt += '\n'
       }
 
-      // 住址風水資料
-      if (birthData.address) {
-        userPrompt += `\n住址：${birthData.address}`
-        if (birthData.address_lat && birthData.address_lng) {
-          userPrompt += `（精確坐標：北緯 ${birthData.address_lat.toFixed(4)}°，東經 ${birthData.address_lng.toFixed(4)}°）`
-        }
-        userPrompt += `\n請在風水分析部分，根據住址坐向和五行環境給出具體建議。\n`
-      }
+      // 住址欄位已移除（只看方位不看風水）
 
       // 專項/關係方案附加問題
       if (topic) userPrompt += `\n分析方向：${topic}\n`
