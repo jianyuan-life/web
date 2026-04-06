@@ -354,25 +354,12 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
-        {/* ──── 內容完整性警告 ──── */}
+        {/* ──── 報告不完整時不顯示任何內容，直接顯示生成中 ──── */}
         {isContentEmpty && (
-          <div className="section-card" style={{ background: 'rgba(196, 74, 63, 0.08)', border: '1px solid rgba(196, 74, 63, 0.2)' }}>
-            <div className="flex items-center gap-3">
-              <div className="text-2xl">⚠</div>
-              <div>
-                <h3 className="text-cream font-semibold mb-1">報告內容異常</h3>
-                <p className="text-text-muted text-sm">系統偵測到報告內容可能不完整，我們已收到通知並將盡快為您重新生成。如有疑問請聯繫 <a href="mailto:support@jianyuan.life" className="text-gold">support@jianyuan.life</a></p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {isContentTruncated && !isContentEmpty && (
-          <div className="section-card" style={{ background: 'rgba(224, 150, 58, 0.06)', border: '1px solid rgba(224, 150, 58, 0.15)' }}>
-            <div className="flex items-center gap-3">
-              <div className="text-xl">📋</div>
-              <p className="text-text-muted text-sm">報告可能尚未完全生成完畢。如內容不完整，請稍後重新整理頁面，或聯繫 <a href="mailto:support@jianyuan.life" className="text-gold">support@jianyuan.life</a></p>
-            </div>
+          <div className="section-card text-center py-12">
+            <div className="text-4xl mb-4">⏳</div>
+            <h3 className="text-cream font-semibold text-lg mb-2">報告生成中</h3>
+            <p className="text-text-muted text-sm">系統正在為您生成完整報告，請稍後重新整理頁面。</p>
           </div>
         )}
 
