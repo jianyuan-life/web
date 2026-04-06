@@ -1109,7 +1109,7 @@ function CheckoutForm() {
             )}
 
             {/* ── 備注欄（C方案不需要，D/R/G15/E需要）── */}
-            {selectedPlan !== 'C' && (
+            {planCode !== 'C' && (
             <div className="border-t border-gold/10 pt-4 space-y-2">
               <label className="block text-xs text-text-muted">備注 / 想問的問題（選填）</label>
               <textarea
