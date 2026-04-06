@@ -608,11 +608,11 @@ export async function POST(req: NextRequest) {
       const clientNeed = question || topic || undefined
 
       try {
-        // 4 個 call 並行執行
+        // 4 個 call 並行，每個系統限制字數確保不超 token 上限
         const [result1, result2, result3, result4] = await Promise.all([
-          callClaudeStreaming(buildCall1Prompt(ageGroup, clientNeed), userPrompt1, 12288),
-          callClaudeStreaming(buildCall2Prompt(ageGroup), userPrompt2, 8192),
-          callClaudeStreaming(buildCall3Prompt(ageGroup), userPrompt3, 6144),
+          callClaudeStreaming(buildCall1Prompt(ageGroup, clientNeed), userPrompt1, 16384),
+          callClaudeStreaming(buildCall2Prompt(ageGroup), userPrompt2, 12288),
+          callClaudeStreaming(buildCall3Prompt(ageGroup), userPrompt3, 8192),
           callClaudeStreaming(buildCall4Prompt(ageGroup, birthData.name), userPrompt4, 8192),
         ])
 
