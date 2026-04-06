@@ -969,37 +969,7 @@ function CheckoutForm() {
               )}
             </div>
 
-            <div className="relative">
-              <label className="block text-xs text-text-muted mb-1">住址（風水分析用，可選）</label>
-              <input
-                type="text" placeholder="輸入地址搜尋（如：台北市信義區松仁路...）"
-                value={form.address}
-                onChange={(e) => {
-                  const val = e.target.value
-                  setForm({ ...form, address: val, addressLat: 0, addressLng: 0 })
-                  searchAddress(val)
-                }}
-                className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-white text-sm focus:border-gold focus:outline-none"
-              />
-              {addressResults.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-dark border border-gold/20 rounded-lg overflow-hidden shadow-xl max-h-48 overflow-y-auto">
-                  {addressResults.map((r, i) => (
-                    <button key={i} type="button"
-                      className="w-full text-left px-4 py-2.5 text-xs text-white hover:bg-gold/10 border-b border-gold/5 last:border-0 leading-relaxed"
-                      onClick={() => {
-                        setForm({ ...form, address: r.label, addressLat: r.lat, addressLng: r.lng })
-                        setAddressResults([])
-                      }}
-                    >{r.label}</button>
-                  ))}
-                </div>
-              )}
-              {form.addressLat !== 0 && (
-                <p className="text-[10px] text-text-muted/50 mt-1">
-                  📍 緯度 {form.addressLat.toFixed(4)}° 經度 {form.addressLng.toFixed(4)}° | 精確坐向計算已啟用
-                </p>
-              )}
-            </div>
+            {/* 住址欄位已移除——我們只看方位不看風水 */}
 
             {/* ── 方案 D：分析主題 ── */}
             {planCode === 'D' && (
@@ -1138,7 +1108,8 @@ function CheckoutForm() {
               </div>
             )}
 
-            {/* ── 備注欄（所有方案共用）── */}
+            {/* ── 備注欄（C方案不需要，D/R/G15/E需要）── */}
+            {selectedPlan !== 'C' && (
             <div className="border-t border-gold/10 pt-4 space-y-2">
               <label className="block text-xs text-text-muted">備注 / 想問的問題（選填）</label>
               <textarea
@@ -1151,6 +1122,7 @@ function CheckoutForm() {
               />
               <p className="text-[10px] text-text-muted/50 text-right">{customerNote.length}/300</p>
             </div>
+            )}
 
             {error && <p className="text-red-400 text-sm text-center">{error}</p>}
 
