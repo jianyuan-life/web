@@ -24,6 +24,8 @@ type Report = {
     analyses_summary?: { system: string; score: number }[]
   } | null
   created_at: string
+  error_message?: string | null
+  retry_count?: number
 }
 
 // 各方案使用的命理系統數量
@@ -40,6 +42,8 @@ function DashboardContent() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
+  const [retryingId, setRetryingId] = useState<string | null>(null)
+  const [pollStartTime] = useState(() => Date.now())
 
   const handleDelete = async (id: string) => {
     setDeletingId(id)
@@ -61,6 +65,36 @@ function DashboardContent() {
     }
   }
 
+  // 重試失敗的報告
+  const handleRetry = async (id: string) => {
+    setRetryingId(id)
+    try {
+      const res = await fetch('/api/reports', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+      if (res.ok) {
+        // 樂觀更新：把狀態改為 pending
+        setReports(prev => prev.map(r => r.id === id ? { ...r, status: 'pending', error_message: null } : r))
+      } else {
+        const data = await res.json()
+        alert(data.error || '重試失敗')
+      }
+    } catch {
+      alert('重試請求失敗，請稍後再試')
+    } finally {
+      setRetryingId(null)
+    }
+  }
+
+  // 判斷 pending 是否超過 30 分鐘
+  const isPendingTooLong = (r: Report) => {
+    if (r.status !== 'pending') return false
+    const elapsed = Date.now() - new Date(r.created_at).getTime()
+    return elapsed > 30 * 60 * 1000
+  }
+
   useEffect(() => {
     fetch('/api/reports')
       .then(r => r.json())
@@ -71,10 +105,15 @@ function DashboardContent() {
       .catch(() => setLoading(false))
   }, [])
 
-  // 付款成功後輪詢等待報告生成
+  // 付款成功後輪詢等待報告生成（5秒間隔，60分鐘上限）
   useEffect(() => {
     if (!paymentSuccess) return
     const interval = setInterval(() => {
+      // 超過 60 分鐘停止輪詢
+      if (Date.now() - pollStartTime > 60 * 60 * 1000) {
+        clearInterval(interval)
+        return
+      }
       fetch('/api/reports')
         .then(r => r.json())
         .then(data => {
@@ -82,22 +121,27 @@ function DashboardContent() {
             (r: Report) => !deletedIds.has(r.id)
           )
           setReports(newReports)
-          // 如果最新報告是 completed，停止輪詢
+          // 沒有 pending 報告就停止輪詢（completed 或 failed 都停）
           if (!newReports.some((r: Report) => r.status === 'pending')) {
             clearInterval(interval)
           }
         })
     }, 5000)
     return () => clearInterval(interval)
-  }, [paymentSuccess, deletedIds])
+  }, [paymentSuccess, deletedIds, pollStartTime])
 
-  // 無論是否剛付款，只要有 pending 報告就持續輪詢（每15秒）
+  // 無論是否剛付款，只要有 pending 報告就持續輪詢（15秒間隔，60分鐘上限）
   useEffect(() => {
     if (loading) return
     const hasPending = reports.some(r => r.status === 'pending')
     if (!hasPending) return
 
     const interval = setInterval(() => {
+      // 超過 60 分鐘停止輪詢
+      if (Date.now() - pollStartTime > 60 * 60 * 1000) {
+        clearInterval(interval)
+        return
+      }
       fetch('/api/reports')
         .then(r => r.json())
         .then(data => {
@@ -113,7 +157,7 @@ function DashboardContent() {
     }, 15000)
 
     return () => clearInterval(interval)
-  }, [reports, deletedIds, loading])
+  }, [reports, deletedIds, loading, pollStartTime])
 
   const avgScore = (report: Report) => {
     const summary = report.report_result?.analyses_summary
@@ -236,16 +280,45 @@ function DashboardContent() {
                       </>
                     ) : r.status === 'pending' ? (
                       <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-gold/50 border-t-gold rounded-full animate-spin" />
+                        {isPendingTooLong(r) ? (
+                          <div className="text-right">
+                            <span className="text-xs text-amber-400 block">處理時間較長</span>
+                            <span className="text-[10px] text-text-muted/50">
+                              報告仍在生成中，請耐心等候
+                            </span>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="w-4 h-4 border-2 border-gold/50 border-t-gold rounded-full animate-spin" />
+                            <div className="text-right">
+                              <span className="text-xs text-gold/70 block">分析中</span>
+                              <span className="text-[10px] text-text-muted/50">
+                                {['E1', 'E2'].includes(r.plan_code) ? '約 40 分鐘以上' : '約 30 分鐘以上'}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ) : r.status === 'failed' ? (
+                      <div className="flex items-center gap-2">
                         <div className="text-right">
-                          <span className="text-xs text-gold/70 block">分析中</span>
-                          <span className="text-[10px] text-text-muted/50">
-                            {['E1', 'E2'].includes(r.plan_code) ? '約 40 分鐘以上' : '約 30 分鐘以上'}
+                          <span className="text-xs text-red-400 block">生成失敗</span>
+                          <span className="text-[10px] text-text-muted/50 max-w-[200px] truncate block">
+                            {r.error_message || '未知錯誤'}
                           </span>
                         </div>
+                        {(r.retry_count ?? 0) < 3 && (
+                          <button
+                            onClick={() => handleRetry(r.id)}
+                            disabled={retryingId === r.id}
+                            className="px-3 py-1.5 bg-amber-500/15 border border-amber-500/30 rounded-lg text-xs text-amber-400 hover:bg-amber-500/25 transition-colors font-medium disabled:opacity-50"
+                          >
+                            {retryingId === r.id ? '重試中...' : '重試'}
+                          </button>
+                        )}
                       </div>
                     ) : (
-                      <span className="text-xs text-red-400">生成失敗</span>
+                      <span className="text-xs text-red-400">狀態異常</span>
                     )}
                     {/* 刪除按鈕 */}
                     <button

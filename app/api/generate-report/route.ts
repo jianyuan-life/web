@@ -7,6 +7,9 @@ import { Resend } from 'resend'
 // 流程：Python API 排盤 → DeepSeek 深度分析 → 存 Supabase → 寄 Email
 // ============================================================
 
+// Vercel Pro 方案最長 300 秒
+export const maxDuration = 300
+
 const PYTHON_API = process.env.NEXT_PUBLIC_API_URL || 'https://fortune-reports-api.fly.dev'
 const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions'
 const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || ''
@@ -426,15 +429,67 @@ ${PSYCHOLOGY_RULES}
 ===TOP5_JSON_END===`,
 }
 
-export async function POST(req: NextRequest) {
+// 輔助函式：將報告標記為失敗
+async function markReportFailed(reportId: string, errorMessage: string) {
   try {
-    const { reportId, accessToken, customerEmail, planCode, birthData, additionalPeople, topic, question } = await req.json()
+    // 取得當前重試次數
+    const { data } = await supabase
+      .from('paid_reports')
+      .select('retry_count')
+      .eq('id', reportId)
+      .single()
+    const currentRetry = data?.retry_count ?? 0
+
+    await supabase.from('paid_reports').update({
+      status: 'failed',
+      error_message: errorMessage,
+      retry_count: currentRetry,
+    }).eq('id', reportId)
+
+    console.error(`報告 ${reportId} 標記為失敗: ${errorMessage}`)
+  } catch (e) {
+    console.error('標記失敗狀態時出錯:', e)
+  }
+}
+
+export async function POST(req: NextRequest) {
+  let reportId = ''
+  try {
+    const { reportId: rid, accessToken, customerEmail, planCode, birthData, additionalPeople, topic, question } = await req.json()
+    reportId = rid
+
+    // Step 0: 檢查重試次數（最多 3 次）
+    const { data: existingReport } = await supabase
+      .from('paid_reports')
+      .select('retry_count, status')
+      .eq('id', reportId)
+      .single()
+
+    const retryCount = existingReport?.retry_count ?? 0
+    if (retryCount >= 3) {
+      await supabase.from('paid_reports').update({
+        status: 'failed',
+        error_message: '已達最大重試次數（3次），請聯繫客服 support@jianyuan.life',
+      }).eq('id', reportId)
+      return NextResponse.json({ error: '已達最大重試次數' }, { status: 429 })
+    }
+
+    // 更新狀態為 pending（重試時需要）+ 累加重試次數
+    if (existingReport?.status === 'failed') {
+      await supabase.from('paid_reports').update({
+        status: 'pending',
+        error_message: null,
+        retry_count: retryCount + 1,
+      }).eq('id', reportId)
+    }
 
     // Step 1: 呼叫 Python API 排盤
-    console.log(`開始生成報告: ${reportId}, 方案${planCode}`)
+    console.log(`開始生成報告: ${reportId}, 方案${planCode}, 第 ${retryCount + 1} 次嘗試`)
 
     let calcResult = null
     try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 60000) // 60 秒超時
       const res = await fetch(`${PYTHON_API}/api/calculate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -444,11 +499,15 @@ export async function POST(req: NextRequest) {
           hour: birthData.hour, minute: birthData.minute || 0,
           gender: birthData.gender,
         }),
+        signal: controller.signal,
       })
+      clearTimeout(timeout)
       if (res.ok) calcResult = await res.json()
+      else console.error('排盤 API 回傳錯誤:', res.status, await res.text())
     } catch (e) { console.error('排盤失敗:', e) }
 
     if (!calcResult) {
+      await markReportFailed(reportId, '排盤計算失敗：Python API 無回應或超時')
       return NextResponse.json({ error: '排盤計算失敗' }, { status: 500 })
     }
 
@@ -506,10 +565,12 @@ ${analyses.length}套系統排盤完整數據：
 3. 排盤數據中「好的地方」和「需要注意」的每一條都必須在報告中被展開分析，不可遺漏。
 4. 如果某個系統數據不完整，跳過該系統，不要瞎編。`
 
-    // Step 3: 呼叫 DeepSeek
+    // Step 3: 呼叫 DeepSeek（含超時控制）
     console.log('呼叫 DeepSeek 生成報告...')
     let reportContent = ''
     try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 180000) // 180 秒超時
       const res = await fetch(DEEPSEEK_API, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${DEEPSEEK_KEY}`, 'Content-Type': 'application/json' },
@@ -522,16 +583,20 @@ ${analyses.length}套系統排盤完整數據：
           max_tokens: 8000,
           temperature: 0.7,
         }),
+        signal: controller.signal,
       })
+      clearTimeout(timeout)
       const data = await res.json()
       reportContent = data.choices?.[0]?.message?.content || ''
       console.log(`DeepSeek 回覆: ${reportContent.length} 字`)
     } catch (e) {
       console.error('DeepSeek 失敗:', e)
+      await markReportFailed(reportId, 'AI 生成失敗：DeepSeek API 無回應或超時')
       return NextResponse.json({ error: 'AI 生成失敗' }, { status: 500 })
     }
 
     if (!reportContent) {
+      await markReportFailed(reportId, 'AI 未回覆：DeepSeek 回傳空內容')
       return NextResponse.json({ error: 'AI 未回覆' }, { status: 500 })
     }
 
@@ -714,6 +779,10 @@ ${analyses.length}套系統排盤完整數據：
     })
   } catch (err) {
     console.error('報告生成錯誤:', err)
-    return NextResponse.json({ error: err instanceof Error ? err.message : '生成失敗' }, { status: 500 })
+    const errorMsg = err instanceof Error ? err.message : '未知錯誤'
+    if (reportId) {
+      await markReportFailed(reportId, `報告生成未預期錯誤: ${errorMsg}`)
+    }
+    return NextResponse.json({ error: errorMsg }, { status: 500 })
   }
 }
