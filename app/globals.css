@@ -1,21 +1,36 @@
 @import "tailwindcss";
 
 @theme {
-  /* 命理風格配色：暖金+深棕+象牙白，成熟穩重 */
-  --color-primary: #2c1810;       /* 深棕（主色） */
-  --color-primary-light: #4a2c20; /* 淺棕 */
-  --color-gold: #c5963a;          /* 暖金（強調色） */
-  --color-gold-light: #d4a84b;    /* 亮金 */
-  --color-dark: #1a110a;          /* 最深背景 */
-  --color-dark-light: #2c1810;    /* 深棕背景 */
-  --color-cream: #faf6f0;         /* 象牙白 */
-  --color-cream-dark: #f0e8dc;    /* 暖白 */
-  --color-surface: rgba(255, 248, 240, 0.06);
-  --color-surface-hover: rgba(255, 248, 240, 0.10);
-  --color-border: rgba(197, 150, 58, 0.15);
-  --color-text: #e8ddd0;          /* 暖灰文字 */
-  --color-text-muted: #a89580;    /* 柔和灰 */
-  --color-red-accent: #c44a3f;    /* 朱紅點綴 */
+  /* === 星象科技配色：深空黑+品牌金+科技藍+靈性紫，現代宇宙感 === */
+
+  /* 主色 */
+  --color-primary: #0f1628;        /* 星夜藍 */
+  --color-primary-light: #1a2340;  /* 淺星夜 */
+  --color-gold: #c9a84c;           /* 品牌金 */
+  --color-gold-light: #e0c068;     /* 晨曦金 */
+
+  /* 背景 */
+  --color-dark: #0a0e1a;           /* 深空黑 */
+  --color-dark-light: #0f1628;     /* 星夜藍 */
+
+  /* 表面 */
+  --color-surface: rgba(15, 22, 40, 0.6);
+  --color-surface-hover: rgba(15, 22, 40, 0.8);
+  --color-border: rgba(201, 168, 76, 0.12);
+
+  /* 文字 */
+  --color-cream: #e8eaf0;          /* 月光白 */
+  --color-cream-dark: #c8ccd8;     /* 冷灰白 */
+  --color-text: #d0d4e0;           /* 冷灰文字 */
+  --color-text-muted: #6880a0;     /* 星塵灰 */
+
+  /* 功能色 */
+  --color-red-accent: #ef4444;     /* 現代紅 */
+  --color-blue-accent: #4a7aff;    /* 科技藍 */
+  --color-purple-accent: #8b5cf6;  /* 靈性紫 */
+  --color-teal-accent: #2dd4bf;    /* 能量青 */
+
+  /* 字體 */
   --font-sans: "Noto Serif TC", "Georgia", "Times New Roman", serif;
   --font-body: "Noto Sans TC", "Inter", system-ui, sans-serif;
 }
@@ -25,12 +40,23 @@
   100% { transform: translateX(200%) skewX(-20deg); }
 }
 
+/* 極光漸層背景動畫 */
+@keyframes aurora-shift {
+  0%, 100% { opacity: 0.6; transform: translate(0, 0) scale(1); }
+  33% { opacity: 0.8; transform: translate(2%, -1%) scale(1.02); }
+  66% { opacity: 0.5; transform: translate(-1%, 2%) scale(0.98); }
+}
+
 html {
   scroll-behavior: smooth;
 }
 
 body {
-  background: linear-gradient(180deg, #1a110a 0%, #2c1810 40%, #1a110a 100%);
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(75, 0, 130, 0.07) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(0, 50, 120, 0.05) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(0, 80, 80, 0.04) 0%, transparent 50%),
+    linear-gradient(180deg, #0a0e1a 0%, #0f1628 40%, #0a0e1a 100%);
   background-attachment: fixed;
   color: var(--color-text);
   min-height: 100vh;
@@ -42,33 +68,43 @@ h1, h2, h3 {
   font-family: var(--font-sans);
 }
 
-/* 古典風格卡片 */
+/* 毛玻璃卡片——深色科技感 */
 .glass {
-  background: rgba(44, 24, 16, 0.6);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(197, 150, 58, 0.12);
+  background: rgba(15, 22, 40, 0.5);
+  backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(201, 168, 76, 0.08);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+    0 4px 24px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass:hover {
-  background: rgba(44, 24, 16, 0.75);
-  border-color: rgba(197, 150, 58, 0.25);
+  background: rgba(15, 22, 40, 0.65);
+  border-color: rgba(201, 168, 76, 0.15);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+    0 8px 32px rgba(0, 0, 0, 0.4);
+  transform: translateY(-2px);
 }
 
 /* 金色漸層文字 */
 .text-gradient-gold {
-  background: linear-gradient(135deg, #c5963a, #d4a84b, #e8c068);
+  background: linear-gradient(135deg, #c9a84c, #e0c068, #f0d888);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* 按鈕光暈 */
+/* 按鈕光暈——帶有科技感的擴散效果 */
 .btn-glow {
-  box-shadow: 0 4px 20px rgba(197, 150, 58, 0.25);
+  box-shadow: 0 4px 20px rgba(201, 168, 76, 0.25);
   transition: all 0.3s ease;
 }
 .btn-glow:hover {
-  box-shadow: 0 6px 30px rgba(197, 150, 58, 0.4);
+  box-shadow:
+    0 6px 30px rgba(201, 168, 76, 0.4),
+    0 0 60px rgba(74, 122, 255, 0.1);
   transform: translateY(-1px);
 }
 
@@ -77,14 +113,14 @@ h1, h2, h3 {
   display: flex;
   align-items: center;
   gap: 16px;
-  color: rgba(197, 150, 58, 0.3);
+  color: rgba(201, 168, 76, 0.3);
 }
 .divider-ornament::before,
 .divider-ornament::after {
   content: '';
   flex: 1;
   height: 1px;
-  background: linear-gradient(to right, transparent, rgba(197, 150, 58, 0.2), transparent);
+  background: linear-gradient(to right, transparent, rgba(201, 168, 76, 0.2), transparent);
 }
 
 /* 紅色印章效果 */
@@ -96,4 +132,39 @@ h1, h2, h3 {
   font-weight: bold;
   transform: rotate(-3deg);
   display: inline-block;
+}
+
+/* 極光漸層裝飾背景——用於特殊區塊 */
+.aurora-bg {
+  position: relative;
+  overflow: hidden;
+}
+.aurora-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 30% 0%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 100%, rgba(45, 212, 191, 0.06) 0%, transparent 50%);
+  animation: aurora-shift 12s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 科技藍漸層文字 */
+.text-gradient-blue {
+  background: linear-gradient(135deg, #4a7aff, #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* 科技感邊框發光 */
+.border-glow {
+  border: 1px solid rgba(74, 122, 255, 0.2);
+  box-shadow: 0 0 20px rgba(74, 122, 255, 0.05);
+}
+.border-glow:hover {
+  border-color: rgba(74, 122, 255, 0.4);
+  box-shadow: 0 0 30px rgba(74, 122, 255, 0.1);
 }

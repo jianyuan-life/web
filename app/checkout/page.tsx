@@ -10,7 +10,7 @@ import { searchCities, type City } from '@/lib/cities'
 const PLANS: Record<string, { name: string; price: number; systems: number }> = {
   C: { name: '人生藍圖', price: 89, systems: 15 },
   D: { name: '心之所惑', price: 39, systems: 15 },
-  G15: { name: '家族藍圖', price: 269, systems: 15 },
+  G15: { name: '家族藍圖', price: 159, systems: 15 },
   R: { name: '合否？', price: 59, systems: 15 },
   E1: { name: '事件出門訣', price: 119, systems: 1 },
   E2: { name: '月盤出門訣', price: 89, systems: 1 },
@@ -267,7 +267,7 @@ function CheckoutForm() {
 
   // ── 方案 G15/G3 專屬 ──
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([
-    newMember(), newMember(), newMember(), newMember(),
+    newMember(), newMember(),
   ])
 
   // ── 方案 E1 專屬 ──
@@ -282,7 +282,7 @@ function CheckoutForm() {
   ])
 
   // ── 計算實際金額 ──
-  const extraMemberCount = Math.max(0, familyMembers.length - 4)
+  const extraMemberCount = Math.max(0, familyMembers.length - 2)
   const extraPrice = FAMILY_EXTRA_PRICE[planCode] ?? 0
   const rExtraCount = Math.max(0, rMembers.length - 2)
   const totalPrice = ['G15', 'G3'].includes(planCode)
@@ -377,7 +377,7 @@ function CheckoutForm() {
     }
   }
   const removeFamilyMember = (index: number) => {
-    if (index >= 4) {
+    if (index >= 2) {
       setFamilyMembers(prev => prev.filter((_, i) => i !== index))
     }
   }
@@ -584,7 +584,7 @@ function CheckoutForm() {
             <div className="text-lg font-bold text-white">{plan.name}</div>
             <div className="text-xs text-text-muted">
               {isFamilyPlan
-                ? `基本 4 人，第 5 人起 +$${extraPrice}/人`
+                ? `基礎 2 人 $159，每加一人 +$${extraPrice}`
                 : isRelationPlan
                 ? '含兩人分析，每加1人 +$19/人'
                 : `${plan.systems} 套系統分析`}

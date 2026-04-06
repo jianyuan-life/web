@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v1.5（2026-04-04 全面升級）
+**網站版本：** v1.6（2026-04-04 全面優化）
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
@@ -168,6 +168,30 @@ Resend 寄 Email（含報告連結）← 需域名驗證完成
 | E1 | 事件出門訣 | $119 |
 | E2 | 月盤出門訣 | $89 |
 
+### ✅ v1.6 全面優化（2026-04-04 完成）
+
+**Admin 後台修復**
+- 產品銷售排行 + 最近訂單方案名稱正規化（「C 全方位十五合一」→「人生藍圖」）
+- api/admin/coupons/route.ts：新建優惠碼 CRUD API（GET/POST/PATCH）
+- Supabase coupons 表：已建立（含 RLS 保護）
+- 優惠碼列表：適用方案顯示名稱而非代碼
+
+**報告頁 UX 升級**
+- 移除列印按鈕
+- 分享改用 Web Share API（iOS/Android 原生分享），clipboard fallback
+- E1/E2 隱藏綜合評分 + 各系統評分條
+- TOC：修復重複顯示、修復第一項截字問題
+- ### 子章節（好的地方/需注意/改善方案）渲染為彩色框，與 PDF 一致
+
+**PDF 品質修復（scripts/pdf_routes.py）**
+- 移除 ChapterDividerPage 全頁分隔（修復空白頁問題）
+- 新增 _render_section_with_subsections()：### 子章節自動渲染彩色框
+
+**命理研究部門（scripts/generate_report_pipeline.py）**
+- C 方案 15 系統格式升級：格局深度解析 + 好的地方/需注意的地方/改善方案
+- E2 prompt 改版：只專注命盤 × 奇門遁甲方位，移除其他系統
+- C 方案加入「年度運勢提醒」章節（第17章）
+
 ### ✅ v1.5 心理框架×報告頁升級（2026-04-04 完成）
 
 **報告頁 UX 升級（app/report/[token]/page.tsx）**
@@ -210,16 +234,19 @@ Resend 寄 Email（含報告連結）← 需域名驗證完成
 - 定價/結帳頁說明：30天×12時辰=360個奇門局，套入命格驗證吉位
 - 時間說明：報告30分鐘/人，出門訣40分鐘以上
 
-### 🟡 功能完善（下一階段）
-3. **方案專屬表單**（D/R/G15/E1 各有不同欄位需求）
-4. **birthCity lat/lng 傳給 Python API**（真太陽時校正）
-5. **Stripe metadata 500字元限制**（改用 Supabase 暫存）
-6. **儀表板自動刷新**：報告生成完成後自動顯示報告連結
+### 🟡 功能完善（下次做）
+3. **方案專屬結帳表單** — D 問題描述欄、R 第二人資料、G15 多人資料、E1 事件日期（checkout/page.tsx）
+4. **birthCity lat/lng 傳 Python API** — 真太陽時校正，坐標已抓到但還沒傳（checkout → generate-report → Fly.io）
+5. **Stripe metadata 500字元限制** — 出生資料太長會截斷，改為先存 Supabase 再用 record_id 傳給 Stripe
+6. **儀表板自動刷新** — 報告完成後自動顯示報告連結（目前需手動 F5）
 
-### 🟢 未來優化
-7. **退款按鈕**（後台 admin 加 Stripe Refund API）
-8. **Google Analytics**（追蹤用戶行為漏斗）
-9. **PDF 附件加入 Email**
+### 🟢 未來優化（下次做）
+7. **退款按鈕** — Admin 後台加 Stripe Refund API（app/admin/page.tsx + /api/admin/refund/route.ts）
+8. **Google Analytics** — 追蹤用戶行為漏斗（layout.tsx 加 GA script）
+9. **PDF 附件加入 Email** — Resend 寄信時把 PDF base64 附上
+10. **模型升級評估** — 評估 Claude API 是否比 DeepSeek V3 更適合生成報告
+11. **優惠碼 Stripe 折扣整合** — 目前優惠碼已存 Supabase，但 Stripe checkout 還沒套用折扣金額
+12. **PDF 模板藝術部門重設計** — 白底+鑑源品牌色+圖表多元化（待藝術部門接手）
 
 ## v1.3 更新紀錄（2026-04-03）
 
@@ -297,3 +324,21 @@ npm run type-check
 - 修改後自動 commit + push GitHub（Vercel 會自動部署）
 - .env.local 含真實金鑰，不推到 GitHub（已加入 .gitignore）
 - 所有金額顯示需支援多幣種（USD/HKD/TWD/CNY）
+
+---
+
+## 可用工具（2026-04-07）
+
+以下工具已安裝在本機，本部門可直接調用：
+
+| 工具 | 用途 | 使用場景 |
+|:---|:---|:---|
+| **Vercel CLI** | 部署鑑源網站、查看日誌、管理環境變數 | `vercel deploy`、`vercel env pull` |
+| **VS Code** | 編輯 Next.js/React 程式碼 | 日常開發 |
+| **Postman** | 測試 API（報告生成、Stripe webhook） | API 除錯 |
+| **ngrok** | 本機暴露公網，測試 Stripe webhook 回調 | 不用每次部署就能測 webhook |
+| **DBeaver** | 連接 Supabase 資料庫，查看訂單與報告狀態 | 資料庫視覺化管理 |
+| **Docker** | 本機模擬 Fly.io 環境測試 Python API | 環境一致性 |
+| **GitHub CLI** | 終端機管理 PR/Issue | `gh pr create`、`gh issue list` |
+| **Figma** | 查看設計稿，設計轉程式碼 | UI 實作 |
+| **7-Zip** | 壓縮/解壓縮 | 檔案管理 |

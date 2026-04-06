@@ -19,10 +19,10 @@ const PLANS = {
     },
   ],
   family: [
-    { code: 'G15', name: '家族藍圖', price: 269, systems: 15,
+    { code: 'G15', name: '家族藍圖', price: 159, systems: 15,
       desc: '每位家人獨立完整分析，再加上家庭互動關係、親子溝通模式、共同運勢走向——全家人的命格，一次看透',
       suitableFor: '如果你想了解孩子的天賦方向、夫妻相處之道、或家庭成員之間為什麼總有摩擦',
-      features: ['含4人（每加1人+$69）', '每人獨立完整分析報告', '家庭動力學+互動關係', '家運走勢+共同建議', '好的/注意/改善 三大建議'],
+      features: ['基礎 2 人（每加1人+$69）', '每位家庭成員各獲得一份完整人生藍圖', '家族全景分析+互動關係', '家運走勢+共同建議', '好的/注意/改善 三大建議'],
       addPrice: 69,
     },
     { code: 'R', name: '合否？', price: 59, systems: 15,
@@ -188,7 +188,7 @@ export default function PricingPage() {
                   <th className="p-4 text-gold text-center font-semibold">心之所惑<br/><span className="text-xs text-text-muted font-normal">$39</span></th>
                   <th className="p-4 text-gold text-center font-semibold bg-gold/5">人生藍圖<br/><span className="text-xs text-text-muted font-normal">$89</span></th>
                   <th className="p-4 text-gold text-center font-semibold">合否？<br/><span className="text-xs text-text-muted font-normal">$59</span></th>
-                  <th className="p-4 text-gold text-center font-semibold">家族藍圖<br/><span className="text-xs text-text-muted font-normal">$269起</span></th>
+                  <th className="p-4 text-gold text-center font-semibold">家族藍圖<br/><span className="text-xs text-text-muted font-normal">$159起</span></th>
                 </tr>
               </thead>
               <tbody className="text-xs">
@@ -224,7 +224,7 @@ export default function PricingPage() {
             <p><strong className="text-cream">第一次體驗：</strong>先去<a href="/tools/bazi" className="text-gold underline">免費速算</a>看效果，再選「心之所惑」（$39）聚焦你最在乎的問題。</p>
             <p><strong className="text-cream">全面了解自己：</strong>「人生藍圖」（$89）完整分析人生各面向，最超值。</p>
             <p><strong className="text-cream">有特定困惑：</strong>「心之所惑」（$39）聚焦一個面向深入剖析。</p>
-            <p><strong className="text-cream">全家分析：</strong>「家族藍圖」（$269起）每人獨立報告+家庭互動分析。</p>
+            <p><strong className="text-cream">全家分析：</strong>「家族藍圖」（$159起）每位家庭成員各獲得一份完整人生藍圖+家族全景分析。</p>
             <p><strong className="text-cream">感情/合夥：</strong>「合否？」（$59）兩人命理交叉分析，看你們合不合。</p>
             <p><strong className="text-cream">想採取行動：</strong>先做「人生藍圖」了解自己，再加出門訣，在最好的時機出行改運。</p>
           </div>

@@ -49,6 +49,7 @@ async function callClaudeStreaming(
 
   if (!res.ok) {
     const errText = await res.text()
+    console.error(`Claude API 回傳 HTTP ${res.status}，回應內容: ${errText.slice(0, 500)}`)
     throw new Error(`Claude API 錯誤 ${res.status}: ${errText}`)
   }
 
@@ -303,7 +304,7 @@ ${PSYCHOLOGY_RULES}
 字數：不限，以分析透徹為標準，通常4000-6000字。
 核心原則：所有分析基於每個人的排盤數據。目標是讓客戶讀完後覺得「我更懂對方了」而且「我知道怎麼讓這段關係更好」。`,
 
-  // ========== G15 方案：家族藍圖（$269起）==========
+  // ========== G15 方案：家族藍圖（$159起）==========
   G15: `你是鑑源命理平台的家族命理顧問。客戶購買了「家族藍圖」——這意味著他們重視家庭，想要了解家庭成員之間的能量互動，讓整個家更和諧、更幸福。
 
 這份報告是送給一個家庭的禮物。你要幫每個家庭成員看見自己的獨特之處，也幫他們理解彼此為什麼會有摩擦、如何化解。
@@ -594,6 +595,15 @@ export async function POST(req: NextRequest) {
       // C 方案：Claude Opus 4.6 多步並行生成
       // ============================================================
       console.log('C 方案：使用 Claude Opus 4.6 多步並行生成...')
+      console.log(`CLAUDE_API_KEY 狀態: ${CLAUDE_API_KEY ? `已設定（長度 ${CLAUDE_API_KEY.length}，前綴 ${CLAUDE_API_KEY.slice(0, 8)}...）` : '❌ 未設定！'}`)
+
+      if (!CLAUDE_API_KEY) {
+        const errMsg = 'CLAUDE_API_KEY 環境變數未設定，無法呼叫 Claude API。請到 Vercel Dashboard → Settings → Environment Variables 新增此變數。'
+        console.error(errMsg)
+        await markReportFailed(reportId, errMsg)
+        return NextResponse.json({ error: errMsg }, { status: 500 })
+      }
+
       const ageGroup = getAgeGroup(birthData.year)
       console.log(`年齡分層：${ageGroup}（出生年：${birthData.year}）`)
 

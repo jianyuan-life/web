@@ -11,7 +11,7 @@ function getSupabase() {
 const PRICE_MAP: Record<string, { amount: number; name: string }> = {
   C: { amount: 8900, name: '人生藍圖' },
   D: { amount: 3900, name: '心之所惑' },
-  G15: { amount: 26900, name: '家族藍圖' },
+  G15: { amount: 15900, name: '家族藍圖' },
   R: { amount: 5900, name: '合否？' },
   E1: { amount: 11900, name: '事件出門訣' },
   E2: { amount: 8900, name: '月盤出門訣' },
