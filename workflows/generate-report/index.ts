@@ -104,19 +104,37 @@ export async function generateReportWorkflow(reportId: string) {
     return { success: false, error: 'AI 未回覆' }
   }
 
-  // Step 3: 自動品質閘門
-  try {
-    const qResult = await qualityGate(reportContent, planCode, analyses.length)
-    if (qResult.warnings.length > 0) {
-      console.warn(`品質閘門警告 (${qResult.warnings.length}):`, qResult.warnings.join('; '))
+  // Step 3: 自動品質閘門（不通過就重新生成，最多重試 1 次）
+  let qualityPassed = false
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const qResult = await qualityGate(reportContent, planCode, analyses.length)
+      if (qResult.passed) {
+        qualityPassed = true
+        break
+      }
+      console.warn(`品質閘門未通過（第${attempt+1}次）: ${qResult.warnings.join('; ')}`)
+
+      if (attempt === 0 && planCode === 'C') {
+        // 第一次不通過：重新生成有問題的部分
+        console.log('品質不通過，嘗試重新生成...')
+        const [r1, r2, r3, r4] = await Promise.all([
+          aiGenerateCall1(calcResult, birthData, birthData.question || birthData.topic),
+          aiGenerateCall2(calcResult, birthData),
+          aiGenerateCall3(calcResult, birthData),
+          aiGenerateCall4(calcResult, birthData),
+        ])
+        reportContent = [r1.content, r2.content, r3.content, r4.content].join('\n\n')
+        aiModelUsed = r1.model
+      }
+    } catch (e) {
+      console.error('品質閘門執行失敗:', e)
+      break
     }
-    if (!qResult.passed) {
-      // 品質未通過但不阻塞（記錄警告，繼續生成）
-      console.error(`品質閘門未通過: ${qResult.warnings.join('; ')}`)
-    }
-  } catch (e) {
-    // 品質閘門失敗不阻塞流程
-    console.error('品質閘門執行失敗:', e)
+  }
+  // 即使品質閘門不通過也繼續（總比沒報告好），但記錄警告
+  if (!qualityPassed) {
+    console.error('品質閘門最終未通過，以現有內容繼續')
   }
 
   // Step 4: 解析出門訣 Top5 吉時 JSON（E1/E2 方案，非 step function）

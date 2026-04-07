@@ -94,11 +94,36 @@ async function emitProgress(update: ProgressUpdate) {
 // ── AI 回應清理 ──
 function cleanAIResponse(text: string): string {
   let cleaned = text
+
+  // 1. AI 前言
   cleaned = cleaned.replace(/^(好的[，,]?\s*|收到[。.]?\s*|我將|我會|讓我|以下是|沒問題|當然|好[，,]|OK[，,]?)[\s\S]*?\n---\s*\n?/i, '')
   cleaned = cleaned.replace(/^(好的[，,]?\s*|收到[。.]?\s*|我將|我會|讓我|以下是|沒問題|當然|好[，,]|OK[，,]?)[\s\S]*?\n(?=#{1,4}\s)/i, '')
   cleaned = cleaned.replace(/^(好的[，,]?\s*|收到[。.]?\s*|我將|我會|讓我|以下是|沒問題|當然|好[，,]|OK[，,]?)[\s\S]*?\n\n/i, '')
   cleaned = cleaned.replace(/^(好的|收到|我將|我會|讓我|以下是|沒問題|當然)[^\n]*\n+/i, '')
+
+  // 2. prompt 結構標籤
+  cleaned = cleaned.replace(/^#\s*第[一二三]幕[：:].*/gm, '')
+  cleaned = cleaned.replace(/^#\s*壓軸.*/gm, '')
+  cleaned = cleaned.replace(/^#\s*收尾.*/gm, '')
+  cleaned = cleaned.replace(/^→\s*完整分析請繼續閱讀.*/gm, '')
+  cleaned = cleaned.replace(/^第[一二三]幕[：:].*$/gm, '')
+
+  // 3. 禁止字眼整行刪除
+  cleaned = cleaned.replace(/^.*(?:跳過|本次數據不足|待分析|本次不適用|需面部照片|需掌紋照片|需即時起卦|需即時抽牌|手相掌紋).*$/gm, '')
+
+  // 4. Markdown 垃圾
+  cleaned = cleaned.replace(/^---+$/gm, '')
+  cleaned = cleaned.replace(/^\|[-:]+\|[-:| ]*$/gm, '')
+  cleaned = cleaned.replace(/-{6,}/g, ' — ')
+  cleaned = cleaned.replace(/\.{6,}/g, '…')
+  cleaned = cleaned.replace(/·{6,}/g, '…')
+
+  // 5. 品牌名
   cleaned = cleaned.replace(/鑑源/g, '鑒源')
+
+  // 6. 連續空行
+  cleaned = cleaned.replace(/\n{4,}/g, '\n\n\n')
+
   return cleaned.trim()
 }
 
