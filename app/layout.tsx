@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Noto_Serif_TC, Noto_Sans_TC } from 'next/font/google'
+import { Noto_Serif_TC, Noto_Sans_TC, Noto_Serif_SC, Noto_Sans_SC } from 'next/font/google'
 import Image from 'next/image'
 import Navbar from '@/components/Navbar'
 import LocaleContent from '@/components/LocaleContent'
@@ -8,6 +8,9 @@ import './globals.css'
 
 const notoSerif = Noto_Serif_TC({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-sans', display: 'swap' })
 const notoSans = Noto_Sans_TC({ subsets: ['latin'], weight: ['400', '500', '700'], variable: '--font-body', display: 'swap' })
+// 簡體中文字體（簡體模式時由 LocaleContent 切換 class）
+const notoSerifSC = Noto_Serif_SC({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-sans-sc', display: 'swap' })
+const notoSansSC = Noto_Sans_SC({ subsets: ['latin'], weight: ['400', '500', '700'], variable: '--font-body-sc', display: 'swap' })
 
 export const metadata: Metadata = {
   title: {
@@ -41,7 +44,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-TW" className={`${notoSerif.variable} ${notoSans.variable}`}>
+    <html lang="zh-TW" className={`${notoSerif.variable} ${notoSans.variable} ${notoSerifSC.variable} ${notoSansSC.variable}`}>
       <head>
         {/* Google Analytics 4 */}
         {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (

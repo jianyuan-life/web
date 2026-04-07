@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import * as OpenCC from 'opencc-js'
 
 // ============================================================
 // 免費姓名學速算 — 五格剖象法 + DeepSeek AI 解讀
 // ============================================================
+
+// 簡體→繁體轉換器（查康熙筆畫前用）
+const s2tConverter = OpenCC.Converter({ from: 'cn', to: 'tw' })
 
 const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions'
 const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || 'sk-6b1936d5aef34413b4742b3269332c33'
@@ -174,9 +178,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ detail: '請提供姓和名' }, { status: 400 })
     }
 
-    // 五格計算
-    const wuge = calcWuge(surname, givenName)
-    const fullName = surname + givenName
+    // 保留用戶原始輸入（可能是簡體），用於前端顯示
+    const originalSurname = surname
+    const originalGivenName = givenName
+    const originalFullName = originalSurname + originalGivenName
+
+    // 轉繁體查康熙筆畫（康熙字典用繁體字）
+    const tcSurname = s2tConverter(surname)
+    const tcGivenName = s2tConverter(givenName)
+
+    // 五格計算（用繁體字查筆畫）
+    const wuge = calcWuge(tcSurname, tcGivenName)
+    const fullName = originalFullName
 
     // 各格吉凶
     const tiangeJx = getJixiong(wuge.tiange)
@@ -273,9 +286,9 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      fullName,
-      surname,
-      givenName,
+      fullName: originalFullName,
+      surname: originalSurname,
+      givenName: originalGivenName,
       surnameStrokes: wuge.surnameStrokes,
       givenStrokes: wuge.givenStrokes,
       tiange: { value: wuge.tiange, wuxing: tiangeWx, ...tiangeJx },

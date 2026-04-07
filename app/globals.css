@@ -35,6 +35,12 @@
   --font-body: "Noto Sans TC", "Inter", system-ui, sans-serif;
 }
 
+/* 簡體中文字體切換 */
+html.locale-cn {
+  --font-sans: var(--font-sans-sc, "Noto Serif SC"), "Georgia", "Times New Roman", serif;
+  --font-body: var(--font-body-sc, "Noto Sans SC"), "Inter", system-ui, sans-serif;
+}
+
 @keyframes shimmer {
   0% { transform: translateX(-100%) skewX(-20deg); }
   100% { transform: translateX(200%) skewX(-20deg); }

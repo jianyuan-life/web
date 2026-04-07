@@ -1,11 +1,15 @@
 'use client'
 
 import { useEffect, useRef, useCallback } from 'react'
-import { getLocale, toSimplified, toTraditional } from '@/lib/i18n'
+import { getLocale, toSimplified } from '@/lib/i18n'
+
+// 儲存 placeholder/title/alt 等屬性的原始值
+const CONVERTIBLE_ATTRS = ['placeholder', 'title', 'alt', 'aria-label'] as const
 
 export default function LocaleContent({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
   const originalTexts = useRef(new Map<Node, string>())
+  const originalAttrs = useRef(new Map<string, string>())
 
   // 儲存原始繁體文字，轉換時用
   const saveOriginal = useCallback((node: Node) => {
@@ -13,9 +17,28 @@ export default function LocaleContent({ children }: { children: React.ReactNode 
       if (!originalTexts.current.has(node)) {
         originalTexts.current.set(node, node.textContent)
       }
-    } else {
-      const tag = (node as Element).tagName
-      if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      const el = node as Element
+      const tag = el.tagName
+      if (tag === 'SCRIPT' || tag === 'STYLE') return
+
+      // 儲存可轉換屬性的原始值
+      for (const attr of CONVERTIBLE_ATTRS) {
+        const val = el.getAttribute(attr)
+        if (val) {
+          if (!el.hasAttribute('data-__lcid')) {
+            const id = `lc_${originalAttrs.current.size}`
+            ;(el as HTMLElement).dataset.__lcid = id
+          }
+          const stableKey = `${(el as HTMLElement).dataset.__lcid}:${attr}`
+          if (!originalAttrs.current.has(stableKey)) {
+            originalAttrs.current.set(stableKey, val)
+          }
+        }
+      }
+
+      // 不遍歷 INPUT/TEXTAREA/SELECT 的子節點，但仍處理其屬性
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
       node.childNodes.forEach(child => saveOriginal(child))
     }
   }, [])
@@ -23,35 +46,54 @@ export default function LocaleContent({ children }: { children: React.ReactNode 
   const convertAll = useCallback((locale: string) => {
     if (!ref.current) return
 
-    // 先保存所有原始文字（只做一次）
-    if (originalTexts.current.size === 0) {
-      saveOriginal(ref.current)
-    }
+    // 保存原始文字
+    saveOriginal(ref.current)
+
+    const isCN = locale === 'zh-CN'
 
     function convertNode(node: Node) {
       if (node.nodeType === Node.TEXT_NODE && node.textContent) {
-        // 用原始繁體文字做轉換基礎
         const original = originalTexts.current.get(node) || node.textContent
-        if (locale === 'zh-CN') {
-          node.textContent = toSimplified(original)
-        } else {
-          node.textContent = original // 恢復繁體
+        node.textContent = isCN ? toSimplified(original) : original
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as Element
+        const tag = el.tagName
+        if (tag === 'SCRIPT' || tag === 'STYLE') return
+
+        // 轉換屬性（placeholder/title/alt 等）
+        const lcid = (el as HTMLElement).dataset.__lcid
+        if (lcid) {
+          for (const attr of CONVERTIBLE_ATTRS) {
+            const key = `${lcid}:${attr}`
+            const original = originalAttrs.current.get(key)
+            if (original !== undefined) {
+              el.setAttribute(attr, isCN ? toSimplified(original) : original)
+            }
+          }
         }
-      } else {
-        const tag = (node as Element).tagName
-        if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
         node.childNodes.forEach(child => convertNode(child))
       }
     }
 
     convertNode(ref.current)
+
+    // 切換字體 class：簡體模式用 SC 字體
+    const html = document.documentElement
+    if (isCN) {
+      html.classList.add('locale-cn')
+      html.setAttribute('lang', 'zh-CN')
+    } else {
+      html.classList.remove('locale-cn')
+      html.setAttribute('lang', 'zh-TW')
+    }
   }, [saveOriginal])
 
   useEffect(() => {
     // 初次載入時轉換
     const locale = getLocale()
     if (locale === 'zh-CN') {
-      // 等 DOM 渲染完再轉換
       setTimeout(() => convertAll('zh-CN'), 100)
     }
 
@@ -66,7 +108,6 @@ export default function LocaleContent({ children }: { children: React.ReactNode 
     const observer = new MutationObserver(() => {
       const locale = getLocale()
       if (locale === 'zh-CN') {
-        // 新加入的節點也要存原始文字並轉換
         setTimeout(() => {
           saveOriginal(ref.current!)
           convertAll('zh-CN')

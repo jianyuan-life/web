@@ -97,6 +97,19 @@ export async function GET(req: NextRequest) {
   const freeToolCount = freeToolRes.count || 0
   const conversionRate = freeToolCount > 0 ? Math.round(reports.length / freeToolCount * 100) : 0
 
+  // 每日收入匯總
+  const dailyMap: Record<string, { revenue: number; orders: number }> = {}
+  for (const r of reports) {
+    const day = (r.created_at || '').slice(0, 10)
+    if (!day) continue
+    if (!dailyMap[day]) dailyMap[day] = { revenue: 0, orders: 0 }
+    dailyMap[day].revenue += parseFloat(r.amount_usd) || 0
+    dailyMap[day].orders++
+  }
+  const dailyRevenue = Object.entries(dailyMap)
+    .map(([date, d]) => ({ date, revenue: Math.round(d.revenue * 100) / 100, orders: d.orders }))
+    .sort((a, b) => a.date.localeCompare(b.date))
+
   return NextResponse.json({
     range,
     overview: {
@@ -112,6 +125,7 @@ export async function GET(req: NextRequest) {
     top_pages: topPages,
     geo_distribution: geoDistribution,
     device_distribution: deviceCounts,
+    daily_revenue: dailyRevenue,
     recent_orders: reports.slice(0, 10).map(r => ({
       id: r.id,
       client_name: r.client_name,

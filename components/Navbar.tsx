@@ -17,7 +17,16 @@ export default function Navbar() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
     })
-    return () => subscription.unsubscribe()
+    // 監聽語言切換，即時更新 Navbar 文字
+    const localeHandler = (e: Event) => {
+      const locale = (e as CustomEvent).detail
+      setTxt(UI_TEXT[locale as keyof typeof UI_TEXT] || UI_TEXT['zh-TW'])
+    }
+    window.addEventListener('locale-change', localeHandler)
+    return () => {
+      subscription.unsubscribe()
+      window.removeEventListener('locale-change', localeHandler)
+    }
   }, [])
 
   const handleLogout = async () => {
@@ -34,7 +43,7 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-8 text-sm">
           <a href="/#systems" className="text-text-muted hover:text-gold transition-colors">{txt.nav_systems}</a>
           <a href="/pricing" className="text-text-muted hover:text-gold transition-colors">{txt.nav_pricing}</a>
-          <a href="/blog" className="text-text-muted hover:text-gold transition-colors">知識</a>
+          <a href="/blog" className="text-text-muted hover:text-gold transition-colors">{txt.nav_blog}</a>
           <div className="relative" onMouseEnter={() => setToolsOpen(true)} onMouseLeave={() => setToolsOpen(false)}>
             <button className="text-text-muted hover:text-gold transition-colors flex items-center gap-1">
               {txt.nav_free}
