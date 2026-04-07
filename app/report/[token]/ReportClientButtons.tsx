@@ -10,7 +10,7 @@ export default function ReportClientButtons({ pdfUrl, planCode }: { pdfUrl: stri
     // Web Share API（iOS/Android 原生分享選單）
     if (navigator.share) {
       try {
-        await navigator.share({ title: '鑑源命理報告', text: '我的命理分析報告，分享給你看看', url })
+        await navigator.share({ title: '鑒源命理報告', text: '我的命理分析報告，分享給你看看', url })
         return
       } catch {
         // 使用者取消或不支援，fallback 到複製

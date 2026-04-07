@@ -13,7 +13,7 @@ export default function TermsPage() {
         <p><strong>最後更新：</strong>2026年3月31日</p>
 
         <h2 className="text-xl font-semibold text-white">1. 服務描述</h2>
-        <p>鑒源系統是一個整合東西方十五大命理系統的 AI 分析平台。本服務提供的所有分析結果<strong>僅供參考和娛樂用途</strong>，不構成任何醫療、投資、法律或其他專業建議。</p>
+        <p>鑒源系統是一個整合東西方十五大命理系統的命理分析平台。本服務提供的所有分析結果<strong>僅供參考和娛樂用途</strong>，不構成任何醫療、投資、法律或其他專業建議。</p>
 
         <h2 className="text-xl font-semibold text-white">2. 用戶責任</h2>
         <ul className="list-disc pl-5 space-y-1">
@@ -28,7 +28,7 @@ export default function TermsPage() {
 
         <h2 className="text-xl font-semibold text-white">4. 免責聲明</h2>
         <ul className="list-disc pl-5 space-y-1">
-          <li>命理分析基於傳統理論和 AI 計算，不保證100%準確</li>
+          <li>命理分析基於傳統理論和科技化精算，不保證100%準確</li>
           <li>本服務不能預測未來、治療疾病或保證投資回報</li>
           <li>用戶應自行判斷是否採納報告中的建議</li>
           <li>健康問題請諮詢醫生，投資決策請諮詢專業理財顧問</li>

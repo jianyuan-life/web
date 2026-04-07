@@ -178,9 +178,9 @@ function buildGCalUrl(timing: Top5Timing, clientName: string): string {
   const dateStr = timing.date.replace(/-/g, '')
   const startStr = `${dateStr}T${timing.time_start.replace(':', '')}00`
   const endStr = `${dateStr}T${timing.time_end.replace(':', '')}00`
-  const title = encodeURIComponent(`鑑源出門訣 - ${clientName} ${timing.title}`)
+  const title = encodeURIComponent(`鑒源出門訣 - ${clientName} ${timing.title}`)
   const details = encodeURIComponent(
-    `建議方位：${timing.direction}\n\n命理依據：\n${timing.reason}\n\n由鑑源命理平台 jianyuan.life 生成`
+    `建議方位：${timing.direction}\n\n命理依據：\n${timing.reason}\n\n由鑒源命理平台 jianyuan.life 生成`
   )
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startStr}/${endStr}&details=${details}&ctz=Asia/Taipei`
 }
@@ -226,7 +226,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         <div className="glass rounded-2xl p-12 text-center max-w-md">
           <div className="text-5xl mb-4">⏳</div>
           <h1 className="text-xl font-bold text-cream mb-2">命理分析進行中</h1>
-          <p className="text-text-muted text-sm mb-2">系統正同步調用東西方十五大命理系統，逐一進行排盤運算與 AI 深度解析</p>
+          <p className="text-text-muted text-sm mb-2">系統正同步調用東西方十五大命理系統，逐一進行排盤運算與深度解析</p>
           <p className="text-text-muted/60 text-xs mb-1">完整分析通常需要 40–60 分鐘</p>
           <p className="text-text-muted/60 text-xs mb-6">完成後將自動寄送 Email 通知您，無需持續等候</p>
           <p className="text-gold text-sm">如需確認進度，可稍後重新整理此頁面</p>
@@ -523,7 +523,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
         {/* ──── 頁尾 ──── */}
         <div className="text-center text-text-muted/30 text-xs leading-7">
-          <p>&copy; 2026 鑑源命理平台 &middot; jianyuan.life</p>
+          <p>&copy; 2026 鑒源命理平台 &middot; jianyuan.life</p>
           <p>此報告僅供個人參考，不構成任何法律、醫療或財務建議</p>
         </div>
 

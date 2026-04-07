@@ -43,7 +43,7 @@ const ANALYSIS_STEPS = [
   { text: '查詢太陽星座...', icon: '&#9790;', duration: 400 },
   { text: '計算生命靈數...', icon: '&#35;', duration: 400 },
   { text: '分析生肖流年運勢...', icon: '&#128009;', duration: 500 },
-  { text: '啟動 AI 深度分析引擎...', icon: '&#129302;', duration: 600 },
+  { text: '啟動深度分析引擎...', icon: '&#129302;', duration: 600 },
   { text: '交叉比對命盤數據...', icon: '&#128202;', duration: 800 },
   { text: '生成個人化命格報告...', icon: '&#128221;', duration: 1000 },
 ]
@@ -113,8 +113,8 @@ export default function FreeToolPage() {
   return (
     <div className="py-16">
       <div className="max-w-5xl mx-auto px-6">
-        <h1 className="text-3xl font-bold text-center mb-2"><span className="text-gradient-gold">AI 命理速算</span></h1>
-        <p className="text-center text-text-muted mb-2">精確排盤 + AI 深度分析 + 個人化命格解讀</p>
+        <h1 className="text-3xl font-bold text-center mb-2"><span className="text-gradient-gold">命理速算</span></h1>
+        <p className="text-center text-text-muted mb-2">精確排盤 + 深度分析 + 個人化命格解讀</p>
         <p className="text-center text-xs text-text-muted/60 mb-10">不需註冊 &middot; 即時出結果 &middot; 完全免費</p>
 
         {/* 分析進度動畫 */}
@@ -288,7 +288,7 @@ export default function FreeToolPage() {
 
               <button type="submit" disabled={loading}
                 className="w-full py-4 bg-gold text-dark font-bold rounded-xl text-lg btn-glow disabled:opacity-50">
-                開始 AI 命理分析
+                開始命理分析
               </button>
               {error && <p className="text-red-400 text-sm text-center mt-2">{error}</p>}
             </form>
@@ -407,7 +407,7 @@ export default function FreeToolPage() {
               </div>
             )}
 
-            {/* ═══ AI 深度分析 ═══ */}
+            {/* ═══ 深度分析 ═══ */}
             {result.has_ai && (
               <>
                 {/* 性格深度剖析（2026運勢已在最上面顯示） */}
@@ -445,7 +445,7 @@ export default function FreeToolPage() {
                       <h2 className="text-lg font-bold text-gradient-gold">未來機會窗口</h2>
                     </div>
                     <p className="text-base text-text leading-[2] whitespace-pre-line">{result.ai_sections['未來機會窗口']}</p>
-                    <p className="text-sm text-gold/50 mt-4 italic">完整報告包含逐年大運分析、12個月流月運勢表、具體把握機會的行動方案...</p>
+                    <p className="text-sm text-gold/50 mt-4 italic">完整報告包含逐年大運走勢分析、未來機會窗口解讀、具體的行動方案與時機建議...</p>
                   </div>
                 )}
 
@@ -454,7 +454,7 @@ export default function FreeToolPage() {
                   <div className="glass rounded-2xl p-8 border-l-2 border-orange-500/30">
                     <h2 className="text-lg font-bold text-orange-300/80 mb-4">需要留意的地方</h2>
                     <p className="text-base text-text leading-[2] whitespace-pre-line">{result.ai_sections['需要留意的地方']}</p>
-                    <p className="text-sm text-orange-400/50 mt-4 italic">完整報告包含具體的化解方案與改運建議...</p>
+                    <p className="text-sm text-orange-400/50 mt-4 italic">完整報告包含具體的調整方案與行動建議...</p>
                   </div>
                 )}
               </>
@@ -532,7 +532,7 @@ export default function FreeToolPage() {
                     您剛才體驗的是八字一個系統的簡要分析。完整報告融合
                     <strong className="text-white">千年東方玄學經典</strong>——
                     《滴天髓》《窮通寶鑑》《紫微斗數全書》《奇門遁甲統宗》，結合
-                    <strong className="text-white">全球最頂尖的 AI 分析引擎</strong>，
+                    <strong className="text-white">全球最頂尖的命理分析引擎</strong>，
                     橫跨 15 套東西方命理體系，為您呈現一份前所未有的命格全景報告。
                   </p>
                 </div>
@@ -544,8 +544,8 @@ export default function FreeToolPage() {
                   </div>
                   <div className="glass rounded-xl p-5 text-center">
                     <div className="text-3xl mb-2">&#129302;</div>
-                    <h4 className="font-bold text-white mb-1">頂級 AI 深度解讀</h4>
-                    <p className="text-sm text-text-muted">使用 Claude AI 最強模型，每句分析精準到您個人命盤</p>
+                    <h4 className="font-bold text-white mb-1">科技量化深度解讀</h4>
+                    <p className="text-sm text-text-muted">融合數十部經典古籍規則，每句分析精準到您個人命盤</p>
                   </div>
                   <div className="glass rounded-xl p-5 text-center">
                     <div className="text-3xl mb-2">&#127760;</div>

@@ -1,8 +1,5 @@
-'use client'
-
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import PriceTag from '@/components/PriceTag'
+import PricingButton from '@/components/PricingButton'
 
 const PLANS = {
   personal: [
@@ -46,20 +43,10 @@ const PLANS = {
   ],
 }
 
-export default function PricingPage() {
-  const [loggedIn, setLoggedIn] = useState(false)
+type Plan = { code: string; name: string; price: number; desc: string; features: string[]; systems?: number; popular?: boolean; locked?: boolean; seasonal?: boolean; hasQuestion?: boolean; addPrice?: number; suitableFor?: string }
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setLoggedIn(!!data.user))
-  }, [])
-
-  const handleSelect = (code: string) => {
-    if (loggedIn) { window.location.href = `/checkout?plan=${code}` }
-    else { sessionStorage.setItem('pending_plan', code); window.location.href = '/auth/login' }
-  }
-
-  type Plan = { code: string; name: string; price: number; desc: string; features: string[]; systems?: number; popular?: boolean; locked?: boolean; seasonal?: boolean; hasQuestion?: boolean; addPrice?: number; suitableFor?: string }
-  const Section = ({ title, subtitle, plans }: { title: string; subtitle: string; plans: Plan[] }) => (
+function Section({ title, subtitle, plans }: { title: string; subtitle: string; plans: Plan[] }) {
+  return (
     <div className="mb-16">
       <div className="divider-ornament text-gold/30 mb-4">
         <span className="text-xs tracking-[0.2em]">{title}</span>
@@ -97,22 +84,15 @@ export default function PricingPage() {
                 </li>
               ))}
             </ul>
-            <button onClick={() => !plan.seasonal && handleSelect(plan.code)}
-              disabled={plan.seasonal}
-              className={`w-full text-center py-2.5 rounded-xl font-semibold text-sm transition-all cursor-pointer ${
-                plan.popular ? 'bg-gold text-dark btn-glow' :
-                plan.seasonal ? 'bg-white/5 text-text-muted/40 cursor-not-allowed' :
-                plan.locked ? 'glass text-gold hover:bg-gold/10' :
-                'glass text-cream hover:bg-white/10'
-              }`}>
-              {plan.seasonal ? '2027年1月開放' : plan.locked ? '需先有命格分析' : loggedIn ? '選擇此方案' : '註冊後購買'}
-            </button>
+            <PricingButton code={plan.code} popular={plan.popular} seasonal={plan.seasonal} locked={plan.locked} />
           </div>
         ))}
       </div>
     </div>
   )
+}
 
+export default function PricingPage() {
   return (
     <div className="py-20">
       <div className="max-w-7xl mx-auto px-6">
@@ -122,11 +102,9 @@ export default function PricingPage() {
         <p className="text-center text-text-muted mb-4 max-w-xl mx-auto text-sm">
           6 種方案，從個人到家庭，從了解自己到採取行動。每份報告含網頁展示 + PDF 永久保存。
         </p>
-        {!loggedIn && (
-          <p className="text-center text-xs text-gold mb-12">
-            &#128274; 購買前需先<a href="/auth/signup" className="underline">免費註冊</a>或<a href="/auth/login" className="underline">登入</a>
-          </p>
-        )}
+        <p className="text-center text-xs text-gold mb-12">
+          &#128274; 購買前需先<a href="/auth/signup" className="underline">免費註冊</a>或<a href="/auth/login" className="underline">登入</a>
+        </p>
 
         <Section title="個人命格分析" subtitle="了解自己，掌握人生方向" plans={PLANS.personal} />
         <Section title="家庭與關係" subtitle="家人之間的命格交織與互動" plans={PLANS.family} />
@@ -144,7 +122,7 @@ export default function PricingPage() {
             </p>
             <p className="text-sm text-text leading-[1.9] mb-4">
               整個過程大約 70 分鐘，但對運勢的影響可以持續整個月。
-              如果你想讓命理分析不只停留在「了解自己」，而是真正採取行動改變運勢，出門訣是最直接的方式。
+              如果你想讓命理分析不只停留在「了解自己」，而是真正採取行動把握時機，出門訣是最直接的方式。
             </p>
             <div className="rounded-xl bg-gold/5 border border-gold/10 p-4 text-xs text-text-muted">
               <strong className="text-gold">操作方式：</strong>購買後填寫出生資料，系統將自動為您排盤並找出最佳出行時機。
@@ -165,10 +143,7 @@ export default function PricingPage() {
                     </li>
                   ))}
                 </ul>
-                <button onClick={() => handleSelect(plan.code)}
-                  className="w-full text-center py-2.5 rounded-xl font-semibold text-sm transition-all cursor-pointer glass text-gold hover:bg-gold/10">
-                  {loggedIn ? '選擇此方案' : '註冊後購買'}
-                </button>
+                <PricingButton code={plan.code} />
               </div>
             ))}
           </div>
@@ -226,7 +201,7 @@ export default function PricingPage() {
             <p><strong className="text-cream">有特定困惑：</strong>「心之所惑」（$39）聚焦一個面向深入剖析。</p>
             <p><strong className="text-cream">全家分析：</strong>「家族藍圖」（$159起）每位家庭成員各獲得一份完整人生藍圖+家族全景分析。</p>
             <p><strong className="text-cream">感情/合夥：</strong>「合否？」（$59）兩人命理交叉分析，看你們合不合。</p>
-            <p><strong className="text-cream">想採取行動：</strong>先做「人生藍圖」了解自己，再加出門訣，在最好的時機出行改運。</p>
+            <p><strong className="text-cream">想採取行動：</strong>先做「人生藍圖」了解自己，再加出門訣，在最好的時機出行，把握機遇。</p>
           </div>
         </div>
 
@@ -237,12 +212,12 @@ export default function PricingPage() {
           </div>
           <p className="text-center text-text-muted text-sm mb-8">購買前您可能想知道的事</p>
           {[
-            { q: '命理分析真的準確嗎？', a: '鑒源的排盤計算使用確定性算法，與專業命理軟體一致。解讀基於數十部經典古籍提煉的 34,458 條規則，再由 AI 引擎整合。最重要的是，我們用十五套系統交叉驗證——當多數系統得出相同結論時，準確度遠高於單一系統。不同於人為判斷，每次分析的結果都是可重複、可驗證的。' },
+            { q: '命理分析真的準確嗎？', a: '鑒源的排盤計算使用確定性算法，與專業命理軟體一致。解讀基於數十部經典古籍提煉的 34,458 條規則，再由分析引擎整合。最重要的是，我們用十五套系統交叉驗證——當多數系統得出相同結論時，準確度遠高於單一系統。不同於人為判斷，每次分析的結果都是可重複、可驗證的。' },
             { q: '報告多久生成？', a: '個人報告（人生藍圖、心之所惑）約 30 分鐘；家族藍圖和合否根據人數而定；出門訣因需排算數百個時辰，約需 40 分鐘以上。付款後系統全自動運算，完成後立即 Email 通知。' },
             { q: '可以退款嗎？', a: '報告為虛擬數位內容，一旦開始生成即消耗大量運算資源，因此生成後不支持退款。如果報告品質有任何問題，請聯繫 support@jianyuan.life，我們會免費重新生成。' },
             { q: '付款方式有哪些？安全嗎？', a: '透過 Stripe（PCI DSS Level 1 認證）處理，支援 Visa、Mastercard、AMEX 等主流信用卡。您的卡號不會經過鑒源伺服器，全程加密。' },
             { q: '人生藍圖和心之所惑有什麼差別？', a: '「人生藍圖」是全面分析——涵蓋性格、事業、財運、感情、健康、大運等所有面向，報告 6,000-10,000 字。「心之所惑」則聚焦在你最在乎的一個問題，深入剖析，報告 3,000-5,000 字。如果你有明確的困惑，心之所惑更精準；如果想全面了解自己，人生藍圖更完整。' },
-            { q: '出門訣適合什麼場合？', a: '任何你希望有好結果的重大事件：面試、簽約、開業、搬家、相親、考試等。事件出門訣（$119）針對單一事件排算；月盤出門訣（$89）則為你排算未來 30 天的最佳出行時機，適合需要持續改運的人。' },
+            { q: '出門訣適合什麼場合？', a: '任何你希望有好結果的重大事件：面試、簽約、開業、搬家、相親、考試等。事件出門訣（$119）針對單一事件排算；月盤出門訣（$89）則為你排算未來 30 天的最佳出行時機，適合需要持續優化出行時機的人。' },
             { q: '不確定出生時間怎麼辦？', a: '可以選擇最接近的時辰。即使時間不完全精確，十五套系統中有多套不依賴精確時辰（如姓名學、數字能量學、生肖運勢等），仍能提供有價值的分析。' },
           ].map((faq) => (
             <details key={faq.q} className="glass rounded-lg mb-3 group">

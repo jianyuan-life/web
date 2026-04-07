@@ -159,6 +159,12 @@ h1, h2, h3 {
   background-clip: text;
 }
 
+/* 下拉選單深色背景（Windows 修復） */
+select, option {
+  background-color: #1a1a2e;
+  color: #e8eaf0;
+}
+
 /* 科技感邊框發光 */
 .border-glow {
   border: 1px solid rgba(74, 122, 255, 0.2);

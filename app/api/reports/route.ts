@@ -1,15 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
-export async function GET() {
-  const supabase = createClient(
+// 從 cookie 建立帶 auth session 的 Supabase client
+async function getAuthSupabase() {
+  const cookieStore = await cookies()
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || '',
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+      },
+    },
   )
+}
 
+// 取得當前登入用戶，未登入回傳 null
+async function getAuthUser() {
+  const supabase = await getAuthSupabase()
+  const { data: { user } } = await supabase.auth.getUser()
+  return user
+}
+
+// Service role client（用於需要繞過 RLS 的操作）
+function getServiceSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+  )
+}
+
+export async function GET() {
+  const user = await getAuthUser()
+  if (!user) {
+    return NextResponse.json({ error: '未登入' }, { status: 401 })
+  }
+
+  // 用 service role + user_id 過濾，確保只取該用戶的報告
+  const supabase = getServiceSupabase()
   const { data, error } = await supabase
     .from('paid_reports')
     .select('*')
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(50)
 
@@ -22,19 +56,22 @@ export async function GET() {
 
 // PATCH — 重試失敗的報告
 export async function PATCH(req: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) {
+    return NextResponse.json({ error: '未登入' }, { status: 401 })
+  }
+
   const { id } = await req.json()
   if (!id) return NextResponse.json({ error: '缺少報告 ID' }, { status: 400 })
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  )
+  const supabase = getServiceSupabase()
 
-  // 取得報告資料
+  // 取得報告資料，確認屬於該用戶
   const { data: report, error: fetchErr } = await supabase
     .from('paid_reports')
     .select('*')
     .eq('id', id)
+    .eq('user_id', user.id)
     .single()
 
   if (fetchErr || !report) {
@@ -75,19 +112,22 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const user = await getAuthUser()
+  if (!user) {
+    return NextResponse.json({ error: '未登入' }, { status: 401 })
+  }
+
   const { id } = await req.json()
   if (!id) return NextResponse.json({ error: '缺少報告 ID' }, { status: 400 })
 
-  // 用 service role key 確保真正刪除（anon key 會被 RLS 擋住）
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  )
+  const supabase = getServiceSupabase()
 
+  // 確認報告屬於該用戶後才刪除
   const { error } = await supabase
     .from('paid_reports')
     .delete()
     .eq('id', id)
+    .eq('user_id', user.id)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

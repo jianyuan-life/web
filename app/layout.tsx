@@ -1,20 +1,25 @@
 import type { Metadata } from 'next'
+import { Noto_Serif_TC, Noto_Sans_TC } from 'next/font/google'
+import Image from 'next/image'
 import Navbar from '@/components/Navbar'
 import LocaleContent from '@/components/LocaleContent'
 import Tracker from '@/components/Tracker'
 import './globals.css'
 
+const notoSerif = Noto_Serif_TC({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-sans', display: 'swap' })
+const notoSans = Noto_Sans_TC({ subsets: ['latin'], weight: ['400', '500', '700'], variable: '--font-body', display: 'swap' })
+
 export const metadata: Metadata = {
   title: {
-    default: '鑒源 JianYuan — 十五大命理系統 AI 精準分析',
+    default: '鑒源 JianYuan — 十五大命理系統精準分析',
     template: '%s | 鑒源 JianYuan',
   },
-  description: '鑒源整合八字、紫微斗數、奇門遁甲、西洋占星等十五大命理系統，結合 34,458 條古籍規則與 AI 深度分析，為您提供性格天賦、事業財運、感情婚姻的完整命格報告。',
-  keywords: '鑒源, JianYuan, 八字, 紫微斗數, 奇門遁甲, 西洋占星, 命理分析, 命格分析, 命盤, AI命理, 算命, 姓名學, 風水, 出門訣, 人類圖, 吠陀占星, 運勢',
+  description: '鑒源整合八字、紫微斗數、奇門遁甲、西洋占星等十五大命理系統，結合 34,458 條古籍規則深度分析，為您提供性格天賦、事業財運、感情婚姻的完整命格報告。',
+  keywords: '鑒源, JianYuan, 八字, 紫微斗數, 奇門遁甲, 西洋占星, 命理分析, 命格分析, 命盤, 算命, 姓名學, 風水, 出門訣, 人類圖, 吠陀占星, 運勢',
   metadataBase: new URL('https://jianyuan.life'),
   openGraph: {
-    title: '鑒源 JianYuan — 十五大命理系統 AI 精準分析',
-    description: '整合東西方十五大命理系統與 AI，一份報告看清性格天賦、事業方向、感情運勢。免費體驗，不需註冊。',
+    title: '鑒源 JianYuan — 十五大命理系統精準分析',
+    description: '整合東西方十五大命理系統，一份報告看清性格天賦、事業方向、感情運勢。免費體驗，不需註冊。',
     url: 'https://jianyuan.life',
     siteName: '鑒源 JianYuan',
     type: 'website',
@@ -22,8 +27,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: '鑒源 JianYuan — 十五大命理系統 AI 精準分析',
-    description: '整合東西方十五大命理系統與 AI，一份報告看清性格天賦、事業方向、感情運勢。',
+    title: '鑒源 JianYuan — 十五大命理系統精準分析',
+    description: '整合東西方十五大命理系統，一份報告看清性格天賦、事業方向、感情運勢。',
   },
   robots: {
     index: true,
@@ -36,7 +41,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-TW">
+    <html lang="zh-TW" className={`${notoSerif.variable} ${notoSans.variable}`}>
       <head>
         {/* Google Analytics 4 */}
         {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
@@ -59,10 +64,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             />
           </>
         )}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap"
-          rel="stylesheet"
-        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -71,7 +72,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               '@type': 'WebApplication',
               name: '鑒源 JianYuan',
               url: 'https://jianyuan.life',
-              description: '整合東西方十五大命理系統與 AI 精準分析的命格分析平台',
+              description: '整合東西方十五大命理系統精準交叉驗證的命格分析平台',
               applicationCategory: 'LifestyleApplication',
               operatingSystem: 'Web',
               offers: {
@@ -101,7 +102,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="max-w-6xl mx-auto px-6 py-16">
             {/* 古典分隔裝飾 */}
             <div className="text-center mb-10">
-              <img src="/logo.svg" alt="鑒源" className="h-10 mx-auto mb-2" />
+              <Image src="/logo.svg" alt="鑒源" width={40} height={40} className="mx-auto mb-2" />
               <p className="text-sm text-text-muted">回到源頭 &middot; 看清本質</p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-sm">
@@ -132,7 +133,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </div>
             <div className="mt-12 pt-8 border-t border-gold/5 text-center text-xs text-text-muted/60">
-              <p>本服務融合傳統命理學與人工智能技術，分析結果僅供參考，不構成任何醫療、投資或法律建議。</p>
+              <p>本服務融合傳統命理學與現代科技，分析結果僅供參考，不構成任何醫療、投資或法律建議。</p>
               <p className="mt-2">&copy; {new Date().getFullYear()} 鑒源 JianYuan. All rights reserved. &middot; v2.3</p>
             </div>
           </div>

@@ -1117,7 +1117,7 @@ function CheckoutForm() {
               <p className="text-xs text-text-muted mb-2 font-semibold">付款後會發生什麼？</p>
               <div className="space-y-1.5 text-[11px] text-text-muted/70">
                 <p>1. 跳轉至 Stripe 安全付款頁面完成付款</p>
-                <p>2. 系統自動開始為您排盤運算與 AI 深度分析</p>
+                <p>2. 系統自動開始為您排盤運算與深度分析</p>
                 <p>3. 完整報告平均需 30 分鐘以上{['E1', 'E2'].includes(planCode) ? '，出門訣需 40 分鐘以上' : ''}</p>
                 <p>4. 完成後寄送 Email 通知，也可在儀表板即時查看</p>
               </div>
@@ -1133,7 +1133,7 @@ function CheckoutForm() {
             </button>
 
             <p className="text-xs text-text-muted/60 text-center">
-              付款由 Stripe 安全處理，您的信用卡資訊不會經過鑑源伺服器
+              付款由 Stripe 安全處理，您的信用卡資訊不會經過鑒源伺服器
             </p>
           </form>
         )}

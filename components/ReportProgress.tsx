@@ -34,7 +34,7 @@ const PLAN_CONFIG: Record<string, { systems: number; totalMinutes: number; label
 const PHASES = [
   { label: '排盤運算',   desc: '調取東西方命理系統，逐一起盤推算' },
   { label: '命理解析',   desc: '分析命格結構、五行格局、關鍵節點' },
-  { label: 'AI 深度分析', desc: 'AI 模型交叉驗證，撰寫個人化解讀' },
+  { label: '深度分析',   desc: '多系統交叉驗證，撰寫個人化解讀' },
   { label: '整合報告',   desc: '彙整所有系統結論，生成完整報告' },
 ]
 

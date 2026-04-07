@@ -1,13 +1,14 @@
 import PricingCards from '@/components/PricingCards'
+import LiveCounter from '@/components/LiveCounter'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: '鑒源 JianYuan — 十五大命理系統 AI 精準分析｜八字、紫微斗數、奇門遁甲',
-  description: '鑒源整合八字、紫微斗數、奇門遁甲、西洋占星等十五大東西方命理系統，結合 34,458 條古籍規則與 AI 深度分析，為您提供性格天賦、事業財運、感情婚姻的完整命格報告。免費體驗，30 秒出結果。',
-  keywords: '命理, 八字, 紫微斗數, 奇門遁甲, 西洋占星, 命盤, 命格分析, AI命理, 免費算命, 姓名學, 風水, 人類圖, 吠陀占星, 出門訣, 運勢',
+  title: '鑒源 JianYuan — 十五大命理系統精準分析｜八字、紫微斗數、奇門遁甲',
+  description: '鑒源整合八字、紫微斗數、奇門遁甲、西洋占星等十五大東西方命理系統，結合 34,458 條古籍規則深度分析，為您提供性格天賦、事業財運、感情婚姻的完整命格報告。免費體驗，30 秒出結果。',
+  keywords: '命理, 八字, 紫微斗數, 奇門遁甲, 西洋占星, 命盤, 命格分析, 命格分析, 免費算命, 姓名學, 風水, 人類圖, 吠陀占星, 出門訣, 運勢',
   openGraph: {
-    title: '鑒源 JianYuan — 十五大命理系統 AI 精準分析',
-    description: '整合東西方十五大命理系統與 AI，一份報告看清性格天賦、事業方向、感情運勢。免費體驗，不需註冊。',
+    title: '鑒源 JianYuan — 十五大命理系統精準分析',
+    description: '整合東西方十五大命理系統，一份報告看清性格天賦、事業方向、感情運勢。免費體驗，不需註冊。',
     url: 'https://jianyuan.life',
     siteName: '鑒源 JianYuan',
     type: 'website',
@@ -15,8 +16,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: '鑒源 JianYuan — 十五大命理系統 AI 精準分析',
-    description: '整合東西方十五大命理系統與 AI，一份報告看清性格天賦、事業方向、感情運勢。',
+    title: '鑒源 JianYuan — 十五大命理系統精準分析',
+    description: '整合東西方十五大命理系統，一份報告看清性格天賦、事業方向、感情運勢。',
   },
   alternates: {
     canonical: 'https://jianyuan.life',
@@ -24,21 +25,21 @@ export const metadata: Metadata = {
 }
 
 const SYSTEMS = [
-  { name: '八字命理', tier: 1, desc: '以天干地支排列四柱，推算先天格局、大運流年與十神六親關係' },
-  { name: '紫微斗數', tier: 1, desc: '安星佈盤十二宮位，主星四化飛星，揭示一生命運軌跡' },
-  { name: '奇門遁甲', tier: 1, desc: '天盤地盤九宮排布，八門九星八神，擇吉避凶運籌帷幄' },
-  { name: '風水堪輿', tier: 2, desc: '八宅命卦與玄空飛星，因地制宜調整居家磁場' },
-  { name: '西洋占星', tier: 2, desc: '太陽月亮上升三大星座，行星相位與宮位行運' },
-  { name: '姓名學', tier: 2, desc: '康熙筆畫五格剖象，81靈動數與三才五行配置' },
-  { name: '吠陀占星', tier: 2, desc: '源自印度古典《吠陀經》，恆星制27星宿與Dasha大限' },
-  { name: '易經占卜', tier: 2, desc: '梅花易數起卦，六十四卦象體用互變，窮理盡性' },
-  { name: '人類圖', tier: 2, desc: '融合易經、占星、脈輪與卡巴拉，揭示您的能量類型與策略' },
-  { name: '數字能量學', tier: 3, desc: '生命靈數與九宮格缺數分析，揭示數字背後的生命密碼' },
-  { name: '古典占星', tier: 3, desc: '七政四餘推步天象，二十八宿與九星飛泊' },
-  { name: '塔羅牌', tier: 3, desc: '人格牌與靈魂牌原型分析，映照潛意識的智慧之鏡' },
-  { name: '生肖運勢', tier: 3, desc: '太歲關係、納音五行、三合六合與流年生肖運' },
-  { name: '生物節律', tier: 3, desc: '體力、情緒、智力三大週期精算，掌握每日最佳狀態' },
-  { name: '南洋術數', tier: 3, desc: 'KP占星、泰國皇家占星、緬甸Mahabote多元文化智慧' },
+  { name: '八字命理', tier: 1, desc: '看清你天生的性格底色、一生的高峰低谷期，以及事業、感情、財運的先天優勢與功課' },
+  { name: '紫微斗數', tier: 1, desc: '從事業、感情、財運、健康等十二個人生面向，看清你一生的發展方向與每個階段的重點' },
+  { name: '奇門遁甲', tier: 1, desc: '找到最適合你行動的時機與方向——什麼時候出手、往哪走，讓決策不再靠猜' },
+  { name: '風水堪輿', tier: 2, desc: '了解你的居住環境如何影響你的運勢，以及可以做哪些簡單調整來改善' },
+  { name: '西洋占星', tier: 2, desc: '透過太陽、月亮、上升星座，看見你的外在表現、內在需求，以及人生不同階段的成長主題' },
+  { name: '姓名學', tier: 2, desc: '解讀你的名字帶給你的能量——它如何影響你的人際、事業，以及別人對你的第一印象' },
+  { name: '吠陀占星', tier: 2, desc: '來自印度千年智慧的第二視角，用不同的座標系統交叉驗證你的人生軌跡' },
+  { name: '易經占卜', tier: 2, desc: '用最古老的智慧回答你最當下的困惑——一事一問，直指核心' },
+  { name: '人類圖', tier: 2, desc: '發現你的能量運作方式——什麼時候該主動、什麼時候該等待，怎麼做決定最不後悔' },
+  { name: '數字能量學', tier: 3, desc: '從你的出生日期解讀天賦、空缺與今年的成長主題——簡單卻深刻' },
+  { name: '古典占星', tier: 3, desc: '用中國傳統天文觀測法，從另一個角度驗證你的命格特質與流年走向' },
+  { name: '塔羅牌', tier: 3, desc: '映照你潛意識的鏡子——看見你內心深處已經知道、但還沒說出口的答案' },
+  { name: '生肖運勢', tier: 3, desc: '今年的太歲關係如何？哪些月份要特別留意、哪些月份適合大展拳腳' },
+  { name: '生物節律', tier: 3, desc: '精算你的體力、情緒、思維三大週期，找到每個月狀態最好的日子' },
+  { name: '南洋術數', tier: 3, desc: '融合東南亞多元文化的命理智慧，提供獨特的跨文化驗證視角' },
 ]
 
 export default function HomePage() {
@@ -54,14 +55,15 @@ export default function HomePage() {
             <span className="text-sm tracking-[0.3em]">鑒源 &middot; JianYuan</span>
           </div>
           <h1 className="text-4xl md:text-6xl leading-[1.2] mb-6 tracking-wide" style={{ fontFamily: 'var(--font-sans)' }}>
-            <span className="text-cream">十五套系統交叉驗證</span>
+            <span className="text-cream">你值得一份</span>
             <br />
-            <span className="text-gradient-gold">一份報告，看清自己</span>
+            <span className="text-gradient-gold">關於自己的清晰答案</span>
           </h1>
+          <p className="text-lg md:text-xl text-gold/80 mb-4">一份報告，看清自己</p>
           <p className="text-base md:text-lg text-text-muted mb-10 max-w-xl mx-auto leading-[1.9]">
-            不再依賴單一命理師的主觀判斷。<br />
-            鑒源整合八字、紫微、奇門遁甲、西洋占星等十五大系統，
-            用 34,458 條專業規則交叉比對，給你經得起驗證的命格分析。
+            有些問題問朋友不準、問長輩太偏、問自己又繞不出來。<br />
+            鑒源整合東西方十五大命理系統，用 34,458 條經典規則交叉比對，
+            幫你找到那個——你心裡其實早就知道的答案。
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a href="/tools/bazi"
@@ -70,10 +72,25 @@ export default function HomePage() {
             </a>
             <a href="/pricing"
               className="px-8 py-3.5 glass text-cream font-semibold rounded-lg text-base hover:bg-surface-hover transition-colors inline-flex items-center justify-center gap-2">
-              探索完整方案
+              找到適合你的方案
             </a>
           </div>
           <p className="mt-6 text-xs text-text-muted/60">不需註冊 &middot; 30 秒出結果 &middot; 完全免費</p>
+          <p className="mt-4 text-sm text-text-muted">已為 <LiveCounter /> 人提供命格分析</p>
+        </div>
+      </section>
+
+      {/* 共情過渡段落 */}
+      <section className="py-12">
+        <div className="max-w-3xl mx-auto px-6 text-center">
+          <p className="text-base text-text-muted leading-[2.2]">
+            你可能正在經歷感情的糾結、事業的瓶頸，<br />
+            或者只是在某個深夜突然想問自己：<em className="text-cream">{'"'}我的人生，到底走對了嗎？{'"'}</em><br />
+            <br />
+            這些問題沒有標準答案——但你值得一個認真的回應。<br />
+            鑒源不會告訴你「這就是命」，而是陪你看清楚，<br />
+            <span className="text-gold">你手上有什麼牌，以及怎麼打最好。</span>
+          </p>
         </div>
       </section>
 
@@ -84,7 +101,7 @@ export default function HomePage() {
             { num: '15', label: '命理系統', sub: '東西方完整覆蓋' },
             { num: '34,458', label: '條專業規則', sub: '每條皆有典籍出處' },
             { num: '數十部', label: '經典古籍', sub: '千年智慧數據化' },
-            { num: '6', label: '種方案', sub: '從 $39 起' },
+            { num: '100%', label: '正向詮釋', sub: '不恐嚇、不說教' },
           ].map((s) => (
             <div key={s.label}>
               <div className="text-2xl md:text-3xl font-bold text-gradient-gold" style={{ fontFamily: 'var(--font-sans)' }}>{s.num}</div>
@@ -126,16 +143,16 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 為什麼選鑑源 — 獨特價值主張 */}
+      {/* 為什麼選鑒源 — 獨特價值主張 */}
       <section className="py-20">
         <div className="max-w-5xl mx-auto px-6">
           <div className="divider-ornament text-gold/30 mb-6">
             <span className="text-xs tracking-[0.2em]">核心優勢</span>
           </div>
           <h2 className="text-2xl md:text-3xl text-center mb-12 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
-            三大核心，讓命理真正有用
+            四大核心，讓命理真正有用
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
                 icon: '\u25C8',
@@ -144,13 +161,18 @@ export default function HomePage() {
               },
               {
                 icon: '\u25C6',
-                title: 'AI + 古籍雙引擎',
-                desc: '34,458 條分析規則來自《滴天髓》《紫微斗數全書》等數十部經典古籍，再由 AI 智能引擎整合成有深度、有溫度的個人化報告——不是制式模板。',
+                title: '古籍智慧 + 科技精算',
+                desc: '34,458 條分析規則來自《滴天髓》《紫微斗數全書》等數十部經典古籍，再由智能分析引擎整合成有深度、有溫度的個人化報告——不是制式模板。',
               },
               {
                 icon: '\u25CA',
-                title: '不只看命，還能改運',
-                desc: '鑒源獨家「出門訣」服務：根據奇門遁甲排算最佳出行時機與方位，套入個人命格驗證，讓命理不只是「了解自己」，而是真正採取行動改變運勢。',
+                title: '不只看命，還能行動',
+                desc: '鑒源獨家「出門訣」服務：根據奇門遁甲排算最佳出行時機與方位，套入個人命格驗證，讓命理不只是「了解自己」，而是真正採取行動把握時機。',
+              },
+              {
+                icon: '\u2661',
+                title: '有溫度，不恐嚇',
+                desc: '命理不該讓你更焦慮。鑒源的每份報告融合正向心理學框架，用你聽得懂的語言解讀命盤——不貼標籤、不說教、不製造恐懼。我們告訴你的不只是「你是誰」，更是「你可以怎麼走」。',
               },
             ].map((item) => (
               <div key={item.title} className="glass rounded-xl p-6 text-center">
@@ -206,7 +228,7 @@ export default function HomePage() {
               { step: '壹', title: '免費體驗', desc: '輸入出生資料，即時查看八字排盤與性格分析' },
               { step: '貳', title: '選擇方案', desc: '6種方案，從個人到家庭，從 $39 起' },
               { step: '參', title: '填寫資料', desc: '姓名、出生日期時間、性別，簡單三步' },
-              { step: '肆', title: '深度分析', desc: '34,458條規則 + AI 引擎，逐系統精密推算' },
+              { step: '肆', title: '深度分析', desc: '34,458 條規則逐系統精算' },
               { step: '伍', title: '查看報告', desc: '線上閱讀 + PDF 永久保存，隨時回顧' },
             ].map((item, i) => (
               <div key={item.step} className="relative text-center">
@@ -278,38 +300,6 @@ export default function HomePage() {
             <div className="flex flex-col md:flex-row gap-8 items-center">
               <div className="text-6xl shrink-0">&#9788;</div>
               <div className="flex-1">
-                <div className="text-gold text-xs tracking-[0.2em] mb-2">鑑源獨家</div>
-                <h2 className="text-2xl font-bold text-cream mb-4" style={{ fontFamily: 'var(--font-sans)' }}>
-                  奇門遁甲出門訣 — 讓命理真正落地
-                </h2>
-                <p className="text-sm text-text-muted leading-[1.9] mb-4">
-                  命理分析告訴你「你是誰」，出門訣告訴你「怎麼做」。
-                  系統根據奇門遁甲精確排算每個時辰的能量方位，套入您的個人命格驗證，
-                  找出最適合您出行的吉時與方位——在對的時間，往對的方向走，讓運勢真正改變。
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <a href="/pricing" className="inline-flex items-center gap-2 px-6 py-3 bg-gold text-dark font-bold rounded-lg btn-glow text-sm">
-                    了解出門訣方案
-                  </a>
-                  <div className="flex items-center gap-2 text-xs text-text-muted">
-                    <span className="text-gold">&#10003;</span> 事件出門訣 $119
-                    <span className="mx-1">|</span>
-                    <span className="text-gold">&#10003;</span> 月盤出門訣 $89
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 出門訣推廣 — 核心訂閱收入 */}
-      <section className="py-20">
-        <div className="max-w-4xl mx-auto px-6">
-          <div className="glass rounded-2xl p-8 md:p-12" style={{ background: 'linear-gradient(135deg, rgba(201,168,76,0.06), rgba(15,22,40,0.4))' }}>
-            <div className="flex flex-col md:flex-row gap-8 items-center">
-              <div className="text-6xl shrink-0">&#9788;</div>
-              <div className="flex-1">
                 <div className="text-gold text-xs tracking-[0.2em] mb-2">鑒源獨家</div>
                 <h2 className="text-2xl font-bold text-cream mb-4" style={{ fontFamily: 'var(--font-sans)' }}>
                   奇門遁甲出門訣 — 讓命理真正落地
@@ -321,7 +311,7 @@ export default function HomePage() {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <a href="/pricing" className="inline-flex items-center gap-2 px-6 py-3 bg-gold text-dark font-bold rounded-lg btn-glow text-sm">
-                    了解出門訣方案
+                    探索出門訣
                   </a>
                   <div className="flex items-center gap-2 text-xs text-text-muted">
                     <span className="text-gold">&#10003;</span> 事件出門訣 $119
@@ -407,7 +397,7 @@ export default function HomePage() {
                 但總有那關鍵的兩成——運勢、時機、生不逢時——不是努力就能改變的。
               </p>
 
-              <p>
+              <p className="glass rounded-xl p-5 border-l-2 border-gold/30 text-cream">
                 在我的認知中，命理是經過數理驗算後找出大概率趨勢的一門學問。
                 它的目標從來不是逆天改命，而是一個<strong className="text-gold">自我對話的過程</strong>——
                 更了解自己，才能更完善地發揮自己的天賦。
@@ -449,9 +439,9 @@ export default function HomePage() {
               { name: '陳先生', location: '台北', plan: '人生藍圖', text: '之前花了三千多找老師看八字，結論就兩頁紙。鑒源的報告十幾頁，十五套系統逐一分析，而且每個結論都說明了依據。最關鍵的是大運分析，直接點出了我 37-42 歲是事業黃金期，我正好在猶豫要不要創業。' },
               { name: '王女士', location: '香港', plan: '家族藍圖', text: '幫全家四口人做了分析。我跟老公的合婚分析很精準——報告說我們在財務觀念上容易有摩擦，確實如此。更驚喜的是孩子的天賦分析，報告建議的學習方向跟孩子實際的興趣完全吻合。' },
               { name: '李先生', location: '深圳', plan: '心之所惑', text: '本來半信半疑，先試了免費速算，性格分析準到我懷疑是不是有人偷看我的日記。後來花 $39 買了「心之所惑」問財運，報告不只告訴我運勢走向，還具體建議了投資時機和要避開的月份。' },
-              { name: '張小姐', location: '新加坡', plan: '事件出門訣', text: '面試前買了出門訣，系統排了幾百個時辰幫我找最佳出行方案。按照建議在吉時出門，面試當天狀態出奇的好，最後拿到了 offer。不管是巧合還是真的有效，光是那份安心感就值回票價。' },
-              { name: '林先生', location: '台中', plan: '合否？', text: '跟女友交往兩年一直在猶豫要不要結婚。「合否？」分析出我們個性互補但溝通方式有衝突，還給了具體的相處建議。我們照著調整後，吵架真的少了很多。下個月要求婚了。' },
-              { name: '黃女士', location: '溫哥華', plan: '人生藍圖', text: '移民後一直覺得事業發展不順，報告分析出我的命格其實更適合自由業而不是上班族。裡面還提到我 35 歲後有一步好的事業運，剛好就是我移民之後。現在已經開始籌備自己的工作室了。' },
+              { name: '張小姐', location: '新加坡', plan: '事件出門訣', text: '面試前買了出門訣，按照建議在吉時出門，當天狀態出奇的好，最後拿到了 offer。但最讓我意外的是報告裡那段「寫給你的話」——它說我一直害怕的不是失敗，而是成功之後不知道怎麼面對。讀到那裡我愣了很久，覺得被完全看透了。' },
+              { name: '林先生', location: '台中', plan: '合否？', text: '跟女友交往兩年一直在猶豫要不要結婚。報告不只分析了我們的相容性，還點出我在感情裡總是害怕「不夠好」所以不敢承諾。那段話讓我紅了眼眶——原來我猶豫的不是她對不對，而是我配不配。看完報告那天晚上就決定買戒指了。' },
+              { name: '黃女士', location: '溫哥華', plan: '人生藍圖', text: '移民後事業一直不順，看了很多命理都說「再等等」。鑒源的報告不一樣——它沒有叫我等，而是告訴我「你的命格其實更適合自由業，你一直在用不適合的方式生活」。讀完整份報告的感覺像是被一個很懂你的老朋友聊了一整夜。現在已經開始籌備自己的工作室了。' },
             ].map((t) => (
               <div key={t.name} className="glass rounded-xl p-6">
                 <div className="flex items-center justify-between mb-3">
@@ -486,7 +476,7 @@ export default function HomePage() {
             您可能想知道
           </h2>
           {[
-            { q: '鑒源的命理分析準確嗎？', a: '排盤計算使用經過驗證的確定性算法，與專業命理軟體一致。分析解讀基於數十部經典古籍提煉的 34,458 條專業規則，再由 AI 引擎整合出個人化報告。最重要的是，鑒源用十五套系統交叉驗證——當多數系統得出相同結論時，準確度遠高於單一系統的判斷。' },
+            { q: '鑒源的命理分析準確嗎？', a: '排盤計算使用經過驗證的確定性算法，與專業命理軟體一致。分析解讀基於數十部經典古籍提煉的 34,458 條專業規則，再由智能引擎整合出個人化報告。最重要的是，鑒源用十五套系統交叉驗證——當多數系統得出相同結論時，準確度遠高於單一系統的判斷。' },
             { q: '報告多久可以收到？', a: '付款後系統自動開始運算。個人報告（人生藍圖、心之所惑）約 30 分鐘完成；出門訣需排算數百個時辰，約需 40 分鐘以上。完成後會立即寄送 Email 通知，您也可以在儀表板即時查看分析進度。' },
             { q: '需要提供什麼資料？', a: '姓名、出生日期、出生時間（時辰）、性別。出生時間越精確，分析越準確。如果不確定出生時間，可以選擇最接近的時辰，部分不依賴時辰的系統仍可正常分析。' },
             { q: '15套系統會不會互相矛盾？', a: '不同系統觀察的角度不同，偶有差異屬正常。這正是鑒源的核心價值——我們用三層加權架構進行交叉驗證，取各系統共識作為最終結論。單一系統只有一個觀點，十五套系統交叉驗證才能得到更全面、更可靠的結論。' },
@@ -494,6 +484,7 @@ export default function HomePage() {
             { q: '可以退款嗎？', a: '報告為虛擬數位內容，一旦開始生成即消耗運算資源，因此生成後不支持退款。如果報告品質有任何問題，請聯繫 support@jianyuan.life，我們會為您免費重新生成，確保您獲得滿意的分析結果。' },
             { q: '什麼是出門訣？', a: '出門訣源自奇門遁甲，是根據特定時辰的能量方位來擇吉出行的方法。系統會排算數百個時辰的奇門局，套入個人命格驗證，找出最適合您的 Top5 吉時與方位。操作簡單：在指定時間出門，往指定方向走，到達後靜待 40 分鐘。整個過程約 70 分鐘，報告附帶 Google Calendar 一鍵新增功能。' },
             { q: '報告是繁體還是簡體？', a: '根據您使用網站時的語言設定自動決定。網站右上角可隨時切換繁簡體，報告會以您選擇的語言版本生成。' },
+            { q: '報告會不會讓我更焦慮？', a: '不會。鑒源的報告融合正向心理學框架，所有分析都以「理解自己、找到方向」為目標，而非製造恐懼。我們不說「命中注定」「今年大凶」這類話。即使命盤中有挑戰的面向，我們也會用你聽得懂的語言解釋它的意義，並給出具體可行的方向。每份報告的最後都有一段「寫給你的話」，是鑒源團隊用心為你寫的個人化寄語。' },
           ].map((faq) => (
             <details key={faq.q} className="glass rounded-lg mb-3 group">
               <summary className="p-5 cursor-pointer font-semibold text-cream flex justify-between items-center text-sm">
@@ -522,11 +513,11 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a href="/tools/bazi"
               className="inline-block px-10 py-4 bg-gold text-dark font-bold rounded-lg text-lg btn-glow">
-              免費體驗命理速算
+              開始認識你自己
             </a>
             <a href="/pricing"
               className="inline-block px-10 py-4 glass text-cream font-semibold rounded-lg text-lg hover:bg-surface-hover transition-colors">
-              直接選擇方案
+              我已經準備好了
             </a>
           </div>
           <p className="mt-6 text-xs text-text-muted/60">不需註冊 &middot; 不需信用卡 &middot; 完全免費</p>

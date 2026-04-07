@@ -198,7 +198,7 @@ function DashboardContent() {
               <div>
                 <p className="text-cream font-semibold">付款成功，命理分析啟動中</p>
                 <p className="text-sm text-text-muted">
-                  系統已開始為您進行命理排盤與 AI 深度解析。
+                  系統已開始為您進行命理排盤與深度解析。
                   <strong className="text-gold/80"> 每位成員的完整報告平均需要 30 分鐘以上，出門訣計算需 40 分鐘以上</strong>，
                   請耐心等候——我們寧可多花時間，也要確保每份報告的準確性與深度。
                   完成後此頁面將自動更新，無需手動刷新。
@@ -214,7 +214,7 @@ function DashboardContent() {
             <p className="text-sm text-text-muted">查看和下載已生成的命理報告</p>
           </div>
           <a href="/pricing" className="px-4 py-2 bg-gold text-dark font-semibold rounded-lg text-sm btn-glow">
-            + 新報告
+            + 新的探索
           </a>
         </div>
 
@@ -226,7 +226,7 @@ function DashboardContent() {
             <div className="text-3xl shrink-0">&#9788;</div>
             <div className="flex-1">
               <p className="text-sm text-cream font-semibold">想讓命理能量真正落地？</p>
-              <p className="text-xs text-text-muted mt-1">您已完成命格分析，下一步可以試試「出門訣」——根據奇門遁甲找出最適合您的出行吉時與方位，採取行動改變運勢。</p>
+              <p className="text-xs text-text-muted mt-1">您已完成命格分析，下一步可以試試「出門訣」——根據奇門遁甲找出最適合您的出行吉時與方位，採取行動把握最佳時機。</p>
             </div>
             <a href="/pricing" className="shrink-0 px-4 py-2 bg-gold text-dark font-semibold rounded-lg text-xs btn-glow">
               了解出門訣

@@ -39,7 +39,7 @@ export default function PrivacyPage() {
         <h2 className="text-xl font-semibold text-white">4. 第三方服務</h2>
         <ul className="list-disc pl-5 space-y-1">
           <li>Stripe：支付處理</li>
-          <li>Anthropic Claude API：AI 報告生成（資料匿名化處理）</li>
+          <li>報告分析引擎（資料匿名化處理）</li>
           <li>Resend：郵件發送</li>
         </ul>
 
