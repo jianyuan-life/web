@@ -132,6 +132,14 @@ const PSYCHOLOGY_RULES = `
 7. 如果排盤數據中的好的地方/需要注意的地方已經有具體描述，必須在報告中展開這些描述，而不是另起爐灶寫完全不同的內容。
 `
 
+// 根據 locale 替換 prompt 中的語言指示
+function localizePrompt(prompt: string, locale?: string): string {
+  if (locale === 'zh-CN') {
+    return prompt.replace(/語言：繁體中文。/g, '語言：簡體中文。')
+  }
+  return prompt
+}
+
 const PLAN_SYSTEM_PROMPT: Record<string, string> = {
   // ========== C 方案：人生藍圖（$89）==========
   C: `你是鑒源命理平台的首席命理顧問，精通東西方十五大命理系統。你正在為一位付費客戶撰寫「人生藍圖」報告——這是他們人生中第一份如此完整的命理分析。
@@ -712,10 +720,10 @@ ${analyses.length}套系統排盤完整數據：
       if (CLAUDE_API_KEY) {
         try {
           const [result1, result2, result3, result4] = await Promise.all([
-            callClaudeStreaming(buildCall1Prompt(ageGroup, clientNeed), userPrompt1, 16384),
-            callClaudeStreaming(buildCall2Prompt(ageGroup), userPrompt2, 12288),
-            callClaudeStreaming(buildCall3Prompt(ageGroup), userPrompt3, 8192),
-            callClaudeStreaming(buildCall4Prompt(ageGroup, birthData.name), userPrompt4, 8192),
+            callClaudeStreaming(buildCall1Prompt(ageGroup, clientNeed, birthData.locale), userPrompt1, 16384),
+            callClaudeStreaming(buildCall2Prompt(ageGroup, birthData.locale), userPrompt2, 12288),
+            callClaudeStreaming(buildCall3Prompt(ageGroup, birthData.locale), userPrompt3, 8192),
+            callClaudeStreaming(buildCall4Prompt(ageGroup, birthData.name, birthData.locale), userPrompt4, 8192),
           ])
 
           console.log(`Claude Call 1: ${result1.length} 字`)
@@ -736,7 +744,7 @@ ${analyses.length}套系統排盤完整數據：
       // Claude 失敗或 key 未設定 → fallback DeepSeek
       if (!reportContent) {
         try {
-          const systemPrompt = PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C']
+          const systemPrompt = localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
           reportContent = await callDeepSeekFallback(systemPrompt, buildGenericUserPrompt())
           aiModelUsed = 'deepseek-chat'
           console.log(`C 方案 DeepSeek fallback 完成：${reportContent.length} 字`)
@@ -750,7 +758,7 @@ ${analyses.length}套系統排盤完整數據：
       // ============================================================
       // 其他方案（D/R/G15/E1/E2/Y）：Claude 單次呼叫，失敗 fallback DeepSeek
       // ============================================================
-      const systemPrompt = PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C']
+      const systemPrompt = localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
       const userPrompt = buildGenericUserPrompt()
 
       // 先嘗試 Claude

@@ -30,6 +30,7 @@ interface ReportData {
     day: number
     hour?: number
     gender: string
+    locale?: string
   }
   report_result: {
     ai_content: string
@@ -253,9 +254,14 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   // 排序系統評分（高到低）
   const sortedScores = [...analysesSummary].sort((a, b) => b.score - a.score)
 
+  // 簡體中文報告使用 SC 字體
+  const isSimplified = report.birth_data?.locale === 'zh-CN'
+
   return (
-    <div className="min-h-screen pb-16" style={{ background: 'linear-gradient(180deg, #0a0e1a 0%, #0f1628 40%, #0a0e1a 100%)' }}>
+    <div className={`min-h-screen pb-16${isSimplified ? ' locale-cn' : ''}`} style={{ background: 'linear-gradient(180deg, #0a0e1a 0%, #0f1628 40%, #0a0e1a 100%)' }}>
       <style>{`
+        ${isSimplified ? `.locale-cn { font-family: var(--font-body-sc), var(--font-body), "Noto Sans SC", sans-serif; }
+        .locale-cn .report-h3, .locale-cn h1, .locale-cn h2, .locale-cn h3 { font-family: var(--font-sans-sc), var(--font-sans), "Noto Serif SC", serif; }` : ''}
         .report-h3 { font-size: 1.05rem; font-weight: 600; color: var(--color-gold); margin: 1.5rem 0 0.6rem; font-family: var(--font-sans); }
         .report-bold { color: var(--color-cream); font-weight: 600; }
         .report-li { margin-left: 1.5rem; color: var(--color-text-muted); list-style: disc; margin-bottom: 0.5rem; line-height: 1.9; font-size: 0.9rem; }

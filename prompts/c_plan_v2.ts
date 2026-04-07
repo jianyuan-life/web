@@ -195,9 +195,11 @@ const AGE_INSTRUCTIONS: Record<string, string> = {
 }
 
 // ── 通用寫作鐵律（所有 call 共用）──
-const WRITING_RULES = `【寫作鐵律——違反任何一條都是不合格報告】
+function getWritingRules(locale?: string): string {
+  const lang = locale === 'zh-CN' ? '簡體中文' : '繁體中文'
+  return `【寫作鐵律——違反任何一條都是不合格報告】
 
-1. 語言：繁體中文
+1. 語言：${lang}
 
 2. 每個論點必須有排盤數據——不是「你適合穩定發展」，是「你的庚金日主坐三戌偏印，代表...」。沒有數據支撐的論點一律刪掉。
 
@@ -233,12 +235,15 @@ const WRITING_RULES = `【寫作鐵律——違反任何一條都是不合格報
    - 不說「從命理角度來看」開頭（廢話，整篇都是命理角度）
 
 10. 如果某個系統的排盤數據不完整，跳過該系統，絕對不要編造數據。`
+}
+// 預設繁體（向後相容）
+const WRITING_RULES = getWritingRules()
 
 // ============================================================
 // Call A（原 Call 1）：第一幕「你是誰」+ 系統 1-4
 // 八字 + 紫微 + 奇門 + 風水
 // ============================================================
-export function buildCall1Prompt(ageGroup: string, clientNeed?: string): string {
+export function buildCall1Prompt(ageGroup: string, clientNeed?: string, locale?: string): string {
   return `你是鑒源命理平台（jianyuan.life）的首席命理顧問，精通東西方十五大命理系統。你正在為付費客戶（$89 人生藍圖）撰寫一份足以改變人生的命理報告。
 
 你的目標：客戶讀完後感慨「如果10年前就看到，人生會少走很多錯路」。
@@ -246,7 +251,7 @@ export function buildCall1Prompt(ageGroup: string, clientNeed?: string): string 
 ${AGE_INSTRUCTIONS[ageGroup]}
 ${clientNeed ? `\n【客戶特定需求】${clientNeed}\n所有分析請優先圍繞客戶的需求展開，但不要遺漏其他重要面向。` : ''}
 
-${WRITING_RULES}
+${locale ? getWritingRules(locale) : WRITING_RULES}
 
 ## 你要撰寫的章節
 
@@ -314,11 +319,11 @@ ${WRITING_RULES}
 // Call B（原 Call 2）：系統 5-9
 // 姓名 + 西洋 + 吠陀 + 易經 + 人類圖
 // ============================================================
-export function buildCall2Prompt(ageGroup: string): string {
+export function buildCall2Prompt(ageGroup: string, locale?: string): string {
   return `你是鑒源命理平台的首席命理顧問，正在撰寫「人生藍圖」報告的第二批系統分析。
 
 ${AGE_INSTRUCTIONS[ageGroup]}
-${WRITING_RULES}
+${locale ? getWritingRules(locale) : WRITING_RULES}
 
 ## 你要撰寫的章節
 
@@ -368,11 +373,11 @@ ${WRITING_RULES}
 // Call C（原 Call 3）：系統 10-15
 // 塔羅 + 數字 + 古典 + 生肖 + 生物 + 南洋
 // ============================================================
-export function buildCall3Prompt(ageGroup: string): string {
+export function buildCall3Prompt(ageGroup: string, locale?: string): string {
   return `你是鑒源命理平台的首席命理顧問，正在撰寫「人生藍圖」報告的第三批系統分析。
 
 ${AGE_INSTRUCTIONS[ageGroup]}
-${WRITING_RULES}
+${locale ? getWritingRules(locale) : WRITING_RULES}
 
 ## 你要撰寫的章節
 
@@ -427,11 +432,11 @@ ${WRITING_RULES}
 // Call D（原 Call 4）：第三幕 + 壓軸 + 收尾
 // 交叉驗證 + 共識總結 + 年度月曆 + 刻意練習 + 寫給你的話
 // ============================================================
-export function buildCall4Prompt(ageGroup: string, clientName: string): string {
+export function buildCall4Prompt(ageGroup: string, clientName: string, locale?: string): string {
   return `你是鑒源命理平台的首席命理顧問，正在撰寫「人生藍圖」報告的最終部分——這是整份報告的高潮和收尾，也是客戶記憶最深的部分。
 
 ${AGE_INSTRUCTIONS[ageGroup]}
-${WRITING_RULES}
+${locale ? getWritingRules(locale) : WRITING_RULES}
 
 ## 你要撰寫的章節
 
