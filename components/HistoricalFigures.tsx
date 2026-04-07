@@ -16,21 +16,12 @@ interface HistoricalFiguresProps {
   onSelect: (fig: Figure) => void
 }
 
-// 內建的範例歷史人物（去重後）
-const BUILTIN_FIGURES: Figure[] = [
-  { name: '諸葛亮', year: '181', month: '7', day: '23', hour: '6', minute: '0', gender: 'M' },
-  { name: '武則天', year: '624', month: '2', day: '17', hour: '10', minute: '0', gender: 'F' },
-  { name: '李白', year: '701', month: '2', day: '28', hour: '4', minute: '0', gender: 'M' },
-  { name: '曹操', year: '155', month: '3', day: '15', hour: '14', minute: '0', gender: 'M' },
-  { name: '孫子', year: '-544', month: '1', day: '1', hour: '8', minute: '0', gender: 'M' },
-]
-
 export default function HistoricalFigures({ onSelect }: HistoricalFiguresProps) {
   const [open, setOpen] = useState(false)
-  const [figures, setFigures] = useState<Figure[]>(BUILTIN_FIGURES)
+  const [figures, setFigures] = useState<Figure[]>([])
   const [loaded, setLoaded] = useState(false)
 
-  // 載入歷史報告中的人物（去重）
+  // 載入用戶過去輸入過的資料（從歷史報告提取，去重）
   useEffect(() => {
     if (loaded) return
     setLoaded(true)
@@ -38,13 +29,16 @@ export default function HistoricalFigures({ onSelect }: HistoricalFiguresProps) 
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data?.reports?.length) return
-        const seen = new Set(BUILTIN_FIGURES.map(f => f.name))
-        const extra: Figure[] = []
+        const seen = new Set<string>()
+        const people: Figure[] = []
         for (const r of data.reports) {
           const bd = r.birth_data
-          if (!bd?.name || seen.has(bd.name)) continue
-          seen.add(bd.name)
-          extra.push({
+          if (!bd?.name) continue
+          // 用姓名+生日去重
+          const key = `${bd.name}-${bd.year}-${bd.month}-${bd.day}`
+          if (seen.has(key)) continue
+          seen.add(key)
+          people.push({
             name: bd.name,
             year: String(bd.year || '1990'),
             month: String(bd.month || '1'),
@@ -53,11 +47,32 @@ export default function HistoricalFigures({ onSelect }: HistoricalFiguresProps) 
             minute: String(bd.minute || '0'),
             gender: bd.gender || 'M',
           })
+          // 如果是家族/合盤方案，也提取成員
+          if (bd.members) {
+            for (const m of bd.members) {
+              if (!m.name) continue
+              const mkey = `${m.name}-${m.year}-${m.month}-${m.day}`
+              if (seen.has(mkey)) continue
+              seen.add(mkey)
+              people.push({
+                name: m.name,
+                year: String(m.year || '1990'),
+                month: String(m.month || '1'),
+                day: String(m.day || '1'),
+                hour: String(m.hour || '12'),
+                minute: String(m.minute || '0'),
+                gender: m.gender || 'M',
+              })
+            }
+          }
         }
-        if (extra.length) setFigures(prev => [...extra, ...prev])
+        setFigures(people)
       })
       .catch(() => {})
   }, [loaded])
+
+  // 沒有歷史資料時不顯示
+  if (figures.length === 0) return null
 
   return (
     <div className="mb-4">
