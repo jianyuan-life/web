@@ -1,0 +1,86 @@
+// 結帳頁共用型別定義
+
+export interface FamilyMember {
+  name: string
+  year: string
+  month: string
+  day: string
+  hour: string
+  timeMode: 'unknown' | 'shichen' | 'exact'
+  minute: string
+  gender: string
+  birthCity?: string
+  cityLat?: number
+  cityLng?: number
+}
+
+export function newMember(): FamilyMember {
+  return { name: '', year: '1990', month: '1', day: '1', hour: '12', timeMode: 'shichen', minute: '0', gender: 'M', birthCity: '', cityLat: 0, cityLng: 0 }
+}
+
+export const PLANS: Record<string, { name: string; price: number; systems: number }> = {
+  C: { name: '人生藍圖', price: 89, systems: 15 },
+  D: { name: '心之所惑', price: 39, systems: 15 },
+  G15: { name: '家族藍圖', price: 159, systems: 15 },
+  R: { name: '合否？', price: 59, systems: 15 },
+  E1: { name: '事件出門訣', price: 119, systems: 1 },
+  E2: { name: '月盤出門訣', price: 89, systems: 1 },
+}
+
+export const FAMILY_EXTRA_PRICE: Record<string, number> = {
+  G15: 69,
+  R: 19,
+}
+
+export const PLAN_DESCRIPTIONS: Record<string, string> = {
+  C: '填寫您的出生資料，我們將為您進行十五套命理系統深度分析',
+  D: '請選擇分析主題並填寫出生資料',
+  G15: '請填寫每位家庭成員的出生資料',
+  R: '請填寫雙方（或多方）的出生資料',
+  E1: '請填寫您的出生資料與事件背景。系統將精確排算事件前後各時段的奇門局，套入您的命格驗證吉位，交出針對此事最精準的 Top 5 出行方案。計算需 40 分鐘以上。',
+  E2: '請填寫您的出生資料。系統將從今日起，逐一排算未來 30 天共 360 個時辰的奇門局，套入您的命格找出個人吉位，篩選出 Top 5 最適合出行的時機與方向。計算需 40 分鐘以上，完成後可在儀表板查看。',
+}
+
+export const SHICHEN = [
+  { label: '子時 (23:00-01:00)', value: 0 },
+  { label: '丑時 (01:00-03:00)', value: 2 },
+  { label: '寅時 (03:00-05:00)', value: 4 },
+  { label: '卯時 (05:00-07:00)', value: 6 },
+  { label: '辰時 (07:00-09:00)', value: 8 },
+  { label: '巳時 (09:00-11:00)', value: 10 },
+  { label: '午時 (11:00-13:00)', value: 12 },
+  { label: '未時 (13:00-15:00)', value: 14 },
+  { label: '申時 (15:00-17:00)', value: 16 },
+  { label: '酉時 (17:00-19:00)', value: 18 },
+  { label: '戌時 (19:00-21:00)', value: 20 },
+  { label: '亥時 (21:00-23:00)', value: 22 },
+]
+
+export interface CheckoutFormState {
+  name: string
+  year: string
+  month: string
+  day: string
+  hour: string
+  minute: string
+  gender: string
+  address: string
+  addressLat: number
+  addressLng: number
+  birthCity: string
+  cityLat: number
+  cityLng: number
+  cityTz: number
+  calendarType: 'solar' | 'lunar'
+  lunarLeap: boolean
+}
+
+export const D_TOPICS = ['財運', '事業', '感情', '健康', '學業', '搬家', '問事（其他）']
+
+export const TIME_BLOCKS = [
+  { label: '清晨 06:00–09:00', start: '06:00', end: '09:00' },
+  { label: '上午 09:00–12:00', start: '09:00', end: '12:00' },
+  { label: '下午 12:00–15:00', start: '12:00', end: '15:00' },
+  { label: '下午 15:00–18:00', start: '15:00', end: '18:00' },
+  { label: '傍晚 18:00–21:00', start: '18:00', end: '21:00' },
+]
