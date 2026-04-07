@@ -91,8 +91,9 @@ async function emitProgress(update: ProgressUpdate) {
   }
 }
 
-// ── AI 回應清理 ──
+// ── AI 回應清理（單次 call 級別）──
 function cleanAIResponse(text: string): string {
+  console.log(`[cleanAIResponse] 開始清理，原始長度: ${text.length} 字`)
   let cleaned = text
 
   // 1. AI 前言
@@ -101,29 +102,102 @@ function cleanAIResponse(text: string): string {
   cleaned = cleaned.replace(/^(好的[，,]?\s*|收到[。.]?\s*|我將|我會|讓我|以下是|沒問題|當然|好[，,]|OK[，,]?)[\s\S]*?\n\n/i, '')
   cleaned = cleaned.replace(/^(好的|收到|我將|我會|讓我|以下是|沒問題|當然)[^\n]*\n+/i, '')
 
-  // 2. prompt 結構標籤
-  cleaned = cleaned.replace(/^#\s*第[一二三]幕[：:].*/gm, '')
-  cleaned = cleaned.replace(/^#\s*壓軸.*/gm, '')
-  cleaned = cleaned.replace(/^#\s*收尾.*/gm, '')
-  cleaned = cleaned.replace(/^→\s*完整分析請繼續閱讀.*/gm, '')
-  cleaned = cleaned.replace(/^第[一二三]幕[：:].*$/gm, '')
+  // 2. prompt 結構標籤（任何位置出現都刪整行）
+  cleaned = cleaned.replace(/^.*(?:第一幕|第二幕|第三幕|壓軸|收尾|完整分析請繼續閱讀).*$/gm, '')
 
-  // 3. 禁止字眼整行刪除
+  // 3. AI 批次標記
+  cleaned = cleaned.replace(/（第[一二三四]批）/g, '')
+
+  // 4. 改名建議段落刪除（包含關鍵詞的整段）
+  cleaned = cleaned.replace(/^.*(?:建議改名|改名建議|建議名字改為).*$(\n(?!#).*$)*/gm, '')
+
+  // 5. 禁止字眼整行刪除
   cleaned = cleaned.replace(/^.*(?:跳過|本次數據不足|待分析|本次不適用|需面部照片|需掌紋照片|需即時起卦|需即時抽牌|手相掌紋).*$/gm, '')
 
-  // 4. Markdown 垃圾
+  // 6. Markdown 垃圾
   cleaned = cleaned.replace(/^---+$/gm, '')
   cleaned = cleaned.replace(/^\|[-:]+\|[-:| ]*$/gm, '')
   cleaned = cleaned.replace(/-{6,}/g, ' — ')
   cleaned = cleaned.replace(/\.{6,}/g, '…')
   cleaned = cleaned.replace(/·{6,}/g, '…')
 
-  // 5. 品牌名
+  // 7. 重點突出：> 結論：開頭的行加粗
+  cleaned = cleaned.replace(/^(>\s*結論[：:]\s*)(.+)$/gm, '$1**$2**')
+  // 🎯 開頭的行加粗
+  cleaned = cleaned.replace(/^(🎯\s*)(.+)$/gm, '$1**$2**')
+  // 「關鍵發現」開頭段落裡的結論句加粗
+  cleaned = cleaned.replace(/^(關鍵發現[：:]\s*)(.+)$/gm, '$1**$2**')
+
+  // 8. 品牌名
   cleaned = cleaned.replace(/鑑源/g, '鑒源')
 
-  // 6. 連續空行
+  // 9. 連續空行
   cleaned = cleaned.replace(/\n{4,}/g, '\n\n\n')
 
+  console.log(`[cleanAIResponse] 清理完成，清理後長度: ${cleaned.trim().length} 字`)
+  return cleaned.trim()
+}
+
+// ── 合併後最終清理（處理跨 call 的問題）──
+export function cleanFinalReport(text: string, clientName?: string): string {
+  let cleaned = text
+  console.log('[cleanFinalReport] 開始最終清理...')
+
+  // 1. 刪除重複報告標題（保留第一個）
+  if (clientName) {
+    const titlePattern = new RegExp(`^##\\s*${clientName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}.*全方位命格分析報告.*$`, 'gm')
+    let titleCount = 0
+    cleaned = cleaned.replace(titlePattern, (match) => {
+      titleCount++
+      return titleCount === 1 ? match : ''
+    })
+    if (titleCount > 1) console.log(`[cleanFinalReport] 刪除 ${titleCount - 1} 個重複報告標題`)
+  }
+
+  // 2. 合併重複章節（如「刻意練習」出現兩次，保留內容較長的）
+  const sections = cleaned.split(/(?=^## )/m)
+  const sectionMap = new Map<string, { index: number; content: string; length: number }>()
+  const duplicateIndices = new Set<number>()
+
+  sections.forEach((sec, idx) => {
+    const titleMatch = sec.match(/^## (.+?)[\n\r]/)
+    if (!titleMatch) return
+    const title = titleMatch[1].replace(/[\s\d.、一二三四五六七八九十]+/g, '').trim()
+    if (!title) return
+
+    const existing = sectionMap.get(title)
+    if (existing) {
+      // 保留內容較長的
+      if (sec.length > existing.length) {
+        duplicateIndices.add(existing.index)
+        sectionMap.set(title, { index: idx, content: sec, length: sec.length })
+      } else {
+        duplicateIndices.add(idx)
+      }
+      console.log(`[cleanFinalReport] 合併重複章節: "${title}"`)
+    } else {
+      sectionMap.set(title, { index: idx, content: sec, length: sec.length })
+    }
+  })
+
+  if (duplicateIndices.size > 0) {
+    cleaned = sections.filter((_, idx) => !duplicateIndices.has(idx)).join('')
+  }
+
+  // 3. 刪除空章節（## 標題後到下一個 ## 之間不到 50 字）
+  cleaned = cleaned.replace(/^## .+\n([\s\S]*?)(?=^## |\Z)/gm, (match, body) => {
+    const bodyText = body.replace(/\s/g, '')
+    if (bodyText.length < 50) {
+      console.log(`[cleanFinalReport] 刪除空章節: ${match.split('\n')[0]}`)
+      return ''
+    }
+    return match
+  })
+
+  // 4. 連續空行收攏
+  cleaned = cleaned.replace(/\n{4,}/g, '\n\n\n')
+
+  console.log(`[cleanFinalReport] 最終清理完成，${cleaned.length} 字`)
   return cleaned.trim()
 }
 
@@ -572,6 +646,24 @@ export async function qualityGate(
       if (!sec.pattern.test(reportContent)) {
         warnings.push(`缺少必要章節: ${sec.name}`)
       }
+    }
+
+    // 2b. 每個命理系統章節必須包含「好的地方」「需要注意」「改善建議」
+    const systemNames = [
+      '八字', '紫微', '奇門', '風水', '姓名學', '西洋占星', '吠陀占星',
+      '易經', '人類圖', '塔羅', '數字能量', '古典占星', '生肖', '生物節律', '南洋術數',
+    ]
+    // 按 ## 切分章節
+    const chapters = reportContent.split(/^## /m).slice(1)
+    for (const sysName of systemNames) {
+      const sysChapter = chapters.find(ch => ch.startsWith(sysName) || ch.includes(sysName))
+      if (!sysChapter) continue // 系統不在報告中（不在此檢查，由系統數量檢查負責）
+      const hasPositive = /好的地方|好的方面|優勢|優點|天賦/.test(sysChapter)
+      const hasCaution = /需要注意|需注意|注意的地方|風險|挑戰/.test(sysChapter)
+      const hasImprovement = /改善方案|改善建議|改善|建議|行動指南/.test(sysChapter)
+      if (!hasPositive) warnings.push(`${sysName}: 缺少「好的地方」子章節`)
+      if (!hasCaution) warnings.push(`${sysName}: 缺少「需要注意」子章節`)
+      if (!hasImprovement) warnings.push(`${sysName}: 缺少「改善建議」子章節`)
     }
   }
 

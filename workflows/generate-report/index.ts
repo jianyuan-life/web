@@ -11,6 +11,7 @@ import {
   aiGenerateCall3,
   aiGenerateCall4,
   aiGenerateGeneric,
+  cleanFinalReport,
   qualityGate,
   aiReviewReport,
   generatePDF,
@@ -80,7 +81,8 @@ export async function generateReportWorkflow(reportId: string) {
         call4Content = retryR4.content
       }
 
-      reportContent = [r1.content, r2.content, r3.content, call4Content].join('\n\n')
+      const rawContent = [r1.content, r2.content, r3.content, call4Content].join('\n\n')
+      reportContent = cleanFinalReport(rawContent, birthData.name)
       // 記錄使用的模型（以 call1 為主要參考）
       aiModelUsed = r1.model
     } else {
