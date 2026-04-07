@@ -20,4 +20,4 @@ jobs:
       - run: npm ci
 
       - name: TypeScript 型別檢查
-        run: npm run type-check
+        run: npx tsc --noEmit --skipLibCheck

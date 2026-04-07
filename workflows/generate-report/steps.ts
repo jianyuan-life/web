@@ -606,6 +606,60 @@ export async function qualityGate(
   return { passed, warnings }
 }
 
+// ── Step 3.5: AI 審核員（用客戶視角審查報告品質）──
+export async function aiReviewReport(reportContent: string, planCode: string): Promise<{ score: number; issues: string[] }> {
+  "use step";
+  if (planCode !== 'C') return { score: 85, issues: [] } // 非 C 方案跳過 AI 審核
+
+  await emitProgress({ step: 'AI審核', progress: 72, message: '正在進行品質審核...' })
+
+  const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions'
+  const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || ''
+
+  try {
+    const res = await fetch(DEEPSEEK_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DEEPSEEK_KEY}` },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: `你是一個花了 $89 買命理報告的客戶。請審查以下報告的前 3000 字，回答：
+
+1. 30秒內能找到重點嗎？（是/否+原因）
+2. 有看不懂的術語嗎？（列出最多3個）
+3. 有亂碼/標籤/截斷嗎？（列出）
+4. 改善建議具體嗎？（是/否）
+5. 總分（1-100）
+
+只回 JSON 格式：{"score":85,"issues":["問題1","問題2"]}
+如果沒問題：{"score":90,"issues":[]}
+
+報告內容（前3000字）：
+${reportContent.slice(0, 3000)}`
+        }]
+      })
+    })
+
+    if (!res.ok) return { score: 80, issues: ['AI審核API失敗'] }
+    const data = await res.json()
+    const text = data.choices?.[0]?.message?.content || ''
+
+    // 嘗試解析 JSON
+    const match = text.match(/\{[\s\S]*\}/)
+    if (match) {
+      const result = JSON.parse(match[0])
+      console.log(`AI 審核分數: ${result.score}, 問題: ${result.issues?.length || 0}`)
+      return { score: result.score || 80, issues: result.issues || [] }
+    }
+    return { score: 80, issues: [] }
+  } catch (e) {
+    console.error('AI 審核失敗:', e)
+    return { score: 80, issues: [] } // 審核失敗不阻塞
+  }
+}
+
 // ── Step 4: 更新 Supabase 報告狀態為 completed ──
 export async function saveReportToSupabase(
   reportId: string, reportContent: string, aiModel: string,

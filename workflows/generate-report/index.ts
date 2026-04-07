@@ -12,6 +12,7 @@ import {
   aiGenerateCall4,
   aiGenerateGeneric,
   qualityGate,
+  aiReviewReport,
   generatePDF,
   saveReportToSupabase,
   sendReportEmail,
@@ -135,6 +136,18 @@ export async function generateReportWorkflow(reportId: string) {
   // 即使品質閘門不通過也繼續（總比沒報告好），但記錄警告
   if (!qualityPassed) {
     console.error('品質閘門最終未通過，以現有內容繼續')
+  }
+
+  // Step 3.5: AI 審核員（客戶視角品質審查）
+  try {
+    const review = await aiReviewReport(reportContent, planCode)
+    if (review.score < 70) {
+      console.warn(`AI 審核分數偏低: ${review.score}，問題: ${review.issues.join('; ')}`)
+    } else {
+      console.log(`AI 審核通過: ${review.score}分`)
+    }
+  } catch (e) {
+    console.error('AI 審核失敗（不阻塞）:', e)
   }
 
   // Step 4: 解析出門訣 Top5 吉時 JSON（E1/E2 方案，非 step function）
