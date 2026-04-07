@@ -148,6 +148,19 @@ export default function SinglePersonForm({
             </div>
           </div>
           <p className="text-[10px] text-text-muted/60">請填寫事件的起迄日期，系統將為您找出最佳時機。</p>
+          <div className="mt-3">
+            <label className="block text-xs text-text-muted mb-1">事件描述 *（最多 200 字）</label>
+            <textarea
+              required
+              maxLength={200}
+              rows={3}
+              placeholder="請描述事件背景（如：重要面試、簽約、旅行、搬家）與希望達成的目標..."
+              value={customerNote}
+              onChange={(e) => setCustomerNote(e.target.value)}
+              className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-white text-sm focus:border-gold focus:outline-none resize-none placeholder:text-text-muted/40"
+            />
+            <p className="text-[10px] text-text-muted/50 text-right mt-1">{customerNote.length}/200</p>
+          </div>
         </div>
       )}
 

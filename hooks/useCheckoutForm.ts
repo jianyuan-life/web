@@ -59,8 +59,10 @@ export function useCheckoutForm() {
   const [e1StartDate, setE1StartDate] = useState('')
   const [e1EndDate, setE1EndDate] = useState('')
 
-  // E1/E2 時段
-  const [eSelectedBlocks, setESelectedBlocks] = useState<boolean[]>([false, true, true, true, false])
+  // E1/E2 十二時辰：子丑寅卯辰巳午未申酉戌亥，預設勾選辰~酉（白天 07-19 時）
+  const [eSelectedBlocks, setESelectedBlocks] = useState<boolean[]>([
+    false, false, false, false, true, true, true, true, true, true, false, false
+  ])
 
   // Auth
   const [authChecked, setAuthChecked] = useState(false)
