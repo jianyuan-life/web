@@ -44,6 +44,8 @@ function DashboardContent() {
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
   const [retryingId, setRetryingId] = useState<string | null>(null)
   const [pollStartTime] = useState(() => Date.now())
+  // 追蹤剛完成的報告 ID（用於顯示完成提示動畫）
+  const [justCompletedIds, setJustCompletedIds] = useState<Set<string>>(new Set())
 
   const handleDelete = async (id: string) => {
     setDeletingId(id)
@@ -120,6 +122,26 @@ function DashboardContent() {
           const newReports = (data.reports || []).filter(
             (r: Report) => !deletedIds.has(r.id)
           )
+          // 偵測從 pending 變成 completed 的報告
+          const previousPendingIds = new Set(reports.filter(r => r.status === 'pending').map(r => r.id))
+          const newlyCompleted = newReports.filter(
+            (r: Report) => r.status === 'completed' && previousPendingIds.has(r.id)
+          )
+          if (newlyCompleted.length > 0) {
+            setJustCompletedIds(prev => {
+              const next = new Set(prev)
+              newlyCompleted.forEach((r: Report) => next.add(r.id))
+              return next
+            })
+            // 5 秒後清除完成提示
+            setTimeout(() => {
+              setJustCompletedIds(prev => {
+                const next = new Set(prev)
+                newlyCompleted.forEach((r: Report) => next.delete(r.id))
+                return next
+              })
+            }, 5000)
+          }
           setReports(newReports)
           // 沒有 pending 報告就停止輪詢（completed 或 failed 都停）
           if (!newReports.some((r: Report) => r.status === 'pending')) {
@@ -200,7 +222,7 @@ function DashboardContent() {
         {!loading && reports.length > 0 &&
           reports.some(r => r.status === 'completed' && !['E1', 'E2'].includes(r.plan_code)) &&
           !reports.some(r => ['E1', 'E2'].includes(r.plan_code)) && (
-          <div className="glass rounded-xl p-5 mb-6 flex flex-col sm:flex-row items-center gap-4" style={{ background: 'linear-gradient(135deg, rgba(197,150,58,0.08), rgba(26,42,74,0.2))', border: '1px solid rgba(197,150,58,0.2)' }}>
+          <div className="glass rounded-xl p-5 mb-6 flex flex-col sm:flex-row items-center gap-4" style={{ background: 'linear-gradient(135deg, rgba(201,168,76,0.06), rgba(15,22,40,0.3))', border: '1px solid rgba(201,168,76,0.15)' }}>
             <div className="text-3xl shrink-0">&#9788;</div>
             <div className="flex-1">
               <p className="text-sm text-cream font-semibold">想讓命理能量真正落地？</p>
@@ -220,7 +242,7 @@ function DashboardContent() {
         ) : reports.length > 0 ? (
           <div className="space-y-4">
             {reports.map((r) => (
-              <div key={r.id} className="glass rounded-xl p-5 transition-all hover:border-gold/30">
+              <div key={r.id} className={`glass rounded-xl p-5 transition-all hover:border-gold/30 ${justCompletedIds.has(r.id) ? 'ring-2 ring-green-500/50 animate-pulse' : ''}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-full bg-gold/15 flex items-center justify-center text-gold font-bold text-lg" style={{ fontFamily: 'var(--font-sans)' }}>
@@ -332,6 +354,13 @@ function DashboardContent() {
                     </button>
                   </div>
                 </div>
+                {/* 剛完成的報告提示 */}
+                {justCompletedIds.has(r.id) && (
+                  <div className="mt-3 bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-2.5 flex items-center gap-2">
+                    <span className="text-green-400">&#10003;</span>
+                    <span className="text-sm text-green-300">報告已完成！點擊「查看報告」閱讀完整分析結果。</span>
+                  </div>
+                )}
                 {/* pending 時顯示進度條 */}
                 {r.status === 'pending' && (
                   <ReportProgress createdAt={r.created_at} planCode={r.plan_code} />

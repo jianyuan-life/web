@@ -38,6 +38,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="zh-TW">
       <head>
+        {/* Google Analytics 4 */}
+        {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
+          <>
+            <script
+              async
+              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}`}
+            />
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  gtag('js', new Date());
+                  gtag('config', '${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}', {
+                    page_path: window.location.pathname,
+                  });
+                `,
+              }}
+            />
+          </>
+        )}
         <link
           href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap"
           rel="stylesheet"
@@ -112,7 +133,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
             <div className="mt-12 pt-8 border-t border-gold/5 text-center text-xs text-text-muted/60">
               <p>本服務融合傳統命理學與人工智能技術，分析結果僅供參考，不構成任何醫療、投資或法律建議。</p>
-              <p className="mt-2">&copy; {new Date().getFullYear()} 鑒源 JianYuan. All rights reserved. &middot; v2.1</p>
+              <p className="mt-2">&copy; {new Date().getFullYear()} 鑒源 JianYuan. All rights reserved. &middot; v2.2</p>
             </div>
           </div>
         </footer>

@@ -91,7 +91,7 @@ function renderInlineMarkdown(text: string): string {
     .replace(/\*\*(.+?)\*\*/g, '<strong class="report-bold">$1</strong>')
     .replace(/✅/g, '<span style="color:#6ab04c">✅</span>')
     .replace(/⚠️/g, '<span style="color:#e0963a">⚠️</span>')
-    .replace(/🔧/g, '<span style="color:#c5963a">🔧</span>')
+    .replace(/🔧/g, '<span style="color:#c9a84c">🔧</span>')
     .replace(/^[•·]\s*(.+)$/gm, '<li class="report-li">$1</li>')
     .replace(/^- (.+)$/gm, '<li class="report-li">$1</li>')
     .replace(/^(\d+)\. (.+)$/gm, '<li class="report-li-num">$2</li>')
@@ -161,9 +161,9 @@ function renderSectionMarkdown(content: string): string {
 // 評分等級色彩
 function getScoreColor(score: number): string {
   if (score >= 85) return '#6ab04c'  // 綠色 - 優秀
-  if (score >= 75) return '#c5963a'  // 金色 - 良好
-  if (score >= 65) return '#e0963a'  // 橙色 - 普通
-  return '#c44a3f'                    // 紅色 - 需注意
+  if (score >= 75) return '#c9a84c'  // 金色 - 良好
+  if (score >= 65) return '#f59e0b'  // 橙色 - 普通
+  return '#ef4444'                    // 紅色 - 需注意
 }
 
 function getScoreLabel(score: number): string {
@@ -222,7 +222,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   // 報告生成中
   if (report.status === 'pending') {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(180deg, #1a110a 0%, #2c1810 40%, #1a110a 100%)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(180deg, #0a0e1a 0%, #0f1628 40%, #0a0e1a 100%)' }}>
         <div className="glass rounded-2xl p-12 text-center max-w-md">
           <div className="text-5xl mb-4">⏳</div>
           <h1 className="text-xl font-bold text-cream mb-2">命理分析進行中</h1>
@@ -254,7 +254,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   const sortedScores = [...analysesSummary].sort((a, b) => b.score - a.score)
 
   return (
-    <div className="min-h-screen pb-16" style={{ background: 'linear-gradient(180deg, #1a110a 0%, #2c1810 40%, #1a110a 100%)' }}>
+    <div className="min-h-screen pb-16" style={{ background: 'linear-gradient(180deg, #0a0e1a 0%, #0f1628 40%, #0a0e1a 100%)' }}>
       <style>{`
         .report-h3 { font-size: 1.05rem; font-weight: 600; color: var(--color-gold); margin: 1.5rem 0 0.6rem; font-family: var(--font-sans); }
         .report-bold { color: var(--color-cream); font-weight: 600; }
@@ -383,7 +383,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   className="section-card"
                   style={{
                     background: timing.rank === 1
-                      ? 'linear-gradient(135deg, rgba(197,150,58,0.12), rgba(44,24,16,0.6))'
+                      ? 'linear-gradient(135deg, rgba(197,150,58,0.12), rgba(15,22,40,0.6))'
                       : 'rgba(255,255,255,0.03)',
                     border: timing.rank === 1
                       ? '1px solid rgba(197,150,58,0.3)'
@@ -509,7 +509,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-semibold transition-all hover:scale-105"
-              style={{ background: 'linear-gradient(135deg, #c9a84c, #e8c87a)', color: '#1a110a' }}
+              style={{ background: 'linear-gradient(135deg, #c9a84c, #e8c87a)', color: '#0a0e1a' }}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />

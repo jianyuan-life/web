@@ -274,7 +274,7 @@ export default function HomePage() {
       {/* 出門訣推廣 — 核心收入來源 */}
       <section className="py-20">
         <div className="max-w-4xl mx-auto px-6">
-          <div className="glass rounded-2xl p-8 md:p-12" style={{ background: 'linear-gradient(135deg, rgba(197,150,58,0.08), rgba(26,42,74,0.3))' }}>
+          <div className="glass rounded-2xl p-8 md:p-12" style={{ background: 'linear-gradient(135deg, rgba(201,168,76,0.06), rgba(15,22,40,0.4))' }}>
             <div className="flex flex-col md:flex-row gap-8 items-center">
               <div className="text-6xl shrink-0">&#9788;</div>
               <div className="flex-1">
@@ -306,7 +306,7 @@ export default function HomePage() {
       {/* 出門訣推廣 — 核心訂閱收入 */}
       <section className="py-20">
         <div className="max-w-4xl mx-auto px-6">
-          <div className="glass rounded-2xl p-8 md:p-12" style={{ background: 'linear-gradient(135deg, rgba(197,150,58,0.08), rgba(26,42,74,0.3))' }}>
+          <div className="glass rounded-2xl p-8 md:p-12" style={{ background: 'linear-gradient(135deg, rgba(201,168,76,0.06), rgba(15,22,40,0.4))' }}>
             <div className="flex flex-col md:flex-row gap-8 items-center">
               <div className="text-6xl shrink-0">&#9788;</div>
               <div className="flex-1">

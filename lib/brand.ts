@@ -38,7 +38,7 @@ export const BRAND = {
   // 品牌色彩
   colors: {
     gold: '#c9a84c',
-    dark: '#1a2a4a',
+    dark: '#0a0e1a',
     cream: '#ffffff',
   },
 }

@@ -303,7 +303,7 @@ export default function FreeToolPage() {
 
             {/* ═══ 2026 整體運勢（第一眼！） ═══ */}
             {result.has_ai && result.ai_sections['2026整體運勢'] && (
-              <div className="rounded-2xl p-8 border border-gold/30" style={{background:'linear-gradient(135deg, rgba(197,150,58,0.1), rgba(44,24,16,0.4))'}}>
+              <div className="rounded-2xl p-8 border border-gold/30" style={{background:'linear-gradient(135deg, rgba(201,168,76,0.08), rgba(15,22,40,0.4))'}}>
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-1 h-6 bg-gold rounded-full" />
                   <h2 className="text-lg font-bold text-gradient-gold">2026 丙午年 — {form.name} 的整體運勢</h2>
@@ -439,7 +439,7 @@ export default function FreeToolPage() {
 
                 {/* 未來機會窗口（轉化鉤子） */}
                 {result.ai_sections['未來機會窗口'] && (
-                  <div className="rounded-2xl p-8 border border-gold/20" style={{background:'linear-gradient(135deg, rgba(197,150,58,0.06), rgba(44,24,16,0.3))'}}>
+                  <div className="rounded-2xl p-8 border border-gold/20" style={{background:'linear-gradient(135deg, rgba(197,150,58,0.06), rgba(15,22,40,0.3))'}}>
                     <div className="flex items-center gap-2 mb-4">
                       <div className="w-1 h-6 bg-gold rounded-full" />
                       <h2 className="text-lg font-bold text-gradient-gold">未來機會窗口</h2>

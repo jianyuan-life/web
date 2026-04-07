@@ -589,63 +589,10 @@ export async function POST(req: NextRequest) {
     const analyses = calcResult.analyses || []
 
     let reportContent = ''
+    let aiModelUsed = 'unknown'
 
-    if (planCode === 'C') {
-      // ============================================================
-      // C 方案：Claude Opus 4.6 多步並行生成
-      // ============================================================
-      console.log('C 方案：使用 Claude Opus 4.6 多步並行生成...')
-      console.log(`CLAUDE_API_KEY 狀態: ${CLAUDE_API_KEY ? `已設定（長度 ${CLAUDE_API_KEY.length}，前綴 ${CLAUDE_API_KEY.slice(0, 8)}...）` : '❌ 未設定！'}`)
-
-      if (!CLAUDE_API_KEY) {
-        const errMsg = 'CLAUDE_API_KEY 環境變數未設定，無法呼叫 Claude API。請到 Vercel Dashboard → Settings → Environment Variables 新增此變數。'
-        console.error(errMsg)
-        await markReportFailed(reportId, errMsg)
-        return NextResponse.json({ error: errMsg }, { status: 500 })
-      }
-
-      const ageGroup = getAgeGroup(birthData.year)
-      console.log(`年齡分層：${ageGroup}（出生年：${birthData.year}）`)
-
-      // 構建每個 call 的 user prompt（完整數據，不截斷）
-      const userPrompt1 = buildUserPrompt(cd, analyses, SYSTEM_GROUPS.call1, birthData)
-      const userPrompt2 = buildUserPrompt(cd, analyses, SYSTEM_GROUPS.call2, birthData)
-      const userPrompt3 = buildUserPrompt(cd, analyses, SYSTEM_GROUPS.call3, birthData)
-      // Call 4 需要所有系統的摘要
-      const allSystems = [...SYSTEM_GROUPS.call1, ...SYSTEM_GROUPS.call2, ...SYSTEM_GROUPS.call3]
-      const userPrompt4 = buildUserPrompt(cd, analyses, allSystems, birthData)
-
-      const clientNeed = question || topic || undefined
-
-      try {
-        // 4 個 call 並行，每個系統限制字數確保不超 token 上限
-        const [result1, result2, result3, result4] = await Promise.all([
-          callClaudeStreaming(buildCall1Prompt(ageGroup, clientNeed), userPrompt1, 16384),
-          callClaudeStreaming(buildCall2Prompt(ageGroup), userPrompt2, 12288),
-          callClaudeStreaming(buildCall3Prompt(ageGroup), userPrompt3, 8192),
-          callClaudeStreaming(buildCall4Prompt(ageGroup, birthData.name), userPrompt4, 8192),
-        ])
-
-        console.log(`Claude Call 1: ${result1.length} 字`)
-        console.log(`Claude Call 2: ${result2.length} 字`)
-        console.log(`Claude Call 3: ${result3.length} 字`)
-        console.log(`Claude Call 4: ${result4.length} 字`)
-
-        // 按順序拼接完整報告
-        reportContent = [result1, result2, result3, result4].join('\n\n')
-        console.log(`C 方案報告總長：${reportContent.length} 字`)
-      } catch (e) {
-        console.error('Claude 多步生成失敗:', e)
-        await markReportFailed(reportId, `AI 生成失敗：Claude API 錯誤 — ${e instanceof Error ? e.message : '未知錯誤'}`)
-        return NextResponse.json({ error: 'AI 生成失敗' }, { status: 500 })
-      }
-    } else {
-      // ============================================================
-      // 其他方案：DeepSeek（保持原有邏輯）
-      // ============================================================
-      const systemPrompt = PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C']
-
-      // 構建完整排盤數據（不截斷）
+    // ── 構建非 C 方案的通用 user prompt ──
+    function buildGenericUserPrompt(): string {
       let userPrompt = `${birthData.name}，${birthData.gender==='M'?'男':'女'}，${birthData.year}年${birthData.month}月${birthData.day}日${birthData.hour}時
 八字：${cd.bazi || ''} | 用神：${cd.yongshen || ''} | 五行：${JSON.stringify(cd.five_elements || {})}
 農曆：${cd.lunar_date || ''} | 納音：${cd.nayin || ''} | 命宮：${cd.ming_gong || ''}
@@ -670,7 +617,6 @@ ${analyses.length}套系統排盤完整數據：
           userPrompt += `\n改善建議：`
           for (const imp of a.improvements) userPrompt += `\n- ${imp}`
         }
-        // 完整傳送 tables
         if (a.tables?.length) {
           for (const t of a.tables) {
             userPrompt += `\n表格「${t.title}」：\n`
@@ -680,12 +626,10 @@ ${analyses.length}套系統排盤完整數據：
             }
           }
         }
-        // 完整傳送 details（不截斷）
         if (a.details) {
           const detail = typeof a.details === 'string' ? a.details : JSON.stringify(a.details)
           userPrompt += `\n詳細排盤：\n${detail}\n`
         }
-        // info_boxes
         if (a.info_boxes?.length) {
           for (const box of a.info_boxes) {
             userPrompt += `\n${box.title || '補充'}：\n`
@@ -697,13 +641,9 @@ ${analyses.length}套系統排盤完整數據：
         userPrompt += '\n'
       }
 
-      // 住址欄位已移除（只看方位不看風水）
-
-      // 專項/關係方案附加問題
       if (topic) userPrompt += `\n分析方向：${topic}\n`
       if (question) userPrompt += `客戶問題描述：${question}\n`
 
-      // 多人方案
       if (additionalPeople?.length) {
         userPrompt += `\n其他人資料：\n`
         for (const p of additionalPeople) {
@@ -718,33 +658,124 @@ ${analyses.length}套系統排盤完整數據：
 3. 排盤數據中「好的地方」和「需要注意」的每一條都必須在報告中被展開分析，不可遺漏。
 4. 如果某個系統數據不完整，跳過該系統，不要瞎編。`
 
-      // 呼叫 DeepSeek（含超時控制）
-      console.log('呼叫 DeepSeek 生成報告...')
-      try {
-        const controller = new AbortController()
-        const timeout = setTimeout(() => controller.abort(), 180000) // 180 秒超時
-        const res = await fetch(DEEPSEEK_API, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${DEEPSEEK_KEY}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'deepseek-chat',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt },
-            ],
-            max_tokens: 8000,
-            temperature: 0.7,
-          }),
-          signal: controller.signal,
-        })
-        clearTimeout(timeout)
-        const data = await res.json()
-        reportContent = data.choices?.[0]?.message?.content || ''
-        console.log(`DeepSeek 回覆: ${reportContent.length} 字`)
-      } catch (e) {
-        console.error('DeepSeek 失敗:', e)
-        await markReportFailed(reportId, 'AI 生成失敗：DeepSeek API 無回應或超時')
-        return NextResponse.json({ error: 'AI 生成失敗' }, { status: 500 })
+      return userPrompt
+    }
+
+    // ── DeepSeek fallback 呼叫函式 ──
+    async function callDeepSeekFallback(systemPrompt: string, userPrompt: string): Promise<string> {
+      console.log('Fallback: 呼叫 DeepSeek 生成報告...')
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 180000)
+      const res = await fetch(DEEPSEEK_API, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${DEEPSEEK_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          max_tokens: 8000,
+          temperature: 0.7,
+        }),
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
+      const data = await res.json()
+      const content = data.choices?.[0]?.message?.content || ''
+      console.log(`DeepSeek 回覆: ${content.length} 字`)
+      return content
+    }
+
+    console.log(`方案 ${planCode}：開始 AI 生成...`)
+    console.log(`CLAUDE_API_KEY 狀態: ${CLAUDE_API_KEY ? `已設定（長度 ${CLAUDE_API_KEY.length}，前綴 ${CLAUDE_API_KEY.slice(0, 8)}...）` : '❌ 未設定！'}`)
+
+    if (planCode === 'C') {
+      // ============================================================
+      // C 方案：Claude Opus 4.6 多步並行生成（4 call）
+      // 失敗時 fallback 到 DeepSeek 單次呼叫
+      // ============================================================
+      console.log('C 方案：使用 Claude Opus 4.6 多步並行生成...')
+
+      const ageGroup = getAgeGroup(birthData.year)
+      console.log(`年齡分層：${ageGroup}（出生年：${birthData.year}）`)
+
+      const userPrompt1 = buildUserPrompt(cd, analyses, SYSTEM_GROUPS.call1, birthData)
+      const userPrompt2 = buildUserPrompt(cd, analyses, SYSTEM_GROUPS.call2, birthData)
+      const userPrompt3 = buildUserPrompt(cd, analyses, SYSTEM_GROUPS.call3, birthData)
+      const allSystems = [...SYSTEM_GROUPS.call1, ...SYSTEM_GROUPS.call2, ...SYSTEM_GROUPS.call3]
+      const userPrompt4 = buildUserPrompt(cd, analyses, allSystems, birthData)
+      const clientNeed = question || topic || undefined
+
+      if (CLAUDE_API_KEY) {
+        try {
+          const [result1, result2, result3, result4] = await Promise.all([
+            callClaudeStreaming(buildCall1Prompt(ageGroup, clientNeed), userPrompt1, 16384),
+            callClaudeStreaming(buildCall2Prompt(ageGroup), userPrompt2, 12288),
+            callClaudeStreaming(buildCall3Prompt(ageGroup), userPrompt3, 8192),
+            callClaudeStreaming(buildCall4Prompt(ageGroup, birthData.name), userPrompt4, 8192),
+          ])
+
+          console.log(`Claude Call 1: ${result1.length} 字`)
+          console.log(`Claude Call 2: ${result2.length} 字`)
+          console.log(`Claude Call 3: ${result3.length} 字`)
+          console.log(`Claude Call 4: ${result4.length} 字`)
+
+          reportContent = [result1, result2, result3, result4].join('\n\n')
+          aiModelUsed = 'claude-opus-4-6'
+          console.log(`C 方案 Claude 報告總長：${reportContent.length} 字`)
+        } catch (e) {
+          console.error('C 方案 Claude 多步生成失敗，嘗試 DeepSeek fallback:', e)
+        }
+      } else {
+        console.warn('CLAUDE_API_KEY 未設定，C 方案直接使用 DeepSeek fallback')
+      }
+
+      // Claude 失敗或 key 未設定 → fallback DeepSeek
+      if (!reportContent) {
+        try {
+          const systemPrompt = PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C']
+          reportContent = await callDeepSeekFallback(systemPrompt, buildGenericUserPrompt())
+          aiModelUsed = 'deepseek-chat'
+          console.log(`C 方案 DeepSeek fallback 完成：${reportContent.length} 字`)
+        } catch (e) {
+          console.error('C 方案 DeepSeek fallback 也失敗:', e)
+          await markReportFailed(reportId, `AI 生成失敗：Claude + DeepSeek 均失敗 — ${e instanceof Error ? e.message : '未知錯誤'}`)
+          return NextResponse.json({ error: 'AI 生成失敗' }, { status: 500 })
+        }
+      }
+    } else {
+      // ============================================================
+      // 其他方案（D/R/G15/E1/E2/Y）：Claude 單次呼叫，失敗 fallback DeepSeek
+      // ============================================================
+      const systemPrompt = PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C']
+      const userPrompt = buildGenericUserPrompt()
+
+      // 先嘗試 Claude
+      if (CLAUDE_API_KEY) {
+        try {
+          console.log(`方案 ${planCode}：嘗試 Claude Opus 4.6 單次呼叫...`)
+          reportContent = await callClaudeStreaming(systemPrompt, userPrompt, 16384)
+          aiModelUsed = 'claude-opus-4-6'
+          console.log(`方案 ${planCode} Claude 回覆：${reportContent.length} 字`)
+        } catch (e) {
+          console.error(`方案 ${planCode} Claude 呼叫失敗，嘗試 DeepSeek fallback:`, e)
+        }
+      } else {
+        console.warn(`CLAUDE_API_KEY 未設定，方案 ${planCode} 直接使用 DeepSeek`)
+      }
+
+      // Claude 失敗或 key 未設定 → fallback DeepSeek
+      if (!reportContent) {
+        try {
+          reportContent = await callDeepSeekFallback(systemPrompt, userPrompt)
+          aiModelUsed = 'deepseek-chat'
+          console.log(`方案 ${planCode} DeepSeek fallback 完成：${reportContent.length} 字`)
+        } catch (e) {
+          console.error(`方案 ${planCode} DeepSeek fallback 也失敗:`, e)
+          await markReportFailed(reportId, `AI 生成失敗：Claude + DeepSeek 均失敗 — ${e instanceof Error ? e.message : '未知錯誤'}`)
+          return NextResponse.json({ error: 'AI 生成失敗' }, { status: 500 })
+        }
       }
     }
 
@@ -773,7 +804,7 @@ ${analyses.length}套系統排盤完整數據：
       systems_count: analyses.length,
       analyses_summary: analyses.map((a: { system: string; score: number }) => ({ system: a.system, score: a.score })),
       ai_content: reportContent,
-      ai_model: planCode === 'C' ? 'claude-opus-4-6' : 'deepseek-chat',
+      ai_model: aiModelUsed,
       ai_tokens: reportContent.length,
     }
     if (top5Timings) {
@@ -782,7 +813,7 @@ ${analyses.length}套系統排盤完整數據：
 
     const planNames: Record<string, string> = {
       C: '人生藍圖', D: '心之所惑', G15: '家族藍圖',
-      R: '合否？', E1: '事件出門訣', E2: '月盤出門訣',
+      R: '合否？', E1: '事件出門訣', E2: '月盤出門訣', Y: '年度運勢',
     }
     const planName = planNames[planCode] || '命理分析報告'
 

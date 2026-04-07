@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     let accessToken = ''
     try {
       const { data: insertData, error: insertErr } = await supabase.from('paid_reports').insert({
-        client_name: birthData?.name || 'Unknown',
+        client_name: birthData?.name || birthData?.members?.[0]?.name || 'Unknown',
         plan_code: planCode,
         amount_usd: amount,
         stripe_session_id: session.id,

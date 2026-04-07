@@ -6,6 +6,7 @@ import { Suspense } from 'react'
 import { supabase } from '@/lib/supabase'
 import PriceTag from '@/components/PriceTag'
 import { searchCities, type City } from '@/lib/cities'
+import * as gtag from '@/lib/gtag'
 
 const PLANS: Record<string, { name: string; price: number; systems: number }> = {
   C: { name: '人生藍圖', price: 89, systems: 15 },
@@ -60,11 +61,14 @@ interface FamilyMember {
   timeMode: 'unknown' | 'shichen' | 'exact'
   minute: string
   gender: string
+  birthCity?: string
+  cityLat?: number
+  cityLng?: number
 }
 
 // 建立預設家庭成員
 function newMember(): FamilyMember {
-  return { name: '', year: '1990', month: '1', day: '1', hour: '12', timeMode: 'shichen', minute: '0', gender: 'M' }
+  return { name: '', year: '1990', month: '1', day: '1', hour: '12', timeMode: 'shichen', minute: '0', gender: 'M', birthCity: '', cityLat: 0, cityLng: 0 }
 }
 
 // ────────────────────────────────────────────────────
@@ -273,13 +277,16 @@ function CheckoutForm() {
   // ── 方案 E1 專屬 ──
   const [e1StartDate, setE1StartDate] = useState('')
   const [e1EndDate, setE1EndDate] = useState('')
-  const [e1EventDesc, setE1EventDesc] = useState('')
 
-  // ── 方案 E1/E2 共用：可配合時間段 ──
-  const [eAllDay, setEAllDay] = useState(true)
-  const [eTimeSlots, setETimeSlots] = useState<{ start: string; end: string }[]>([
-    { start: '09:00', end: '12:00' }
-  ])
+  // ── 方案 E1/E2 共用：可配合時間段（必選，不允許全時段）──
+  const TIME_BLOCKS = [
+    { label: '清晨 06:00–09:00', start: '06:00', end: '09:00' },
+    { label: '上午 09:00–12:00', start: '09:00', end: '12:00' },
+    { label: '下午 12:00–15:00', start: '12:00', end: '15:00' },
+    { label: '下午 15:00–18:00', start: '15:00', end: '18:00' },
+    { label: '傍晚 18:00–21:00', start: '18:00', end: '21:00' },
+  ]
+  const [eSelectedBlocks, setESelectedBlocks] = useState<boolean[]>([false, true, true, true, false])
 
   // ── 計算實際金額 ──
   const extraMemberCount = Math.max(0, familyMembers.length - 2)
@@ -426,14 +433,12 @@ function CheckoutForm() {
     // E1 方案驗證
     if (planCode === 'E1') {
       if (!e1StartDate || !e1EndDate) { alert('請選擇事件時間範圍'); return }
-      if (!e1EventDesc.trim()) { alert('請描述事件背景與目標'); return }
     }
 
-    // E1/E2 時段驗證
-    if ((planCode === 'E1' || planCode === 'E2') && !eAllDay) {
-      const validSlots = eTimeSlots.filter(s => s.start && s.end)
-      if (validSlots.length === 0) {
-        alert('請至少填寫一個可配合時段，或勾選全時段皆可')
+    // E1/E2 時段驗證（必須至少選一個時段）
+    if (planCode === 'E1' || planCode === 'E2') {
+      if (!eSelectedBlocks.some(b => b)) {
+        alert('請至少勾選一個可配合的出行時段')
         return
       }
     }
@@ -507,6 +512,9 @@ function CheckoutForm() {
               time_unknown: m.timeMode === 'unknown',
               time_mode: m.timeMode,
               role: i === 0 ? 'self' : 'other',
+              birth_city: m.birthCity || undefined,
+              city_lat: m.cityLat || undefined,
+              city_lng: m.cityLng || undefined,
             })),
             relation_description: rRelationDesc,
           }
@@ -516,12 +524,13 @@ function CheckoutForm() {
         if (planCode === 'E1') {
           birthData.event_start_date = e1StartDate
           birthData.event_end_date = e1EndDate
-          birthData.event_description = e1EventDesc
         }
 
-        // E1/E2 可配合時間段
+        // E1/E2 可配合時間段（勾選的時段）
         if (planCode === 'E1' || planCode === 'E2') {
-          birthData.available_time_slots = eAllDay ? null : eTimeSlots.filter(s => s.start && s.end)
+          birthData.available_time_slots = TIME_BLOCKS
+            .filter((_, i) => eSelectedBlocks[i])
+            .map(b => ({ start: b.start, end: b.end }))
         }
 
         // 備注（所有方案共用）
@@ -547,6 +556,13 @@ function CheckoutForm() {
       })
       const data = await res.json()
       if (data.url && data.url.startsWith('http')) {
+        // 追蹤結帳事件
+        gtag.event('begin_checkout', {
+          currency: 'USD',
+          value: finalPrice,
+          plan_code: planCode,
+          plan_name: plan.name,
+        })
         window.location.href = data.url
       } else {
         setError(data.error || '付款建立失敗，請稍後再試')
@@ -705,6 +721,16 @@ function CheckoutForm() {
                       minute={member.minute}
                       onChange={(field, val) => updateRMember(index, { ...member, [field]: val })}
                     />
+                    {/* 出生城市 */}
+                    <div>
+                      <label className="block text-xs text-text-muted mb-1">出生城市（可選，用於真太陽時校正）</label>
+                      <input type="text"
+                        placeholder="輸入城市名（如：台北、香港、上海）"
+                        value={member.birthCity || ''}
+                        onChange={(e) => updateRMember(index, { ...member, birthCity: e.target.value, cityLat: 0, cityLng: 0 })}
+                        className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream text-sm focus:border-gold/40 focus:outline-none placeholder:text-text-muted/40"
+                      />
+                    </div>
                   </div>
                 )
               })}
@@ -768,7 +794,7 @@ function CheckoutForm() {
                   key={index}
                   index={index}
                   member={member}
-                  canDelete={index >= 4}
+                  canDelete={index >= 2}
                   onChange={(updated) => updateFamilyMember(index, updated)}
                   onDelete={() => removeFamilyMember(index)}
                 />
@@ -983,7 +1009,7 @@ function CheckoutForm() {
                     onChange={(e) => setDTopic(e.target.value)}
                     className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none"
                   >
-                    {D_TOPICS.map((t) => <option key={t} value={t}>{t}</option>)}
+                    {D_TOPICS.map((t) => <option key={t} value={t} className="bg-[#1a1a2e] text-white">{t}</option>)}
                   </select>
                 </div>
                 {dTopic === '問事（其他）' && (
@@ -1005,10 +1031,10 @@ function CheckoutForm() {
             )}
 
 
-            {/* ── 方案 E1：事件時間與描述 ── */}
+            {/* ── 方案 E1：事件日期範圍 ── */}
             {planCode === 'E1' && (
               <div className="border-t border-gold/10 pt-4 space-y-3">
-                <p className="text-sm font-semibold text-gold">事件資訊</p>
+                <p className="text-sm font-semibold text-gold">事件日期</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs text-text-muted mb-1">事件開始日期 *</label>
@@ -1030,86 +1056,46 @@ function CheckoutForm() {
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs text-text-muted mb-1">事件描述 *（最多 200 字）</label>
-                  <textarea
-                    required
-                    maxLength={200}
-                    rows={3}
-                    placeholder="請描述事件背景（如：重要面試、簽約、旅行）與希望達成的目標..."
-                    value={e1EventDesc}
-                    onChange={(e) => setE1EventDesc(e.target.value)}
-                    className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-white text-sm focus:border-gold focus:outline-none resize-none"
-                  />
-                  <p className="text-[10px] text-text-muted/50 text-right mt-1">{e1EventDesc.length}/200</p>
-                </div>
+                <p className="text-[10px] text-text-muted/60">請填寫事件的起迄日期，系統將為您找出最佳時機。</p>
               </div>
             )}
 
-            {/* ── E1/E2 可配合時間段（選填）── */}
+            {/* ── E1/E2 可配合出行時段（必填）── */}
             {(planCode === 'E1' || planCode === 'E2') && (
               <div className="border-t border-gold/10 pt-4 space-y-3">
-                <p className="text-sm font-semibold text-gold">可配合出行的時間段（選填）</p>
+                <p className="text-sm font-semibold text-gold">可配合出行的時段 *</p>
                 <p className="text-xs text-text-muted leading-relaxed">
-                  奇門遁甲會依據您的命盤，在全天找出最佳吉時。若您的作息有固定限制（如只有晚上有空、或早上某段時間），請填寫您方便的時段——我們將只在這些時間範圍內為您篩選最合適的出行時機。
+                  請勾選您方便出門的時間段，系統將只在這些時段內為您找出最佳吉時。至少勾選一個時段。
                 </p>
-
-                <label className="flex items-start gap-2 cursor-pointer">
-                  <input type="checkbox" checked={eAllDay}
-                    onChange={(e) => setEAllDay(e.target.checked)}
-                    className="accent-gold mt-0.5" />
-                  <div>
-                    <span className="text-sm text-text">全時段皆可</span>
-                    {eAllDay && (
-                      <p className="text-[10px] text-text-muted/60 mt-0.5">勾選後，系統將從全天24小時中挑選最強的吉時，不限時段。</p>
-                    )}
-                  </div>
-                </label>
-
-                {!eAllDay && (
-                  <div className="space-y-2">
-                    {eTimeSlots.map((slot, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <input type="time" value={slot.start}
-                          onChange={(e) => {
-                            const updated = [...eTimeSlots]
-                            updated[i] = { ...slot, start: e.target.value }
-                            setETimeSlots(updated)
-                          }}
-                          className="bg-white/5 border border-gold/10 rounded-lg px-3 py-2 text-white text-sm focus:border-gold focus:outline-none [color-scheme:dark]"
-                        />
-                        <span className="text-text-muted text-xs">至</span>
-                        <input type="time" value={slot.end}
-                          onChange={(e) => {
-                            const updated = [...eTimeSlots]
-                            updated[i] = { ...slot, end: e.target.value }
-                            setETimeSlots(updated)
-                          }}
-                          className="bg-white/5 border border-gold/10 rounded-lg px-3 py-2 text-white text-sm focus:border-gold focus:outline-none [color-scheme:dark]"
-                        />
-                        {eTimeSlots.length > 1 && (
-                          <button type="button"
-                            onClick={() => setETimeSlots(prev => prev.filter((_, j) => j !== i))}
-                            className="text-xs text-red-400 hover:text-red-300 border border-red-400/30 rounded px-2 py-0.5">
-                            移除
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    {eTimeSlots.length < 5 && (
-                      <button type="button"
-                        onClick={() => setETimeSlots(prev => [...prev, { start: '09:00', end: '12:00' }])}
-                        className="text-xs text-gold hover:text-gold/80 border border-gold/20 rounded-lg px-3 py-1.5">
-                        + 新增時段
-                      </button>
-                    )}
-                  </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {TIME_BLOCKS.map((block, i) => (
+                    <label key={block.label} className={`flex items-center gap-2.5 cursor-pointer rounded-lg border px-3 py-2.5 transition-all ${
+                      eSelectedBlocks[i]
+                        ? 'border-gold/40 bg-gold/10'
+                        : 'border-gold/10 bg-white/5 hover:bg-white/8'
+                    }`}>
+                      <input
+                        type="checkbox"
+                        checked={eSelectedBlocks[i]}
+                        onChange={() => {
+                          const updated = [...eSelectedBlocks]
+                          updated[i] = !updated[i]
+                          setESelectedBlocks(updated)
+                        }}
+                        className="accent-gold shrink-0"
+                      />
+                      <span className="text-sm text-text">{block.label}</span>
+                    </label>
+                  ))}
+                </div>
+                {!eSelectedBlocks.some(b => b) && (
+                  <p className="text-[10px] text-red-400/80">請至少勾選一個時段</p>
                 )}
               </div>
             )}
 
-            {/* ── 備注欄（C方案不需要，D/R/G15/E需要）── */}
-            {planCode !== 'C' && (
+            {/* ── 備注欄（C/D/E1/E2 不需要，G15/R 才需要）── */}
+            {!['C', 'D', 'E1', 'E2'].includes(planCode) && (
             <div className="border-t border-gold/10 pt-4 space-y-2">
               <label className="block text-xs text-text-muted">備注 / 想問的問題（選填）</label>
               <textarea
