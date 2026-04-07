@@ -55,25 +55,67 @@ const PROFILES: Record<string, { title: string; personality: string; strengths: 
 }
 
 // ── TS 本地排盤（Fly.io 休眠時的 fallback） ──
+// 節氣日期表：每個月的「節」（非「氣」），用於確定月柱
+// 格式：[月份, 節氣名, 平均日期] — 節氣前屬上月，節氣當日及之後屬本月
+// 注意：節氣日期每年可能差1天，此表為近似值（1900-2100年範圍內誤差<=1天）
+const JIEQI_BOUNDARIES: [number, number][] = [
+  // [solar_month, boundary_day] — 該月的「節」在幾號
+  // 月柱地支：寅(2月立春)卯(3月驚蟄)辰(4月清明)巳(5月立夏)午(6月芒種)
+  //           未(7月小暑)申(8月立秋)酉(9月白露)戌(10月寒露)亥(11月立冬)子(12月大雪)丑(1月小寒)
+  [2, 4],   // 立春 ~2/4  → 寅月開始
+  [3, 6],   // 驚蟄 ~3/6  → 卯月開始
+  [4, 5],   // 清明 ~4/5  → 辰月開始
+  [5, 6],   // 立夏 ~5/6  → 巳月開始
+  [6, 6],   // 芒種 ~6/6  → 午月開始
+  [7, 7],   // 小暑 ~7/7  → 未月開始
+  [8, 7],   // 立秋 ~8/7  → 申月開始
+  [9, 8],   // 白露 ~9/8  → 酉月開始
+  [10, 8],  // 寒露 ~10/8 → 戌月開始
+  [11, 7],  // 立冬 ~11/7 → 亥月開始
+  [12, 7],  // 大雪 ~12/7 → 子月開始
+  [1, 6],   // 小寒 ~1/6  → 丑月開始
+]
+
+function getMonthIndex(month: number, day: number): number {
+  // 返回月柱序號 0-11（0=寅月, 1=卯月, ..., 10=子月, 11=丑月）
+  // 將日期轉為日序數方便比較（把1月當作13月，2月當作14月，統一到同一年度）
+  // 年度起點是立春(2/4)，所以用 month 直接比較即可，但需要處理跨年
+  function toOrd(m: number, d: number): number {
+    // 把月日轉為年內序數，1月=13, 2月=14（方便跨年比較）
+    return m <= 1 ? (m + 12) * 100 + d : m * 100 + d
+  }
+  const dateOrd = toOrd(month, day)
+  // 節氣序數
+  const jieqiOrds = JIEQI_BOUNDARIES.map(([m, d]) => toOrd(m, d))
+
+  for (let i = 0; i < 12; i++) {
+    const cur = jieqiOrds[i]
+    const next = jieqiOrds[(i + 1) % 12]
+
+    if (next > cur) {
+      // 不跨年：cur <= date < next
+      if (dateOrd >= cur && dateOrd < next) return i
+    } else {
+      // 跨年（子月：大雪12/7 到 小寒1/6）
+      if (dateOrd >= cur || dateOrd < next) return i
+    }
+  }
+  return 0 // fallback
+}
+
 function localBazi(year: number, month: number, day: number, hour: number) {
-  // 年柱
+  // 年柱（立春前算上一年）
   let y = year
-  if (month < 2 || (month === 2 && day < 4)) y -= 1
-  const yp = TG[(y-4)%10] + DZ[(y-4)%12]
+  const lichun_month = 2, lichun_day = 4
+  if (month < lichun_month || (month === lichun_month && day < lichun_day)) y -= 1
+  const yp = TG[((y - 4) % 10 + 10) % 10] + DZ[((y - 4) % 12 + 12) % 12]
 
   // 月柱
-  let mIdx = 0
-  if (month===1 && day<6) mIdx=11; else if (month<2||(month===2&&day<4)) mIdx=11
-  else if (month===2||(month===3&&day<6)) mIdx=0; else if (month===3||(month===4&&day<5)) mIdx=1
-  else if (month===4||(month===5&&day<6)) mIdx=2; else if (month===5||(month===6&&day<6)) mIdx=3
-  else if (month===6||(month===7&&day<7)) mIdx=4; else if (month===7||(month===8&&day<8)) mIdx=5
-  else if (month===8||(month===9&&day<8)) mIdx=6; else if (month===9||(month===10&&day<8)) mIdx=7
-  else if (month===10||(month===11&&day<7)) mIdx=8; else if (month===11||(month===12&&day<7)) mIdx=9
-  else mIdx=10
-  const mDZ = (mIdx+2)%12
-  const yTG = (y-4)%10
-  const mStartTG = [2,4,6,8,0][yTG%5]
-  const mp = TG[(mStartTG+mIdx)%10] + DZ[mDZ]
+  const mIdx = getMonthIndex(month, day)
+  const mDZ = (mIdx + 2) % 12  // 寅=2, 卯=3, ...
+  const yTGIdx = ((y - 4) % 10 + 10) % 10
+  const mStartTG = [2, 4, 6, 8, 0][yTGIdx % 5]  // 五虎遁法
+  const mp = TG[(mStartTG + mIdx) % 10] + DZ[mDZ]
 
   // 日柱
   let jy=year, jm=month
