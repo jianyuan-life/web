@@ -1,7 +1,7 @@
 // 星盤 SVG 裝飾（外環慢轉 + 內環反轉）
 export default function Astrolabe() {
   return (
-    <div className="absolute top-1/2 left-1/2 w-[580px] h-[580px] pointer-events-none max-md:w-[360px] max-md:h-[360px]">
+    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[580px] h-[580px] pointer-events-none max-md:w-[360px] max-md:h-[360px]">
       {/* 外環 — 天干地支 */}
       <svg
         className="absolute top-1/2 left-1/2 -ml-[290px] -mt-[290px] max-md:-ml-[180px] max-md:-mt-[180px] animate-spin-slow"
