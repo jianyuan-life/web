@@ -116,10 +116,21 @@ export default function CouponsPage() {
           <h3 className="text-sm font-semibold text-white mb-4">新增優惠碼</h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">優惠碼</label>
-              <input type="text" value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))}
-                placeholder="例：NEWYEAR2026"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none" />
+              <label className="text-xs text-gray-500 mb-1 block">優惠碼（留空自動生成）</label>
+              <div className="flex gap-2">
+                <input type="text" value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))}
+                  placeholder="例：NEWYEAR2026"
+                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none" />
+                <button type="button" onClick={() => {
+                  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+                  const prefix = 'JY'
+                  let code = prefix
+                  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)]
+                  setForm(f => ({ ...f, code }))
+                }} className="px-3 py-2 bg-amber-600/20 border border-amber-600/30 rounded-lg text-xs text-amber-400 hover:bg-amber-600/30 whitespace-nowrap">
+                  自動
+                </button>
+              </div>
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">折扣類型</label>
@@ -127,11 +138,12 @@ export default function CouponsPage() {
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none">
                 <option value="percentage">百分比折扣</option>
                 <option value="fixed">固定金額折扣</option>
+                <option value="free">完全免費</option>
               </select>
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">
-                折扣值 {form.discount_type === 'percentage' ? '(%)' : '(USD)'}
+                {form.discount_type === 'free' ? '完全免費（不需填寫）' : `折扣值 ${form.discount_type === 'percentage' ? '(%)' : '(USD)'}`}
               </label>
               <input type="number" value={form.discount_value} onChange={e => setForm(f => ({ ...f, discount_value: e.target.value }))}
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none" />
@@ -180,7 +192,7 @@ export default function CouponsPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-white font-mono font-bold">{coupon.code}</span>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400">
-                    {coupon.discount_type === 'percentage' ? `${coupon.discount_value}%` : `$${coupon.discount_value}`}
+                    {coupon.discount_type === 'free' ? '免費' : coupon.discount_type === 'percentage' ? `${coupon.discount_value}%` : `$${coupon.discount_value}`}
                   </span>
                   {!coupon.is_active && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/10 text-red-400">已停用</span>

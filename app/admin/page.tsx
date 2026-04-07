@@ -197,7 +197,7 @@ export default function AdminOverview() {
               <div key={p.path} className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-[10px] text-gray-500 w-3">{i + 1}</span>
-                  <span className="text-xs text-gray-300 truncate">{PAGE_NAMES[p.path] || p.path}</span>
+                  <span className="text-xs text-gray-300 truncate">{PAGE_NAMES[p.path] || (p.path.startsWith('/report/') ? `客戶報告頁` : p.path.startsWith('/blog/') ? '部落格文章' : p.path)}</span>
                 </div>
                 <span className="text-[10px] text-gray-500 shrink-0 ml-2">{p.count}</span>
               </div>
