@@ -34,6 +34,7 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-8 text-sm">
           <a href="/#systems" className="text-text-muted hover:text-gold transition-colors">{txt.nav_systems}</a>
           <a href="/pricing" className="text-text-muted hover:text-gold transition-colors">{txt.nav_pricing}</a>
+          <a href="/blog" className="text-text-muted hover:text-gold transition-colors">知識</a>
           <div className="relative" onMouseEnter={() => setToolsOpen(true)} onMouseLeave={() => setToolsOpen(false)}>
             <button className="text-text-muted hover:text-gold transition-colors flex items-center gap-1">
               {txt.nav_free}

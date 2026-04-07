@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import PriceTag from '@/components/PriceTag'
 import { searchCities, type City } from '@/lib/cities'
 import * as gtag from '@/lib/gtag'
+import HistoricalFigures from '@/components/HistoricalFigures'
 
 const PLANS: Record<string, { name: string; price: number; systems: number }> = {
   C: { name: '人生藍圖', price: 89, systems: 15 },
@@ -838,6 +839,12 @@ function CheckoutForm() {
         ) : (
           /* ── 單人表單 ── */
           <form onSubmit={handleCheckout} className="glass rounded-2xl p-6 space-y-4">
+            {/* 一鍵導入歷史人物 */}
+            <HistoricalFigures onSelect={(fig) => {
+              setForm(f => ({ ...f, name: fig.name, year: fig.year, month: fig.month, day: fig.day, hour: fig.hour, minute: fig.minute, gender: fig.gender as 'M' | 'F' }))
+              setTimeMode('shichen')
+            }} />
+
             {/* 一鍵導入上次資料 */}
             {previousBirthData && !importedPrevious && (
               <div className="flex items-center justify-between bg-gold/8 border border-gold/20 rounded-xl px-4 py-3">

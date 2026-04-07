@@ -571,6 +571,8 @@ export async function POST(req: NextRequest) {
           year: birthData.year, month: birthData.month, day: birthData.day,
           hour: birthData.hour, minute: birthData.minute || 0,
           gender: birthData.gender,
+          // 真太陽時校正：傳送出生城市座標
+          ...(birthData.cityLat && birthData.cityLng ? { lat: birthData.cityLat, lng: birthData.cityLng } : {}),
         }),
         signal: controller.signal,
       })
