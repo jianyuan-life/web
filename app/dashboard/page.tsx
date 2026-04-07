@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
+import { supabase } from '@/lib/supabase'
 import ReportProgress from '@/components/ReportProgress'
 
 const PLAN_NAMES: Record<string, string> = {
@@ -44,8 +45,16 @@ function DashboardContent() {
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
   const [retryingId, setRetryingId] = useState<string | null>(null)
   const [pollStartTime] = useState(() => Date.now())
+  const [userEmail, setUserEmail] = useState<string>('')
   // 追蹤剛完成的報告 ID（用於顯示完成提示動畫）
   const [justCompletedIds, setJustCompletedIds] = useState<Set<string>>(new Set())
+
+  // 取得用戶 email
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user?.email) setUserEmail(data.user.email)
+    })
+  }, [])
 
   const handleDelete = async (id: string) => {
     setDeletingId(id)
@@ -56,7 +65,7 @@ function DashboardContent() {
       await fetch('/api/reports', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id, email: userEmail }),
       })
     } catch {
       // 刪除失敗：從記錄中移除，讓報告重新出現
@@ -74,7 +83,7 @@ function DashboardContent() {
       const res = await fetch('/api/reports', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id, email: userEmail }),
       })
       if (res.ok) {
         // 樂觀更新：把狀態改為 pending
@@ -98,14 +107,15 @@ function DashboardContent() {
   }
 
   useEffect(() => {
-    fetch('/api/reports')
+    if (!userEmail) return
+    fetch(`/api/reports?email=${encodeURIComponent(userEmail)}`)
       .then(r => r.json())
       .then(data => {
         setReports(data.reports || [])
         setLoading(false)
       })
       .catch(() => setLoading(false))
-  }, [])
+  }, [userEmail])
 
   // 付款成功後輪詢等待報告生成（5秒間隔，60分鐘上限）
   useEffect(() => {
@@ -116,7 +126,7 @@ function DashboardContent() {
         clearInterval(interval)
         return
       }
-      fetch('/api/reports')
+      fetch(`/api/reports?email=${encodeURIComponent(userEmail)}`)
         .then(r => r.json())
         .then(data => {
           const newReports = (data.reports || []).filter(
@@ -164,7 +174,7 @@ function DashboardContent() {
         clearInterval(interval)
         return
       }
-      fetch('/api/reports')
+      fetch(`/api/reports?email=${encodeURIComponent(userEmail)}`)
         .then(r => r.json())
         .then(data => {
           const newReports = (data.reports || []).filter(
