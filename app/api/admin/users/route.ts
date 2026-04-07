@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// 用 service role key 才能存取 auth.users
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-)
-
 const ADMIN_KEY = process.env.ADMIN_KEY || 'jianyuan2026'
+
+// 延遲初始化 Supabase（避免建置時 env var 不存在報錯）
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+  )
+}
 
 export async function GET(req: NextRequest) {
   const key = req.nextUrl.searchParams.get('key')
@@ -20,7 +22,7 @@ export async function GET(req: NextRequest) {
 
   try {
     // 取得所有用戶（Supabase Admin API，分頁取前 500 位）
-    const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers({
+    const { data: usersData, error: usersError } = await getSupabase().auth.admin.listUsers({
       page: 1,
       perPage: 500,
     })
@@ -32,7 +34,7 @@ export async function GET(req: NextRequest) {
     const users = usersData?.users || []
 
     // 取得所有付費報告（關聯用戶 email）
-    const { data: reports } = await supabase
+    const { data: reports } = await getSupabase()
       .from('paid_reports')
       .select('id, user_id, client_name, plan_code, amount_usd, status, created_at')
       .order('created_at', { ascending: false })

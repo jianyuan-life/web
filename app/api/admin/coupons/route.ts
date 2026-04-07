@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-)
-
 const ADMIN_KEY = process.env.ADMIN_KEY || 'jianyuan2026'
+
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+  )
+}
 
 function auth(req: NextRequest) {
   const key = req.nextUrl.searchParams.get('key')
@@ -16,7 +18,7 @@ function auth(req: NextRequest) {
 // GET — 取得所有優惠碼
 export async function GET(req: NextRequest) {
   if (!auth(req)) return NextResponse.json({ error: '無權限' }, { status: 403 })
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('coupons')
     .select('*')
     .order('created_at', { ascending: false })
@@ -30,7 +32,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { code, discount_type, discount_value, applicable_products, max_uses, expires_at, note } = body
   if (!code) return NextResponse.json({ error: '優惠碼不能為空' }, { status: 400 })
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('coupons')
     .insert({
       code: code.toUpperCase().trim(),
@@ -58,13 +60,13 @@ export async function PATCH(req: NextRequest) {
   const { id, action } = await req.json()
   if (!id) return NextResponse.json({ error: '缺少 id' }, { status: 400 })
   if (action === 'delete') {
-    const { error } = await supabase.from('coupons').delete().eq('id', id)
+    const { error } = await getSupabase().from('coupons').delete().eq('id', id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })
   }
   if (action === 'toggle') {
-    const { data: current } = await supabase.from('coupons').select('is_active').eq('id', id).single()
-    const { error } = await supabase.from('coupons').update({ is_active: !current?.is_active }).eq('id', id)
+    const { data: current } = await getSupabase().from('coupons').select('is_active').eq('id', id).single()
+    const { error } = await getSupabase().from('coupons').update({ is_active: !current?.is_active }).eq('id', id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })
   }

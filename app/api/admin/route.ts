@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-)
-
 // 管理後台 API — 簡單密碼保護
 const ADMIN_KEY = process.env.ADMIN_KEY || 'jianyuan2026'
+
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+  )
+}
 
 export async function GET(req: NextRequest) {
   const key = req.nextUrl.searchParams.get('key')
@@ -21,6 +23,7 @@ export async function GET(req: NextRequest) {
   const since = new Date()
   since.setDate(since.getDate() - days)
   const sinceISO = since.toISOString()
+  const supabase = getSupabase()
 
   // 並行查詢所有數據
   const [

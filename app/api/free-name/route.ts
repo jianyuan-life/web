@@ -50,6 +50,22 @@ const SPECIAL_STROKES: Record<string, number> = {
   '宸':10,'恆':10,'毅':15,'傲':13,'廷':7,'辰':7,'恩':10,'霖':16,
   '鈞':12,'峻':10,'禹':9,'霆':15,'琦':13,'璇':16,'瑾':16,'璟':17,'瑜':14,'琬':13,
   '綺':14,'蕙':18,'嫻':15,'瑤':15,'筠':13,'韻':19,'璐':18,'萍':14,'蘭':23,'鈺':13,
+  // 2026-04-07 驗證補充：常用基礎字 + 簡體對照
+  '小':3,'大':3,'倫':10,'杰':12,'丹':4,'正':5,'民':5,
+  '世':5,'先':6,'全':6,'合':6,'如':6,'年':6,
+  '自':6,'行':6,'利':7,'良':7,'秀':7,'言':7,
+  '辛':7,'昆':8,'松':8,'青':8,'虎':8,'冠':9,
+  '亭':9,'政':9,'柏':9,'科':9,'南':9,'奎':9,
+  '桃':10,'真':10,'耕':10,'娟':10,'庭':10,'純':10,
+  '珠':11,'培':11,'堅':11,'彬':11,'商':11,
+  '啟':11,'健':11,'紹':11,'茂':11,
+  '勝':12,'森':12,'富':12,'貴':12,
+  '雄':12,'發':12,'棟':12,'順':12,'揚':13,'義':13,
+  '新':13,'源':14,'福':14,'瑞':14,
+  '慶':15,'賢':15,'德':15,'樂':15,'廣':15,
+  '穎':16,'學':16,'龍':16,'樹':16,'錦':16,
+  '鴻':17,'謙':17,'聰':17,'聯':17,'澤':17,'蔚':17,
+  '鵬':19,'靈':24,
 }
 
 // 根據字取得康熙筆畫（簡化版：查表 → fallback 用 Unicode 近似）
@@ -63,92 +79,154 @@ function getStrokes(char: string): number {
   return 1
 }
 
-// 五格剖象法計算
+// 五格剖象法計算（支援四種姓名結構）
 function calcWuge(surname: string, givenName: string) {
   const surnameStrokes = [...surname].map(getStrokes)
   const givenStrokes = [...givenName].map(getStrokes)
 
-  const surnameTotal = surnameStrokes.reduce((a, b) => a + b, 0)
-  const givenTotal = givenStrokes.reduce((a, b) => a + b, 0)
+  const sLen = surnameStrokes.length
+  const nLen = givenStrokes.length
 
-  // 天格：單姓+1，複姓相加
-  const tiange = surname.length === 1 ? surnameTotal + 1 : surnameTotal
+  let tiange: number, renge: number, dige: number, waige: number, zongge: number
 
-  // 人格：姓末字+名首字
-  const renge = surnameStrokes[surnameStrokes.length - 1] + givenStrokes[0]
-
-  // 地格：名字各字相加（單名+1）
-  const dige = givenName.length === 1 ? givenTotal + 1 : givenTotal
-
-  // 外格：總格-人格+1
-  const zongge = surnameTotal + givenTotal
-  const waige = Math.max(zongge - renge + 1, 2)
+  if (sLen === 1 && nLen === 2) {
+    // 單姓雙名（最常見：何宣逸、林志玲）
+    const [A] = surnameStrokes
+    const [B, C] = givenStrokes
+    tiange = A + 1
+    renge = A + B
+    dige = B + C
+    waige = A + C + 1
+    zongge = A + B + C
+  } else if (sLen === 1 && nLen === 1) {
+    // 單姓單名（如：王力）
+    const [A] = surnameStrokes
+    const [B] = givenStrokes
+    tiange = A + 1
+    renge = A + B
+    dige = B + 1
+    waige = 2  // 固定值
+    zongge = A + B
+  } else if (sLen === 2 && nLen === 2) {
+    // 複姓雙名（如：歐陽修文）
+    const [A, B] = surnameStrokes
+    const [C, D] = givenStrokes
+    tiange = A + B
+    renge = B + C
+    dige = C + D
+    waige = A + D + 1
+    zongge = A + B + C + D
+  } else if (sLen === 2 && nLen === 1) {
+    // 複姓單名（如：司馬遷）
+    const [A, B] = surnameStrokes
+    const [C] = givenStrokes
+    tiange = A + B
+    renge = B + C
+    dige = C + 1
+    waige = A + 1
+    zongge = A + B + C
+  } else {
+    // 通用兜底
+    const sTotal = surnameStrokes.reduce((a, b) => a + b, 0)
+    const nTotal = givenStrokes.reduce((a, b) => a + b, 0)
+    tiange = sTotal + 1
+    renge = sTotal + (givenStrokes[0] || 0)
+    dige = nLen === 1 ? nTotal + 1 : nTotal
+    waige = 2
+    zongge = sTotal + nTotal
+  }
 
   return { tiange, renge, dige, waige, zongge, surnameStrokes, givenStrokes }
 }
 
-// 數理吉凶判定（81 數理循環）
+// 數理吉凶判定（完整 81 數理，同步自 Python 後端 LINGDONG_81）
 const JIXIONG: Record<number, { level: string; desc: string }> = {
-  1: { level: '大吉', desc: '萬物開泰，天地開端之數。大展鴻圖，信用得固。' },
-  2: { level: '凶', desc: '混沌未開，一身孤節。動搖不安，根基未固。' },
-  3: { level: '大吉', desc: '進退如意，天賦吉運。智勇兼備，名利雙收。' },
-  4: { level: '凶', desc: '萬事休止，凶數破敗。進退不自由，獨立缺乏。' },
-  5: { level: '大吉', desc: '福祿長壽，種竹成林。陰陽和合，一成大業。' },
-  6: { level: '大吉', desc: '天德地祥，安穩吉慶。萬寶朝宗，財源廣進。' },
-  7: { level: '吉', desc: '剛毅果斷，精力充沛。排除萬難，一舉成功。' },
-  8: { level: '吉', desc: '意志堅固，努力發展。富於進取，志氣不凡。' },
-  9: { level: '凶', desc: '利去功空，窮迫逆境。如無智謀，難望成功。' },
-  10: { level: '凶', desc: '烏雲遮月，暗淡無光。空費心力，做事無功。' },
-  11: { level: '大吉', desc: '旱苗逢雨，枯木逢春。萬事順意，興隆昌盛。' },
-  12: { level: '凶', desc: '薄弱無力，孤立無援。外祥內苦，困難重重。' },
-  13: { level: '大吉', desc: '才藝多能，天賦奇才。學問充足，智略超群。' },
-  14: { level: '凶', desc: '破兆家庭，孤獨遭難。離祖別親，沈滯逆境。' },
-  15: { level: '大吉', desc: '福壽圓滿，富貴榮譽。慈祥有德，繁榮興家。' },
-  16: { level: '大吉', desc: '貴人得助，財帛豐盈。興家聚財，名利雙收。' },
-  17: { level: '吉', desc: '排除困難，突破萬難。剛柔兼備，權威顯達。' },
-  18: { level: '大吉', desc: '權威顯達，博得名利。經商做官，大展鴻圖。' },
-  19: { level: '凶', desc: '成功雖早，慎防虧空。內外不和，障礙重重。' },
-  20: { level: '凶', desc: '非業破運，災難重重。進退維谷，萬事難成。' },
-  21: { level: '大吉', desc: '光風霽月，萬物豐成。獨立權威，大展才華。' },
-  22: { level: '凶', desc: '秋草逢霜，懷才不遇。百事不如意，志向半途。' },
-  23: { level: '大吉', desc: '旭日東昇，質實剛堅。博學多才，事業有成。' },
-  24: { level: '大吉', desc: '錦繡前程，須靠自力。多用智謀，能奏大功。' },
-  25: { level: '吉', desc: '天時地利，資性英敏。才略智謀，奏功洋洋。' },
-  26: { level: '凶帶吉', desc: '波瀾起伏，變幻莫測。凌駕萬難，必可成功。' },
-  27: { level: '凶帶吉', desc: '欲望太強，自我矛盾。多受誹謗，尚可成功。' },
-  28: { level: '凶', desc: '如水浮萍，離祖漂泊。遭難不安，骨肉分離。' },
-  29: { level: '吉', desc: '財力歸身，享天之福。事事如意，大獲成功。' },
-  30: { level: '凶帶吉', desc: '吉凶參半，投機取巧。如能守正，可保平安。' },
-  31: { level: '大吉', desc: '智勇得志，博得名利。統領眾人，繁榮富貴。' },
-  32: { level: '大吉', desc: '僥倖多望，貴人得助。財帛裕如，繁榮興旺。' },
-  33: { level: '大吉', desc: '旭日昇天，鸞鳳相會。名聞天下，隆昌至極。' },
-  35: { level: '吉', desc: '溫良和順，智達通暢。文昌技藝，奏功洋洋。' },
-  37: { level: '大吉', desc: '猛虎出林，權威顯達。忠誠仁慈，德望成就。' },
-  39: { level: '大吉', desc: '富貴榮華，財帛豐盈。暗藏險象，德澤大眾。' },
-  41: { level: '大吉', desc: '純陽獨秀，天賦吉運。和順暢達，大展鴻圖。' },
-  45: { level: '大吉', desc: '新生泰和，順風揚帆。智謀經緯，萬事如意。' },
-  47: { level: '大吉', desc: '有貴人助，點石成金。開花之象，得人仰望。' },
-  48: { level: '大吉', desc: '美化豐實，鶴立雞群。名利俱全，繁榮富貴。' },
-  52: { level: '吉', desc: '卓識達眼，先見之明。計劃周到，有望成功。' },
-  57: { level: '吉', desc: '日照春松，寒雪青松。努力發展，必獲成功。' },
-  61: { level: '吉', desc: '名利雙收，繁榮昌盛。無奈傲慢，藏有暗凶。' },
-  63: { level: '大吉', desc: '萬物化育，繁榮之象。專心一意，必能成功。' },
-  65: { level: '大吉', desc: '富貴長壽，事事如意。自如自在，步步高升。' },
-  67: { level: '吉', desc: '獨營商業，利路亨通。經緯四方，財帛裕如。' },
-  68: { level: '大吉', desc: '思慮周密，興家立業。發明智慧，大獲成功。' },
-  73: { level: '吉', desc: '高志卓識，德望成就。安富尊榮，享天之福。' },
-  75: { level: '吉', desc: '守退為吉，急進不利。計劃周密，安富尊榮。' },
-  81: { level: '大吉', desc: '萬物回春，天地開泰。繁榮昌盛，再興大業。' },
+  1: { level: '大吉', desc: '萬物開泰，富貴榮華，宇宙起源之象。' },
+  2: { level: '凶', desc: '混沌未開，進退兩難，分離破敗。' },
+  3: { level: '大吉', desc: '名利雙收，繁榮昌盛，進取如意。' },
+  4: { level: '凶', desc: '萬事休止，退守保安，不宜進取。' },
+  5: { level: '大吉', desc: '福祿長壽，中正剛健，循環相生。' },
+  6: { level: '大吉', desc: '天德地祥，安穩吉慶，穩定繁榮。' },
+  7: { level: '吉', desc: '剛毅果斷，獨立自主，力行進取。' },
+  8: { level: '吉', desc: '堅忍克己，意志剛健，富於進取。' },
+  9: { level: '凶', desc: '物極必反，盛極轉衰，窮乏困苦。' },
+  10: { level: '凶', desc: '萬事終局，空虛無常，零落孤獨。' },
+  11: { level: '大吉', desc: '春生萬物，發展順調，富貴繁榮。' },
+  12: { level: '凶', desc: '薄弱無力，孤立無援，意志薄弱。' },
+  13: { level: '大吉', desc: '智略超群，才藝多能，博學多才。' },
+  14: { level: '凶', desc: '家庭緣薄，孤獨遭難，離祖破家。' },
+  15: { level: '大吉', desc: '福壽圓滿，興家聚財，慈祥有德。' },
+  16: { level: '大吉', desc: '貴人得助，天乙貴人，興家成業。' },
+  17: { level: '吉', desc: '突破萬難，排除困境，剛柔兼備。' },
+  18: { level: '吉', desc: '有志竟成，經商做官，內外有運。' },
+  19: { level: '凶', desc: '風雲蔽月，智謀優秀但運途多障。' },
+  20: { level: '凶', desc: '非業破運，百事不成，災難叢生。' },
+  21: { level: '大吉', desc: '光風霽月，獨立權威，萬象更新。' },
+  22: { level: '凶', desc: '秋草逢霜，百事不如意，志氣薄弱。' },
+  23: { level: '大吉', desc: '旭日東升，壯麗壯觀，功名榮達。' },
+  24: { level: '大吉', desc: '家門餘慶，金錢豐盈，白手起家。' },
+  25: { level: '吉', desc: '才略智謀，英敏之才，奇謀妙計。' },
+  26: { level: '凶帶吉', desc: '變怪奇異，英雄豪傑，波瀾重疊。' },
+  27: { level: '凶帶吉', desc: '增長之象，欠恆心，中年不利。' },
+  28: { level: '凶', desc: '家親緣薄，離群孤獨，豪傑氣概但孤掌難鳴。' },
+  29: { level: '大吉', desc: '財力歸集，名聞海內，成就大業。' },
+  30: { level: '凶帶吉', desc: '吉凶參半，得失相伴，投機取巧。' },
+  31: { level: '大吉', desc: '智仁勇俱，可享清福，安泰吉祥。' },
+  32: { level: '大吉', desc: '僥倖多望，貴人得助，財帛如裕。' },
+  33: { level: '大吉', desc: '鸞鳳相會，家門隆昌，功威顯達。' },
+  34: { level: '凶', desc: '破家亡身，見識短小，災厄不絕。' },
+  35: { level: '吉', desc: '溫和平靜，智達通暢，文昌技藝。' },
+  36: { level: '凶', desc: '風浪不平，俠義薄運，曲折波瀾。' },
+  37: { level: '吉', desc: '權威顯達，忠實誠信，萬人仰望。' },
+  38: { level: '凶帶吉', desc: '意志薄弱，藝術成功，學者技術。' },
+  39: { level: '大吉', desc: '富貴榮華，財帛豐盈，暗藏險象。' },
+  40: { level: '凶', desc: '智謀膽力，冒險投機，沉浮不定。' },
+  41: { level: '大吉', desc: '純陽獨秀，德望兼備，萬象吉祥。' },
+  42: { level: '凶帶吉', desc: '博達多能，精力旺盛，中途挫折。' },
+  43: { level: '凶', desc: '散財破產，諸事不遂，雖有智謀難成大事。' },
+  44: { level: '凶', desc: '破家亡身，暗藏慘淡，事不如意。' },
+  45: { level: '大吉', desc: '新生泰和，順風揚帆，智謀經緯。' },
+  46: { level: '凶', desc: '載寶沉舟，浪裡淘金，有才無命。' },
+  47: { level: '大吉', desc: '花開之象，萬事如意，名利雙收。' },
+  48: { level: '大吉', desc: '智謀兼備，德量隆盛，能奏大功。' },
+  49: { level: '凶帶吉', desc: '吉臨則吉，凶來則凶，轉凶為吉靠智慧。' },
+  50: { level: '凶帶吉', desc: '一成一敗，吉凶參半，先成後敗。' },
+  51: { level: '凶帶吉', desc: '盛衰交加，盈虧不定，一成一敗。' },
+  52: { level: '大吉', desc: '先見之明，卓識達眼，功利榮達。' },
+  53: { level: '凶帶吉', desc: '內外不和，障礙重重，盛衰參半。' },
+  54: { level: '凶', desc: '多難悲運，災厄連連，難得成功。' },
+  55: { level: '凶帶吉', desc: '外美內苦，和順薄幸，半吉半凶。' },
+  56: { level: '凶', desc: '歷盡艱辛，四周障礙，萬事落空。' },
+  57: { level: '大吉', desc: '寒雪青松，夜行逢月，努力必成。' },
+  58: { level: '凶帶吉', desc: '沉浮多端，先苦後甜，寬宏大量。' },
+  59: { level: '凶', desc: '須防悲愁，不遇時運，智謀過人但運途不濟。' },
+  60: { level: '凶', desc: '無定意志，暗黑無光，動搖不安。' },
+  61: { level: '大吉', desc: '桃花芙蓉，名利雙收，富貴榮華。' },
+  62: { level: '凶', desc: '基礎虛弱，內外不和，意志薄弱。' },
+  63: { level: '大吉', desc: '萬物化育，繁榮之象，專心一意。' },
+  64: { level: '凶', desc: '沉滯不達，禍亂疊至，骨肉分離。' },
+  65: { level: '大吉', desc: '天長地久，家運隆昌，富貴長壽。' },
+  66: { level: '凶', desc: '內外不和，進退維谷，煩悶失志。' },
+  67: { level: '大吉', desc: '利路亨通，萬事順暢，天賜吉祥。' },
+  68: { level: '大吉', desc: '興家立業，智慧達人，順風得利。' },
+  69: { level: '凶', desc: '坐立不安，動盪不定，病弱短命。' },
+  70: { level: '凶', desc: '家庭凶象，春寒牡丹，凋落蕭條。' },
+  71: { level: '凶帶吉', desc: '吉中有凶，安享福德，有利有害。' },
+  72: { level: '凶', desc: '前半吉後半凶，萬事不利。' },
+  73: { level: '吉', desc: '平安中帶吉，高處勝境。' },
+  74: { level: '凶', desc: '無勇無謀，消沉退守，不宜進取。' },
+  75: { level: '凶帶吉', desc: '守成有餘，進取不足，半吉半凶。' },
+  76: { level: '凶', desc: '前途渺茫，家庭不安，凶禍重重。' },
+  77: { level: '凶帶吉', desc: '先甘後苦，早年有運晚年不濟。' },
+  78: { level: '凶帶吉', desc: '先安後困，半吉半凶，晚年困頓。' },
+  79: { level: '凶', desc: '窮途末路，知難而退，身陷困境。' },
+  80: { level: '凶', desc: '退藏於密，萬事終止，如同歸零。' },
+  81: { level: '大吉', desc: '等同於1，萬象回春，重新開始。' },
 }
 
 function getJixiong(num: number): { level: string; desc: string } {
-  const n = num > 81 ? ((num - 1) % 80) + 1 : num
-  if (JIXIONG[n]) return JIXIONG[n]
-  // 未列出的數理，簡化判定
-  if ([34,36,38,40,42,43,44,46,49,50,53,54,55,56,58,59,60,62,64,66,69,70,71,72,74,76,77,78,79,80].includes(n)) {
-    return { level: '凶', desc: '此數理較為波折，宜以德行化解，注意人際和事業方向。' }
-  }
-  return { level: '吉', desc: '此數理較為平穩，勤勉努力可有所成就。' }
+  const n = num > 81 ? num - 80 : (num <= 0 ? 1 : num)
+  return JIXIONG[n] || { level: '凶', desc: '此數理較為波折，宜以德行化解。' }
 }
 
 // 五行對應

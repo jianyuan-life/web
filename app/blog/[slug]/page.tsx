@@ -12,7 +12,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const post = getPostBySlug(slug)
   if (!post) return { title: '文章不存在' }
   return {
-    title: `${post.title} — 鑑源 JianYuan`,
+    title: `${post.title} — 鑒源 JianYuan`,
     description: post.description,
     keywords: post.keywords.join(', '),
     openGraph: {
@@ -120,7 +120,7 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ sl
     description: post.description,
     datePublished: post.date,
     author: { '@type': 'Organization', name: post.author },
-    publisher: { '@type': 'Organization', name: '鑑源 JianYuan', url: 'https://jianyuan.life' },
+    publisher: { '@type': 'Organization', name: '鑒源 JianYuan', url: 'https://jianyuan.life' },
   }
 
   const contentHtml = renderMarkdown(post.content)
