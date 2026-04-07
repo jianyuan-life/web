@@ -9,6 +9,7 @@ import { getLocale, UI_TEXT } from '@/lib/i18n'
 export default function Navbar() {
   const [user, setUser] = useState<User | null>(null)
   const [txt, setTxt] = useState(UI_TEXT['zh-TW'])
+  const [toolsOpen, setToolsOpen] = useState(false)
 
   useEffect(() => {
     setTxt(UI_TEXT[getLocale()])
@@ -33,7 +34,19 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-8 text-sm">
           <a href="/#systems" className="text-text-muted hover:text-gold transition-colors">{txt.nav_systems}</a>
           <a href="/pricing" className="text-text-muted hover:text-gold transition-colors">{txt.nav_pricing}</a>
-          <a href="/tools/bazi" className="text-text-muted hover:text-gold transition-colors">{txt.nav_free}</a>
+          <div className="relative" onMouseEnter={() => setToolsOpen(true)} onMouseLeave={() => setToolsOpen(false)}>
+            <button className="text-text-muted hover:text-gold transition-colors flex items-center gap-1">
+              {txt.nav_free}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
+            </button>
+            {toolsOpen && (
+              <div className="absolute top-full left-0 mt-1 w-48 glass rounded-lg border border-gold/15 py-2 shadow-xl">
+                <a href="/tools/bazi" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">八字命理速算</a>
+                <a href="/tools/ziwei" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">紫微斗數速算</a>
+                <a href="/tools/name" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">姓名學速算</a>
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <LocaleSwitcher />

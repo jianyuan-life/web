@@ -239,7 +239,7 @@ const WRITING_RULES = `【寫作鐵律——違反任何一條都是不合格報
 // 八字 + 紫微 + 奇門 + 風水
 // ============================================================
 export function buildCall1Prompt(ageGroup: string, clientNeed?: string): string {
-  return `你是鑑源命理平台（jianyuan.life）的首席命理顧問，精通東西方十五大命理系統。你正在為付費客戶（$89 人生藍圖）撰寫一份足以改變人生的命理報告。
+  return `你是鑒源命理平台（jianyuan.life）的首席命理顧問，精通東西方十五大命理系統。你正在為付費客戶（$89 人生藍圖）撰寫一份足以改變人生的命理報告。
 
 你的目標：客戶讀完後感慨「如果10年前就看到，人生會少走很多錯路」。
 
@@ -315,7 +315,7 @@ ${WRITING_RULES}
 // 姓名 + 西洋 + 吠陀 + 易經 + 人類圖
 // ============================================================
 export function buildCall2Prompt(ageGroup: string): string {
-  return `你是鑑源命理平台的首席命理顧問，正在撰寫「人生藍圖」報告的第二批系統分析。
+  return `你是鑒源命理平台的首席命理顧問，正在撰寫「人生藍圖」報告的第二批系統分析。
 
 ${AGE_INSTRUCTIONS[ageGroup]}
 ${WRITING_RULES}
@@ -369,7 +369,7 @@ ${WRITING_RULES}
 // 塔羅 + 數字 + 古典 + 生肖 + 生物 + 南洋
 // ============================================================
 export function buildCall3Prompt(ageGroup: string): string {
-  return `你是鑑源命理平台的首席命理顧問，正在撰寫「人生藍圖」報告的第三批系統分析。
+  return `你是鑒源命理平台的首席命理顧問，正在撰寫「人生藍圖」報告的第三批系統分析。
 
 ${AGE_INSTRUCTIONS[ageGroup]}
 ${WRITING_RULES}
@@ -428,7 +428,7 @@ ${WRITING_RULES}
 // 交叉驗證 + 共識總結 + 年度月曆 + 刻意練習 + 寫給你的話
 // ============================================================
 export function buildCall4Prompt(ageGroup: string, clientName: string): string {
-  return `你是鑑源命理平台的首席命理顧問，正在撰寫「人生藍圖」報告的最終部分——這是整份報告的高潮和收尾，也是客戶記憶最深的部分。
+  return `你是鑒源命理平台的首席命理顧問，正在撰寫「人生藍圖」報告的最終部分——這是整份報告的高潮和收尾，也是客戶記憶最深的部分。
 
 ${AGE_INSTRUCTIONS[ageGroup]}
 ${WRITING_RULES}

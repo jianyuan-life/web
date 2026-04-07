@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
 // ============================================================
 // 免費命理速算 — Python排盤(+TS fallback) + Kimi AI 潤色
@@ -395,6 +396,24 @@ export async function POST(req: NextRequest) {
       '兔': '2026丙午年，屬兔者桃花運和人緣極佳。事業上適合拓展人脈，透過社交獲得新機會。財運中等，不適合大額投機。感情方面異性緣旺，已婚者要注意分寸。健康良好，心情愉快。',
       '龍': '2026丙午年，屬龍者氣勢如虹。事業上有大的突破機會，尤其在第二、三季度。財運旺盛，正財偏財都有進帳。但要注意不要因為太順而驕傲自滿。感情方面魅力四射，桃花朵朵。',
       '蛇': '2026丙午年，屬蛇者六合太歲（巳午），運勢極為順遂。事業上有重大晉升或轉職機會，貴人運極強。財運豐收，是近年最好的理財年份。感情和諧美滿。今年適合做重大人生決定。',
+    }
+
+    // 記錄用戶分析（去重，fire-and-forget）
+    if (name && inputYear && inputMonth && inputDay) {
+      const analyticsSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+        process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+      )
+      analyticsSupabase.from('user_analytics').upsert({
+        name,
+        birth_year: inputYear,
+        birth_month: inputMonth,
+        birth_day: inputDay,
+        source: 'free',
+      }, { onConflict: 'name,birth_year,birth_month,birth_day' }).then(
+        () => {},
+        () => {},
+      )
     }
 
     return NextResponse.json({

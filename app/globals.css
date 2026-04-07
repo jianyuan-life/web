@@ -47,6 +47,48 @@
   66% { opacity: 0.5; transform: translate(-1%, 2%) scale(0.98); }
 }
 
+/* 星空閃爍 */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+.animate-twinkle {
+  animation: twinkle 3s ease-in-out infinite;
+}
+
+/* 極光動畫 */
+.animate-aurora {
+  animation: aurora-shift 15s ease-in-out infinite;
+}
+
+/* 星盤慢轉 */
+.animate-spin-slow {
+  animation: spin linear infinite;
+}
+
+/* 星盤反轉 */
+@keyframes spin-reverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+.animate-spin-reverse {
+  animation: spin-reverse linear infinite;
+}
+
+/* 浮動動畫 */
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+.animate-float {
+  animation: float-gentle 4s ease-in-out infinite;
+}
+
+/* 向下箭頭浮動 */
+.animate-bounce-slow {
+  animation: float-gentle 3s ease-in-out infinite;
+}
+
 html {
   scroll-behavior: smooth;
 }
