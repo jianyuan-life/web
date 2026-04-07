@@ -196,7 +196,12 @@ async function claudeStreamingCall(systemPrompt: string, userPrompt: string, max
     if (res.status === 429) {
       throw new RetryableError(`Claude API 429 限流`, { retryAfter: '30s' })
     }
-    throw new Error(`Claude API ${res.status}: ${errText.slice(0, 300)}`)
+    if (res.status >= 500) {
+      // Claude 伺服器錯誤，可重試
+      throw new RetryableError(`Claude API ${res.status}: ${errText.slice(0, 300)}`, { retryAfter: '15s' })
+    }
+    // 4xx 非 429（如 400/401/403）為不可重試錯誤
+    throw new FatalError(`Claude API ${res.status}: ${errText.slice(0, 300)}`)
   }
 
   const reader = res.body?.getReader()
@@ -329,100 +334,78 @@ ${analyses.length}套系統排盤完整數據：
   return userPrompt
 }
 
-// ── Step 2a: C 方案 AI 生成 — Call 1（命格總覽 + 東方三大） ──
+// ── Step 2a: C 方案 AI 生成 — Call A（系統1-4：東方三大） ──
+// C 方案永遠用 Claude Opus，不 fallback DeepSeek。失敗由 Workflow 自動重試。
 export async function aiGenerateCall1(
   calcResult: CalcResult, birthData: BirthData, question?: string,
 ) {
   "use step";
+  await emitProgress({ step: 'AI分析', progress: 20, message: '正在分析東方命理系統（八字/紫微/奇門/風水）...' })
+
   const ageGroup = getAgeGroup(birthData.year)
   const clientNeed = question || undefined
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call1, birthData)
 
-  // 先嘗試 Claude，失敗 fallback DeepSeek
-  let content = ''
-  let model = 'unknown'
-  if (CLAUDE_API_KEY) {
-    try {
-      content = await claudeStreamingCall(buildCall1Prompt(ageGroup, clientNeed, birthData.locale), userPrompt, 16384)
-      model = 'claude-opus-4-6'
-    } catch (e) {
-      console.error('Call 1 Claude 失敗，fallback DeepSeek:', e)
-    }
-  }
-  if (!content) {
-    content = await deepseekCall(buildCall1Prompt(ageGroup, clientNeed, birthData.locale), userPrompt, 16384)
-    model = 'deepseek-chat'
+  if (!CLAUDE_API_KEY) {
+    throw new FatalError('缺少 CLAUDE_API_KEY，C 方案必須使用 Claude Opus')
   }
 
+  const content = await claudeStreamingCall(buildCall1Prompt(ageGroup, clientNeed, birthData.locale), userPrompt, 16384)
   const cleaned = cleanAIResponse(content)
-  console.log(`Call 1 完成 (${model}): ${cleaned.length} 字`)
-  return { content: cleaned, model }
+  console.log(`Call A 完成 (claude-opus-4-6): ${cleaned.length} 字`)
+  return { content: cleaned, model: 'claude-opus-4-6' }
 }
-aiGenerateCall1.maxRetries = 2
+aiGenerateCall1.maxRetries = 3
 
-// ── Step 2b: C 方案 AI 生成 — Call 2（西方 + 整合系統） ──
+// ── Step 2b: C 方案 AI 生成 — Call B（系統5-9：西方 + 整合系統） ──
 export async function aiGenerateCall2(
   calcResult: CalcResult, birthData: BirthData,
 ) {
   "use step";
+  await emitProgress({ step: 'AI分析', progress: 35, message: '正在分析西方命理系統（占星/吠陀/姓名學/易經/人類圖）...' })
+
   const ageGroup = getAgeGroup(birthData.year)
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call2, birthData)
 
-  let content = ''
-  let model = 'unknown'
-  if (CLAUDE_API_KEY) {
-    try {
-      content = await claudeStreamingCall(buildCall2Prompt(ageGroup, birthData.locale), userPrompt, 12288)
-      model = 'claude-opus-4-6'
-    } catch (e) {
-      console.error('Call 2 Claude 失敗，fallback DeepSeek:', e)
-    }
-  }
-  if (!content) {
-    content = await deepseekCall(buildCall2Prompt(ageGroup, birthData.locale), userPrompt, 12288)
-    model = 'deepseek-chat'
+  if (!CLAUDE_API_KEY) {
+    throw new FatalError('缺少 CLAUDE_API_KEY，C 方案必須使用 Claude Opus')
   }
 
+  const content = await claudeStreamingCall(buildCall2Prompt(ageGroup, birthData.locale), userPrompt, 12288)
   const cleaned = cleanAIResponse(content)
-  console.log(`Call 2 完成 (${model}): ${cleaned.length} 字`)
-  return { content: cleaned, model }
+  console.log(`Call B 完成 (claude-opus-4-6): ${cleaned.length} 字`)
+  return { content: cleaned, model: 'claude-opus-4-6' }
 }
-aiGenerateCall2.maxRetries = 2
+aiGenerateCall2.maxRetries = 3
 
-// ── Step 2c: C 方案 AI 生成 — Call 3（環境 + 輔助系統） ──
+// ── Step 2c: C 方案 AI 生成 — Call C（系統10-15：環境 + 輔助系統） ──
 export async function aiGenerateCall3(
   calcResult: CalcResult, birthData: BirthData,
 ) {
   "use step";
+  await emitProgress({ step: 'AI分析', progress: 50, message: '正在分析輔助命理系統（塔羅/數字能量/古典占星/生肖/生物節律）...' })
+
   const ageGroup = getAgeGroup(birthData.year)
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call3, birthData)
 
-  let content = ''
-  let model = 'unknown'
-  if (CLAUDE_API_KEY) {
-    try {
-      content = await claudeStreamingCall(buildCall3Prompt(ageGroup, birthData.locale), userPrompt, 8192)
-      model = 'claude-opus-4-6'
-    } catch (e) {
-      console.error('Call 3 Claude 失敗，fallback DeepSeek:', e)
-    }
-  }
-  if (!content) {
-    content = await deepseekCall(buildCall3Prompt(ageGroup, birthData.locale), userPrompt, 8192)
-    model = 'deepseek-chat'
+  if (!CLAUDE_API_KEY) {
+    throw new FatalError('缺少 CLAUDE_API_KEY，C 方案必須使用 Claude Opus')
   }
 
+  const content = await claudeStreamingCall(buildCall3Prompt(ageGroup, birthData.locale), userPrompt, 8192)
   const cleaned = cleanAIResponse(content)
-  console.log(`Call 3 完成 (${model}): ${cleaned.length} 字`)
-  return { content: cleaned, model }
+  console.log(`Call C 完成 (claude-opus-4-6): ${cleaned.length} 字`)
+  return { content: cleaned, model: 'claude-opus-4-6' }
 }
-aiGenerateCall3.maxRetries = 2
+aiGenerateCall3.maxRetries = 3
 
-// ── Step 2d: C 方案 AI 生成 — Call 4（交叉驗證 + 刻意練習 + 寫給你的話） ──
+// ── Step 2d: C 方案 AI 生成 — Call D（交叉驗證 + 刻意練習 + 寫給你的話） ──
 export async function aiGenerateCall4(
   calcResult: CalcResult, birthData: BirthData, isRetry?: boolean, missingParts?: string[],
 ) {
   "use step";
+  await emitProgress({ step: 'AI分析', progress: 60, message: '正在生成交叉驗證、刻意練習與寫給你的話...' })
+
   const ageGroup = getAgeGroup(birthData.year)
   const allSystems = [...SYSTEM_GROUPS.call1, ...SYSTEM_GROUPS.call2, ...SYSTEM_GROUPS.call3]
   let userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, allSystems, birthData)
@@ -431,28 +414,17 @@ export async function aiGenerateCall4(
     userPrompt += `\n\n【重要提醒——你上次漏掉了以下章節，這次必須全部補上】\n${missingParts.map((p, i) => `${i + 1}. ${p}`).join('\n')}\n\n不要寫任何前言，直接從章節標題開始。`
   }
 
-  let content = ''
-  let model = 'unknown'
+  if (!CLAUDE_API_KEY) {
+    throw new FatalError('缺少 CLAUDE_API_KEY，C 方案必須使用 Claude Opus')
+  }
+
   const maxTokens = isRetry ? 32768 : 16384
-
-  if (CLAUDE_API_KEY) {
-    try {
-      content = await claudeStreamingCall(buildCall4Prompt(ageGroup, birthData.name, birthData.locale), userPrompt, maxTokens)
-      model = 'claude-opus-4-6'
-    } catch (e) {
-      console.error('Call 4 Claude 失敗，fallback DeepSeek:', e)
-    }
-  }
-  if (!content) {
-    content = await deepseekCall(buildCall4Prompt(ageGroup, birthData.name, birthData.locale), userPrompt, maxTokens)
-    model = 'deepseek-chat'
-  }
-
+  const content = await claudeStreamingCall(buildCall4Prompt(ageGroup, birthData.name, birthData.locale), userPrompt, maxTokens)
   const cleaned = cleanAIResponse(content)
-  console.log(`Call 4 完成 (${model}): ${cleaned.length} 字`)
-  return { content: cleaned, model }
+  console.log(`Call D 完成 (claude-opus-4-6): ${cleaned.length} 字`)
+  return { content: cleaned, model: 'claude-opus-4-6' }
 }
-aiGenerateCall4.maxRetries = 2
+aiGenerateCall4.maxRetries = 3
 
 // ── Step 2e: 非 C 方案 AI 生成（單次呼叫） ──
 export async function aiGenerateGeneric(
@@ -545,6 +517,69 @@ export async function generatePDF(
   return urlData.publicUrl
 }
 generatePDF.maxRetries = 2
+
+// ── Step 3.5: 自動品質閘門 ──
+// 檢查報告完整性：15 系統覆蓋、禁止字眼、句子截斷
+export async function qualityGate(
+  reportContent: string, planCode: string, systemsCount: number,
+) {
+  "use step";
+  await emitProgress({ step: '品質檢查', progress: 70, message: '正在執行品質閘門檢查...' })
+
+  const warnings: string[] = []
+
+  // 1. 系統數量檢查（C 方案需 15 套）
+  if (planCode === 'C' && systemsCount < 15) {
+    warnings.push(`排盤系統不足: 期望 15 套，實際 ${systemsCount} 套`)
+  }
+
+  // 2. C 方案必要章節檢查
+  if (planCode === 'C') {
+    const requiredSections = [
+      { pattern: /命格總覽/, name: '命格總覽' },
+      { pattern: /好的地方|天賦優勢/, name: '好的地方' },
+      { pattern: /需要注意/, name: '需要注意的地方' },
+      { pattern: /改善建議|改善方案/, name: '改善建議' },
+      { pattern: /刻意練習/, name: '刻意練習' },
+      { pattern: /寫給.*的話/, name: '寫給你的話' },
+    ]
+    for (const sec of requiredSections) {
+      if (!sec.pattern.test(reportContent)) {
+        warnings.push(`缺少必要章節: ${sec.name}`)
+      }
+    }
+  }
+
+  // 3. 禁止字眼檢查（命理報告禁用語）
+  const forbiddenPatterns = [
+    { pattern: /命中注定/, replacement: '命盤顯示傾向' },
+    { pattern: /這輩子就是/, replacement: '目前的命格走向' },
+    { pattern: /前世業障/, replacement: '命格中的成長課題' },
+    { pattern: /別想太多/, replacement: '你的感受是合理的' },
+    { pattern: /想開一點/, replacement: '你的感受是合理的' },
+  ]
+  for (const fp of forbiddenPatterns) {
+    if (fp.pattern.test(reportContent)) {
+      warnings.push(`含有禁止字眼: "${fp.pattern.source}" (應改為 "${fp.replacement}")`)
+    }
+  }
+
+  // 4. 句子截斷檢查（報告末尾不應以不完整句子結束）
+  const trimmedEnd = reportContent.trim()
+  const lastChar = trimmedEnd[trimmedEnd.length - 1]
+  if (lastChar && !/[。！？」\n\r*]/.test(lastChar)) {
+    warnings.push(`報告可能被截斷: 末尾字元為 "${lastChar}"（非句末標點）`)
+  }
+
+  // 5. 內容長度檢查
+  if (planCode === 'C' && reportContent.length < 15000) {
+    warnings.push(`C 方案內容偏短: ${reportContent.length} 字（期望 > 15,000 字）`)
+  }
+
+  const passed = warnings.filter(w => !w.startsWith('含有禁止字眼')).length === 0
+  console.log(`品質閘門: ${passed ? '通過' : '警告'} (${warnings.length} 項)`)
+  return { passed, warnings }
+}
 
 // ── Step 4: 更新 Supabase 報告狀態為 completed ──
 export async function saveReportToSupabase(

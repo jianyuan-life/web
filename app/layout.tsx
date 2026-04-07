@@ -105,7 +105,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="max-w-6xl mx-auto px-6 py-16">
             {/* 古典分隔裝飾 */}
             <div className="text-center mb-10">
-              <Image src="/logo.svg" alt="鑒源" width={200} height={40} className="mx-auto mb-3" />
+              <Image src="/logo-footer.svg" alt="鑒源" width={200} height={100} className="mx-auto mb-3" />
               <p className="text-base text-text-muted font-medium tracking-wider">回到源頭 &middot; 看清本質</p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-sm">
@@ -138,7 +138,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
             <div className="mt-12 pt-8 border-t border-gold/5 text-center text-xs text-text-muted/60">
               <p>本服務融合傳統命理學與現代科技，分析結果僅供參考，不構成任何醫療、投資或法律建議。</p>
-              <p className="mt-2">&copy; {new Date().getFullYear()} 鑒源 JianYuan. All rights reserved. &middot; v3.8.2</p>
+              <p className="mt-2">&copy; {new Date().getFullYear()} 鑒源 JianYuan. All rights reserved. &middot; v3.8.3</p>
             </div>
           </div>
         </footer>

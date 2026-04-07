@@ -246,10 +246,34 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
   // 報告內容完整性檢查 — 數據零容忍
   const isContentEmpty = !aiContent || aiContent.trim().length < 100
-  const isContentTruncated = aiContent.length > 500 && !aiContent.includes('寫給你的話') && !aiContent.includes('寫給你們的話') && !aiContent.includes('寫給這個家')
 
-  // 結構化解析 — 保留原始章節順序，各章節依類型套用不同視覺
-  const sections = parseStructuredContent(aiContent)
+  // 結構化解析 — 保留原始章節順序
+  const allSections = parseStructuredContent(aiContent)
+
+  // 網頁版只顯示重點摘要（完整內容在 PDF）
+  // 提取：命格總覽、結論類（好的地方/需注意/改善建議）、刻意練習、寫給你的話
+  const summarySections = allSections.filter(sec => {
+    const t = sec.title
+    // 命格總覽
+    if (/命格總覽|命格名片|你是誰/.test(t)) return true
+    // 結論類
+    if (/好的地方|好的方面|天賦優勢|你的優勢|你的強項|相容性/.test(t)) return true
+    if (/需要注意|需注意|注意的地方|關係張力/.test(t)) return true
+    if (/改善方案|改善建議|行動指南|建議詳解/.test(t)) return true
+    // 交叉驗證
+    if (/交叉驗證|全局鳥瞰|十五系統/.test(t)) return true
+    // 刻意練習
+    if (/刻意練習/.test(t)) return true
+    // 寫給你的話
+    if (/寫給/.test(t)) return true
+    // 幸運元素
+    if (/幸運元素/.test(t)) return true
+    return false
+  })
+
+  // 如果篩選出的摘要太少（< 3），退回顯示全部（可能是非 C 方案）
+  const sections = summarySections.length >= 3 ? summarySections : allSections
+  const isShowingSummary = summarySections.length >= 3 && allSections.length > summarySections.length
 
   // 排序系統評分（高到低）
   const sortedScores = [...analysesSummary].sort((a, b) => b.score - a.score)
@@ -314,10 +338,32 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           <ReportClientButtons pdfUrl={report.pdf_url} planCode={report.plan_code} />
         </div>
 
+        {/* ──── 摘要提示 + PDF 下載 ──── */}
+        {isShowingSummary && report.pdf_url && (
+          <div className="rounded-xl p-6 mb-8 no-print" style={{ background: 'linear-gradient(135deg, rgba(197,150,58,0.12), rgba(26,42,74,0.3))', border: '1px solid rgba(197,150,58,0.25)' }}>
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="flex-1">
+                <div className="text-gold font-semibold mb-1">以下為報告重點摘要</div>
+                <p className="text-text-muted text-sm">完整報告（含 {allSections.length} 個章節、{analysesSummary.length} 套系統逐一分析）請下載 PDF 版本</p>
+              </div>
+              <a href={report.pdf_url} target="_blank" rel="noopener noreferrer"
+                className="shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold"
+                style={{ background: 'linear-gradient(135deg, #c9a84c, #e8c87a)', color: '#0a0e1a' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                下載完整 PDF 報告
+              </a>
+            </div>
+          </div>
+        )}
+
         {/* ──── 目錄導航 ──── */}
         {sections.length > 3 && (
           <div className="glass rounded-xl p-6 mb-8 no-print">
-            <div className="text-gold/70 text-xs tracking-[2px] mb-4">目錄</div>
+            <div className="text-gold/70 text-xs tracking-[2px] mb-4">{isShowingSummary ? '重點摘要目錄' : '目錄'}</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {sections.map((sec, i) => {
                 const typeIcons: Record<string, string> = { positive: '&#10003;', caution: '&#9888;', improvement: '&#9881;', general: '&#9672;' }

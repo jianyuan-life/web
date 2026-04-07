@@ -11,6 +11,7 @@ import {
   aiGenerateCall3,
   aiGenerateCall4,
   aiGenerateGeneric,
+  qualityGate,
   generatePDF,
   saveReportToSupabase,
   sendReportEmail,
@@ -103,7 +104,22 @@ export async function generateReportWorkflow(reportId: string) {
     return { success: false, error: 'AI 未回覆' }
   }
 
-  // Step 3: 解析出門訣 Top5 吉時 JSON（E1/E2 方案）
+  // Step 3: 自動品質閘門
+  try {
+    const qResult = await qualityGate(reportContent, planCode, analyses.length)
+    if (qResult.warnings.length > 0) {
+      console.warn(`品質閘門警告 (${qResult.warnings.length}):`, qResult.warnings.join('; '))
+    }
+    if (!qResult.passed) {
+      // 品質未通過但不阻塞（記錄警告，繼續生成）
+      console.error(`品質閘門未通過: ${qResult.warnings.join('; ')}`)
+    }
+  } catch (e) {
+    // 品質閘門失敗不阻塞流程
+    console.error('品質閘門執行失敗:', e)
+  }
+
+  // Step 4: 解析出門訣 Top5 吉時 JSON（E1/E2 方案，非 step function）
   let top5Timings = null
   const top5Match = reportContent.match(/===TOP5_JSON_START===\s*([\s\S]*?)\s*===TOP5_JSON_END===/)
   if (top5Match) {
@@ -115,7 +131,7 @@ export async function generateReportWorkflow(reportId: string) {
     }
   }
 
-  // Step 4: 生成 PDF
+  // Step 5: 生成 PDF
   let pdfUrl: string | null = null
   try {
     pdfUrl = await generatePDF(reportId, planCode, birthData, reportContent, analysesSummary)

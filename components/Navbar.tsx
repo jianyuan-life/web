@@ -38,8 +38,12 @@ export default function Navbar() {
   return (
     <nav className="fixed top-0 w-full z-50 border-b border-gold/10" style={{ background: 'rgba(10,14,26,0.92)', backdropFilter: 'blur(12px)' }}>
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <a href="/" className="flex items-center gap-2">
-          <img src="/logo.svg" alt="鑒源 JianYuan" className="h-10" />
+        <a href="/" className="flex items-center gap-2.5">
+          <img src="/logo-icon.svg" alt="鑒源" className="h-9 w-9" />
+          <div className="flex flex-col">
+            <span className="text-gold font-serif text-xl font-semibold tracking-wider leading-tight">鑒源</span>
+            <span className="text-gold/50 text-[9px] tracking-[3px] leading-none">JIANYUAN</span>
+          </div>
         </a>
         <div className="hidden md:flex items-center gap-8 text-sm">
           <a href="/#systems" className="text-text-muted hover:text-gold transition-colors">{txt.nav_systems}</a>
