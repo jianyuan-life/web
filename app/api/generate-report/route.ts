@@ -740,10 +740,10 @@ ${analyses.length}套系統排盤完整數據：
       if (CLAUDE_API_KEY) {
         try {
           const [raw1, raw2, raw3, raw4] = await Promise.all([
-            callClaudeStreaming(buildCall1Prompt(ageGroup, clientNeed, birthData.locale), userPrompt1, 32768),
-            callClaudeStreaming(buildCall2Prompt(ageGroup, birthData.locale), userPrompt2, 32768),
-            callClaudeStreaming(buildCall3Prompt(ageGroup, birthData.locale), userPrompt3, 32768),
-            callClaudeStreaming(buildCall4Prompt(ageGroup, birthData.name, birthData.locale), userPrompt4, 32768),
+            callClaudeStreaming(buildCall1Prompt(ageGroup, clientNeed, birthData.locale), userPrompt1, 16384),
+            callClaudeStreaming(buildCall2Prompt(ageGroup, birthData.locale), userPrompt2, 12288),
+            callClaudeStreaming(buildCall3Prompt(ageGroup, birthData.locale), userPrompt3, 8192),
+            callClaudeStreaming(buildCall4Prompt(ageGroup, birthData.name, birthData.locale), userPrompt4, 16384),
           ])
 
           // 清理 AI 前言 + 品牌名修正
