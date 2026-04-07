@@ -15,6 +15,7 @@
     "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
+    "@workflow/next": "^4.0.1-beta.72",
     "next": "^16.2.1",
     "opencc-js": "^1.0.5",
     "postcss": "^8.5.8",
@@ -23,7 +24,8 @@
     "recharts": "^3.8.1",
     "resend": "^6.10.0",
     "stripe": "^17.7.0",
-    "tailwindcss": "^4.2.2"
+    "tailwindcss": "^4.2.2",
+    "workflow": "^4.2.0-beta.76"
   },
   "devDependencies": {
     "typescript": "^6.0.2"

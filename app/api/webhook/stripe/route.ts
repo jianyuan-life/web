@@ -91,9 +91,8 @@ export async function POST(req: NextRequest) {
 
     // 呼叫 Fly.io 異步報告生成 Pipeline（無超時限制，完整排盤數據）
     if (birthData && reportId) {
-      const PYTHON_API = process.env.NEXT_PUBLIC_API_URL || 'https://fortune-reports-api.fly.dev'
       try {
-        console.log('觸發 Fly.io 異步報告生成...')
+        console.log('觸發 Workflow 報告生成...')
         const additionalData = birthData.additionalPeople ? JSON.parse(birthData.additionalPeople) : undefined
 
         // 注入 locale（報告語言：zh-TW 繁體 / zh-CN 簡體）
@@ -134,20 +133,19 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // fire-and-forget 到 Fly.io
-        fetch(`${PYTHON_API}/api/generate-report-async`, {
+        // 觸發 Vercel Workflow 生成報告（持久化、自動重試、不受超時限制）
+        // 更新 birth_data 到 Supabase（workflow 從 DB 讀取）
+        await supabase.from('paid_reports').update({
+          birth_data: birthData,
+        }).eq('id', reportId)
+
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
+        fetch(`${siteUrl}/api/workflows/generate-report`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            report_id: reportId,
-            access_token: accessToken,
-            plan_code: planCode,
-            birth_data: birthData,
-            customer_email: customerEmail,
-            additional_people: additionalData || null,
-          }),
-        }).catch(err => console.error('Fly.io 報告觸發失敗:', err))
-        // 不 await，讓 webhook 先返回
+          body: JSON.stringify({ reportId }),
+        }).catch(err => console.error('Workflow 觸發失敗:', err))
+        // 不 await，讓 webhook 秒級返回
       } catch (err) {
         console.error('報告觸發失敗:', err)
       }
