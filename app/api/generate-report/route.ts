@@ -22,6 +22,26 @@ const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || ''
 const CLAUDE_API = 'https://api.anthropic.com/v1/messages'
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY || ''
 
+// ── AI 回應清理：移除前言、修正品牌名 ──
+function cleanAIResponse(text: string): string {
+  let cleaned = text
+
+  // 移除 AI 前言（多種模式，從開頭到第一個 ## 或 #### 或 --- 之前的所有廢話）
+  // 模式1：「好的，收到」開頭到 --- 分隔線
+  cleaned = cleaned.replace(/^(好的[，,]?\s*|收到[。.]?\s*|我將|我會|讓我|以下是|沒問題|當然|好[，,]|OK[，,]?)[\s\S]*?\n---\s*\n?/i, '')
+  // 模式2：「好的，收到」開頭到第一個 ## 或 #### 標題
+  cleaned = cleaned.replace(/^(好的[，,]?\s*|收到[。.]?\s*|我將|我會|讓我|以下是|沒問題|當然|好[，,]|OK[，,]?)[\s\S]*?\n(?=#{1,4}\s)/i, '')
+  // 模式3：「好的，收到」開頭到雙換行
+  cleaned = cleaned.replace(/^(好的[，,]?\s*|收到[。.]?\s*|我將|我會|讓我|以下是|沒問題|當然|好[，,]|OK[，,]?)[\s\S]*?\n\n/i, '')
+  // 模式4：只有一行前言（如「好的，收到您的完整數據。」單獨一行）
+  cleaned = cleaned.replace(/^(好的|收到|我將|我會|讓我|以下是|沒問題|當然)[^\n]*\n+/i, '')
+
+  // 確保品牌名統一為「鑒源」
+  cleaned = cleaned.replace(/鑑源/g, '鑒源')
+
+  return cleaned.trim()
+}
+
 // ── Claude API 串流呼叫函式 ──
 async function callClaudeStreaming(
   systemPrompt: string,
@@ -719,17 +739,50 @@ ${analyses.length}套系統排盤完整數據：
 
       if (CLAUDE_API_KEY) {
         try {
-          const [result1, result2, result3, result4] = await Promise.all([
-            callClaudeStreaming(buildCall1Prompt(ageGroup, clientNeed, birthData.locale), userPrompt1, 16384),
-            callClaudeStreaming(buildCall2Prompt(ageGroup, birthData.locale), userPrompt2, 12288),
-            callClaudeStreaming(buildCall3Prompt(ageGroup, birthData.locale), userPrompt3, 8192),
-            callClaudeStreaming(buildCall4Prompt(ageGroup, birthData.name, birthData.locale), userPrompt4, 8192),
+          const [raw1, raw2, raw3, raw4] = await Promise.all([
+            callClaudeStreaming(buildCall1Prompt(ageGroup, clientNeed, birthData.locale), userPrompt1, 32768),
+            callClaudeStreaming(buildCall2Prompt(ageGroup, birthData.locale), userPrompt2, 32768),
+            callClaudeStreaming(buildCall3Prompt(ageGroup, birthData.locale), userPrompt3, 32768),
+            callClaudeStreaming(buildCall4Prompt(ageGroup, birthData.name, birthData.locale), userPrompt4, 32768),
           ])
+
+          // 清理 AI 前言 + 品牌名修正
+          const result1 = cleanAIResponse(raw1)
+          const result2 = cleanAIResponse(raw2)
+          const result3 = cleanAIResponse(raw3)
+          let result4 = cleanAIResponse(raw4)
 
           console.log(`Claude Call 1: ${result1.length} 字`)
           console.log(`Claude Call 2: ${result2.length} 字`)
           console.log(`Claude Call 3: ${result3.length} 字`)
           console.log(`Claude Call 4: ${result4.length} 字`)
+
+          // Call D 完整性檢查：必須包含「刻意練習」「寫給你的話」「幸運元素」「交叉驗證」
+          const hasDeliberatePractice = result4.includes('刻意練習')
+          const hasClosingLetter = result4.includes('寫給') && (result4.includes('的話') || result4.includes('們的話'))
+          const hasLuckyElements = result4.includes('幸運元素') || result4.includes('幸運色')
+          const hasCrossValidation = result4.includes('交叉驗證') || result4.includes('共識')
+
+          const missingParts: string[] = []
+          if (!hasDeliberatePractice) missingParts.push('刻意練習（投資/感情/事業/健康/人際五大面向，每項至少200字）')
+          if (!hasClosingLetter) missingParts.push('寫給客戶的話（至少3段，帶命理依據的回顧過去+看見現在+展望未來）')
+          if (!hasLuckyElements) missingParts.push('幸運元素總表（幸運色/方位/數字/飾品/食物）')
+          if (!hasCrossValidation) missingParts.push('十五系統交叉驗證（六大領域共識分析）')
+
+          if (missingParts.length > 0) {
+            console.warn(`Call D 缺少關鍵章節：${missingParts.join('、')}，重新生成...`)
+            try {
+              const retryRaw4 = await callClaudeStreaming(
+                buildCall4Prompt(ageGroup, birthData.name, birthData.locale),
+                userPrompt4 + `\n\n【重要提醒——你上次漏掉了以下章節，這次必須全部補上】\n${missingParts.map((p, i) => `${i + 1}. ${p}`).join('\n')}\n\n不要寫任何前言，直接從章節標題開始。`,
+                32768,
+              )
+              result4 = cleanAIResponse(retryRaw4)
+              console.log(`Call D 重新生成完成：${result4.length} 字`)
+            } catch (retryErr) {
+              console.error('Call D 重新生成失敗，使用原始結果:', retryErr)
+            }
+          }
 
           reportContent = [result1, result2, result3, result4].join('\n\n')
           aiModelUsed = 'claude-opus-4-6'
@@ -745,7 +798,7 @@ ${analyses.length}套系統排盤完整數據：
       if (!reportContent) {
         try {
           const systemPrompt = localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
-          reportContent = await callDeepSeekFallback(systemPrompt, buildGenericUserPrompt())
+          reportContent = cleanAIResponse(await callDeepSeekFallback(systemPrompt, buildGenericUserPrompt()))
           aiModelUsed = 'deepseek-chat'
           console.log(`C 方案 DeepSeek fallback 完成：${reportContent.length} 字`)
         } catch (e) {
@@ -765,7 +818,7 @@ ${analyses.length}套系統排盤完整數據：
       if (CLAUDE_API_KEY) {
         try {
           console.log(`方案 ${planCode}：嘗試 Claude Opus 4.6 單次呼叫...`)
-          reportContent = await callClaudeStreaming(systemPrompt, userPrompt, 16384)
+          reportContent = cleanAIResponse(await callClaudeStreaming(systemPrompt, userPrompt, 32768))
           aiModelUsed = 'claude-opus-4-6'
           console.log(`方案 ${planCode} Claude 回覆：${reportContent.length} 字`)
         } catch (e) {
@@ -778,7 +831,7 @@ ${analyses.length}套系統排盤完整數據：
       // Claude 失敗或 key 未設定 → fallback DeepSeek
       if (!reportContent) {
         try {
-          reportContent = await callDeepSeekFallback(systemPrompt, userPrompt)
+          reportContent = cleanAIResponse(await callDeepSeekFallback(systemPrompt, userPrompt))
           aiModelUsed = 'deepseek-chat'
           console.log(`方案 ${planCode} DeepSeek fallback 完成：${reportContent.length} 字`)
         } catch (e) {
@@ -841,6 +894,7 @@ ${analyses.length}套系統排盤完整數據：
             client_name: birthData.name,
             plan_name: planName,
             ai_content: reportContent,
+            locale: birthData.locale || 'zh-TW',
             analyses_summary: analyses.map((a: { system: string; score: number }) => ({
               system: a.system,
               score: a.score,
@@ -889,32 +943,63 @@ ${analyses.length}套系統排盤完整數據：
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
     const reportUrl = `${siteUrl}/report/${accessToken}`
 
+    // 根據 locale 決定郵件語言
+    const isCN = birthData.locale === 'zh-CN'
+    const emailLang = isCN ? 'zh-CN' : 'zh-TW'
+    const emailFont = isCN
+      ? "'PingFang SC','Microsoft YaHei','Noto Sans SC',sans-serif"
+      : "'PingFang TC','Microsoft JhengHei','Noto Sans TC',sans-serif"
+    const emailText = {
+      brand: isCN ? '鉴 源' : '鑑 源',
+      subtitle: isCN ? 'JIANYUAN · 东西方命理整合平台' : 'JIANYUAN · 東西方命理整合平台',
+      notice: isCN ? '✦ 报告完成通知' : '✦ 報告完成通知',
+      title: isCN
+        ? `${birthData?.name || ''}，您的报告已完成`
+        : `${birthData?.name || ''}，您的報告已完成`,
+      systemCount: isCN
+        ? `${planName} · ${analyses.length} 套命理系统分析`
+        : `${planName} · ${analyses.length} 套命理系統分析`,
+      cta: isCN ? '查看完整报告 →' : '查看完整報告 →',
+      linkNote: isCN ? '此链接专属于您，无需登录即可查看' : '此連結專屬於您，無需登入即可查看',
+      promoTitle: isCN ? '🧭 加强您的命理能量' : '🧭 加強您的命理能量',
+      promoBody: isCN
+        ? '报告揭示了您的命格能量，而<strong style="color:#e5e7eb;">出门诀</strong>能让您在最佳时机、最佳方位行动，将命理能量转化为现实中的改变。许多客户在使用出门诀后，事业和财运都有显著提升。'
+        : '報告揭示了您的命格能量，而<strong style="color:#e5e7eb;">出門訣</strong>能讓您在最佳時機、最佳方位行動，將命理能量轉化為現實中的改變。許多客戶在使用出門訣後，事業和財運都有顯著提升。',
+      promoLink: isCN ? '了解出门诀方案 →' : '了解出門訣方案 →',
+      footer: isCN ? '如有任何问题，请联系' : '如有任何問題，請聯繫',
+      copyright: isCN ? '© 2026 鉴源命理平台 · jianyuan.life' : '© 2026 鑒源命理平台 · jianyuan.life',
+      subject: isCN
+        ? `【鉴源命理】您的${planName}报告已完成 — ${birthData?.name || ''}`
+        : `【鑒源命理】您的${planName}報告已完成 — ${birthData?.name || ''}`,
+      from: isCN ? '鉴源命理 <reports@jianyuan.life>' : '鑒源命理 <reports@jianyuan.life>',
+    }
+
     if (customerEmail && accessToken) {
       try {
         const resend = new Resend(process.env.RESEND_API_KEY || '')
         const previewContent = reportContent.slice(0, 300).replace(/[#*`]/g, '').trim()
 
         await resend.emails.send({
-          from: '鑒源命理 <reports@jianyuan.life>',
+          from: emailText.from,
           to: customerEmail,
-          subject: `【鑒源命理】您的${planName}報告已完成 — ${birthData?.name || ''}`,
+          subject: emailText.subject,
           html: `
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="${emailLang}">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#0d1117;font-family:'PingFang TC','Microsoft JhengHei',sans-serif;">
+<body style="margin:0;padding:0;background:#0d1117;font-family:${emailFont};">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <!-- 頂部品牌 -->
     <div style="text-align:center;margin-bottom:32px;">
-      <div style="color:#c9a84c;font-size:24px;font-weight:700;letter-spacing:4px;">鑑 源</div>
-      <div style="color:#6b7280;font-size:12px;margin-top:4px;">JIANYUAN · 東西方命理整合平台</div>
+      <div style="color:#c9a84c;font-size:24px;font-weight:700;letter-spacing:4px;">${emailText.brand}</div>
+      <div style="color:#6b7280;font-size:12px;margin-top:4px;">${emailText.subtitle}</div>
     </div>
 
     <!-- 主卡片 -->
     <div style="background:linear-gradient(135deg,#1a2a4a,#0d1a2e);border:1px solid #2a3a5a;border-radius:16px;padding:32px;margin-bottom:24px;">
-      <div style="color:#c9a84c;font-size:13px;letter-spacing:2px;margin-bottom:8px;">✦ 報告完成通知</div>
-      <h1 style="color:#ffffff;font-size:22px;margin:0 0 8px 0;">${birthData?.name || ''}，您的報告已完成</h1>
-      <p style="color:#9ca3af;font-size:14px;margin:0 0 24px 0;">${planName} · ${analyses.length} 套命理系統分析</p>
+      <div style="color:#c9a84c;font-size:13px;letter-spacing:2px;margin-bottom:8px;">${emailText.notice}</div>
+      <h1 style="color:#ffffff;font-size:22px;margin:0 0 8px 0;">${emailText.title}</h1>
+      <p style="color:#9ca3af;font-size:14px;margin:0 0 24px 0;">${emailText.systemCount}</p>
 
       <!-- 報告預覽 -->
       <div style="background:rgba(255,255,255,0.05);border-left:3px solid #c9a84c;border-radius:4px;padding:16px;margin-bottom:24px;">
@@ -924,28 +1009,27 @@ ${analyses.length}套系統排盤完整數據：
       <!-- CTA 按鈕 -->
       <div style="text-align:center;">
         <a href="${reportUrl}" style="display:inline-block;background:linear-gradient(135deg,#c9a84c,#e8c87a);color:#0d1117;font-weight:700;font-size:16px;padding:14px 40px;border-radius:8px;text-decoration:none;letter-spacing:1px;">
-          查看完整報告 →
+          ${emailText.cta}
         </a>
-        <p style="color:#6b7280;font-size:12px;margin:12px 0 0 0;">此連結專屬於您，無需登入即可查看</p>
+        <p style="color:#6b7280;font-size:12px;margin:12px 0 0 0;">${emailText.linkNote}</p>
       </div>
     </div>
 
     <!-- 出門訣推廣（非 E 方案才顯示）-->
     ${!['E1','E2','E3'].includes(planCode) ? `
     <div style="background:#1a1a2e;border:1px solid #2a2a4a;border-radius:12px;padding:24px;margin-bottom:24px;">
-      <div style="color:#c9a84c;font-size:13px;font-weight:600;margin-bottom:8px;">🧭 加強您的命理能量</div>
+      <div style="color:#c9a84c;font-size:13px;font-weight:600;margin-bottom:8px;">${emailText.promoTitle}</div>
       <p style="color:#9ca3af;font-size:13px;line-height:1.7;margin:0 0 16px 0;">
-        報告揭示了您的命格能量，而<strong style="color:#e5e7eb;">出門訣</strong>能讓您在最佳時機、最佳方位行動，
-        將命理能量轉化為現實中的改變。許多客戶在使用出門訣後，事業和財運都有顯著提升。
+        ${emailText.promoBody}
       </p>
-      <a href="https://jianyuan.life/pricing" style="color:#c9a84c;font-size:13px;text-decoration:none;">了解出門訣方案 →</a>
+      <a href="https://jianyuan.life/pricing" style="color:#c9a84c;font-size:13px;text-decoration:none;">${emailText.promoLink}</a>
     </div>
     ` : ''}
 
     <!-- 頁尾 -->
     <div style="text-align:center;color:#4b5563;font-size:12px;line-height:1.8;">
-      <p>如有任何問題，請聯繫 <a href="mailto:support@jianyuan.life" style="color:#c9a84c;">support@jianyuan.life</a></p>
-      <p style="margin-top:8px;">© 2026 鑒源命理平台 · jianyuan.life</p>
+      <p>${emailText.footer} <a href="mailto:support@jianyuan.life" style="color:#c9a84c;">support@jianyuan.life</a></p>
+      <p style="margin-top:8px;">${emailText.copyright}</p>
     </div>
   </div>
 </body>
