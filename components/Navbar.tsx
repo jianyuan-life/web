@@ -25,7 +25,7 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="fixed top-0 w-full z-50 border-b border-gold/10" style={{ background: 'rgba(26,17,10,0.92)', backdropFilter: 'blur(12px)' }}>
+    <nav className="fixed top-0 w-full z-50 border-b border-gold/10" style={{ background: 'rgba(10,14,26,0.92)', backdropFilter: 'blur(12px)' }}>
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <a href="/" className="flex items-center gap-2">
           <img src="/logo.svg" alt="鑒源 JianYuan" className="h-8" />
