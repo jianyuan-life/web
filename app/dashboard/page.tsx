@@ -49,11 +49,48 @@ function DashboardContent() {
   // 追蹤剛完成的報告 ID（用於顯示完成提示動畫）
   const [justCompletedIds, setJustCompletedIds] = useState<Set<string>>(new Set())
 
-  // 取得用戶 email
+  // 取得用戶 email（多種方式確保取到）
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user?.email) setUserEmail(data.user.email)
+    async function getEmail() {
+      // 方法1: getSession（比 getUser 更可靠，不需要伺服器驗證）
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (sessionData.session?.user?.email) {
+        const email = sessionData.session.user.email
+        setUserEmail(email)
+        // 同步存入 sessionStorage，確保 Stripe 重導向後仍可取得
+        try { sessionStorage.setItem('jianyuan_email', email) } catch {}
+        console.log('[Dashboard] email from getSession:', email)
+        return
+      }
+      // 方法2: getUser（需要伺服器端驗證 token）
+      const { data: userData } = await supabase.auth.getUser()
+      if (userData.user?.email) {
+        const email = userData.user.email
+        setUserEmail(email)
+        try { sessionStorage.setItem('jianyuan_email', email) } catch {}
+        console.log('[Dashboard] email from getUser:', email)
+        return
+      }
+      // 方法3: 從 sessionStorage 恢復（Stripe 重導向後 auth 可能尚未初始化）
+      try {
+        const cached = sessionStorage.getItem('jianyuan_email')
+        if (cached) {
+          setUserEmail(cached)
+          console.log('[Dashboard] email from sessionStorage:', cached)
+          return
+        }
+      } catch {}
+      console.warn('[Dashboard] 無法取得 email，所有方法均失敗')
+    }
+    getEmail()
+    // 監聽 auth 變化
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user?.email) {
+        setUserEmail(session.user.email)
+        try { sessionStorage.setItem('jianyuan_email', session.user.email) } catch {}
+      }
     })
+    return () => subscription.unsubscribe()
   }, [])
 
   const handleDelete = async (id: string) => {
@@ -119,7 +156,7 @@ function DashboardContent() {
 
   // 付款成功後輪詢等待報告生成（5秒間隔，60分鐘上限）
   useEffect(() => {
-    if (!paymentSuccess) return
+    if (!paymentSuccess || !userEmail) return
     const interval = setInterval(() => {
       // 超過 60 分鐘停止輪詢
       if (Date.now() - pollStartTime > 60 * 60 * 1000) {
@@ -160,11 +197,11 @@ function DashboardContent() {
         })
     }, 5000)
     return () => clearInterval(interval)
-  }, [paymentSuccess, deletedIds, pollStartTime])
+  }, [paymentSuccess, deletedIds, pollStartTime, userEmail])
 
   // 無論是否剛付款，只要有 pending 報告就持續輪詢（15秒間隔，60分鐘上限）
   useEffect(() => {
-    if (loading) return
+    if (loading || !userEmail) return
     const hasPending = reports.some(r => r.status === 'pending')
     if (!hasPending) return
 
@@ -189,7 +226,7 @@ function DashboardContent() {
     }, 15000)
 
     return () => clearInterval(interval)
-  }, [reports, deletedIds, loading, pollStartTime])
+  }, [reports, deletedIds, loading, pollStartTime, userEmail])
 
   const avgScore = (report: Report) => {
     const summary = report.report_result?.analyses_summary

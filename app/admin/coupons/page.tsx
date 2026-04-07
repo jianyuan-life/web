@@ -11,7 +11,7 @@ const PLAN_NAMES: Record<string, string> = {
 type Coupon = {
   id: string; code: string; discount_type: string; discount_value: number
   applicable_products: string[] | null; max_uses: number | null
-  used_count: number; is_active: boolean; expires_at: string | null
+  used_count: number; is_active: boolean; valid_until: string | null
   note: string; created_at: string
 }
 
@@ -22,7 +22,7 @@ export default function CouponsPage() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({
     code: '', discount_type: 'percentage', discount_value: '',
-    applicable_products: [] as string[], max_uses: '', expires_at: '', note: '',
+    applicable_products: [] as string[], max_uses: '', valid_until: '', note: '',
   })
   const [formError, setFormError] = useState('')
 
@@ -50,13 +50,13 @@ export default function CouponsPage() {
         ...form,
         discount_value: Number(form.discount_value) || 0,
         max_uses: form.max_uses ? Number(form.max_uses) : null,
-        expires_at: form.expires_at || null,
+        valid_until: form.valid_until || null,
         applicable_products: form.applicable_products.length > 0 ? form.applicable_products : null,
       }),
     })
     if (res.ok) {
       setShowForm(false)
-      setForm({ code: '', discount_type: 'percentage', discount_value: '', applicable_products: [], max_uses: '', expires_at: '', note: '' })
+      setForm({ code: '', discount_type: 'percentage', discount_value: '', applicable_products: [], max_uses: '', valid_until: '', note: '' })
       fetchCoupons()
     } else {
       const err = await res.json()
@@ -155,7 +155,7 @@ export default function CouponsPage() {
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">到期日（空=永不過期）</label>
-              <input type="date" value={form.expires_at} onChange={e => setForm(f => ({ ...f, expires_at: e.target.value }))}
+              <input type="date" value={form.valid_until} onChange={e => setForm(f => ({ ...f, valid_until: e.target.value }))}
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none" />
             </div>
             <div>
@@ -203,7 +203,7 @@ export default function CouponsPage() {
                   {coupon.applicable_products && (
                     <span>適用：{coupon.applicable_products.map(p => PLAN_NAMES[p] || p).join('、')}</span>
                   )}
-                  {coupon.expires_at && <span>到期：{new Date(coupon.expires_at).toLocaleDateString('zh-TW')}</span>}
+                  {coupon.valid_until && <span>到期：{new Date(coupon.valid_until).toLocaleDateString('zh-TW')}</span>}
                   {coupon.note && <span>{coupon.note}</span>}
                 </div>
               </div>

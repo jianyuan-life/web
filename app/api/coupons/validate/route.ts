@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 
   if (error || !coupon) return NextResponse.json({ valid: false, message: '優惠碼不存在' })
   if (!coupon.is_active) return NextResponse.json({ valid: false, message: '優惠碼已停用' })
-  if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) {
+  if (coupon.valid_until && new Date(coupon.valid_until) < new Date()) {
     return NextResponse.json({ valid: false, message: '優惠碼已過期' })
   }
   if (coupon.max_uses !== null && coupon.used_count >= coupon.max_uses) {

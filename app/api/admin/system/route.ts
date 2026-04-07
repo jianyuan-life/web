@@ -68,21 +68,28 @@ export async function GET(req: NextRequest) {
       } finally { clearTimeout(timeout) }
     }),
 
-    // Resend
+    // Resend（用 /emails 端點驗證，sending key 有此權限）
     checkService('Resend', async () => {
       const resendKey = process.env.RESEND_API_KEY
       if (!resendKey) throw new Error('RESEND_API_KEY 未設定')
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 10000)
       try {
-        const res = await fetch('https://api.resend.com/domains', {
+        // 用 /emails 端點（GET 列出最近郵件），sending key 有此權限
+        const res = await fetch('https://api.resend.com/emails', {
           headers: { 'Authorization': `Bearer ${resendKey}` },
           signal: controller.signal,
         })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data = await res.json()
-        const domain = data.data?.find((d: { name: string }) => d.name === 'jianyuan.life')
-        return domain ? `域名狀態：${domain.status}` : '未找到 jianyuan.life 域名'
+        if (res.ok) {
+          return '郵件服務正常（已驗證 API Key）'
+        }
+        // 如果 /emails 也不行，嘗試 /api-keys
+        const fallbackRes = await fetch('https://api.resend.com/api-keys', {
+          headers: { 'Authorization': `Bearer ${resendKey}` },
+          signal: controller.signal,
+        })
+        if (!fallbackRes.ok) throw new Error(`HTTP ${fallbackRes.status}（API key 可能無效或權限不足）`)
+        return 'API 連線正常（域名端點不可用，請到 resend.com 確認域名狀態）'
       } finally { clearTimeout(timeout) }
     }),
 

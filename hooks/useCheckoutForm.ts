@@ -122,11 +122,15 @@ export function useCheckoutForm() {
       } else {
         const fullName = data.user.user_metadata?.full_name || ''
         if (fullName && !params.get('name')) setForm(f => ({ ...f, name: fullName }))
+        // 快取 email，供 dashboard 在 Stripe 重導向後使用
+        if (data.user.email) {
+          try { sessionStorage.setItem('jianyuan_email', data.user.email) } catch {}
+        }
         setAuthChecked(true)
 
-        if (!params.get('name')) {
+        if (!params.get('name') && data.user.email) {
           try {
-            const res = await fetch('/api/reports')
+            const res = await fetch(`/api/reports?email=${encodeURIComponent(data.user.email)}`)
             const { reports } = await res.json()
             const prev = (reports || []).find(
               (r: { birth_data?: Record<string, unknown>; plan_code?: string }) =>

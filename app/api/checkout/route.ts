@@ -58,9 +58,9 @@ export async function POST(req: NextRequest) {
 
       if (coupon) {
         const now = new Date()
-        const notExpired = !coupon.expires_at || new Date(coupon.expires_at) > now
+        const notExpired = !coupon.valid_until || new Date(coupon.valid_until) > now
         const notExhausted = coupon.max_uses === null || coupon.used_count < coupon.max_uses
-        const planAllowed = !coupon.applicable_plans || coupon.applicable_plans.includes(planCode)
+        const planAllowed = !coupon.applicable_products || coupon.applicable_products.includes(planCode)
 
         if (notExpired && notExhausted && planAllowed) {
           verifiedCouponCode = coupon.code
