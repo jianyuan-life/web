@@ -95,10 +95,11 @@ html {
 
 body {
   background:
-    radial-gradient(ellipse at 20% 50%, rgba(75, 0, 130, 0.07) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(0, 50, 120, 0.05) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 80%, rgba(0, 80, 80, 0.04) 0%, transparent 50%),
-    linear-gradient(180deg, #0a0e1a 0%, #0f1628 40%, #0a0e1a 100%);
+    radial-gradient(ellipse at 20% 50%, rgba(75, 0, 130, 0.14) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(30, 60, 160, 0.10) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(60, 30, 120, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 70%, rgba(74, 122, 255, 0.06) 0%, transparent 40%),
+    linear-gradient(180deg, #0a0e1a 0%, #101832 40%, #0a0e1a 100%);
   background-attachment: fixed;
   color: var(--color-text);
   min-height: 100vh;
@@ -186,8 +187,9 @@ h1, h2, h3 {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse at 30% 0%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 70% 100%, rgba(45, 212, 191, 0.06) 0%, transparent 50%);
+    radial-gradient(ellipse at 30% 0%, rgba(139, 92, 246, 0.14) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 100%, rgba(45, 212, 191, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 30%, rgba(74, 122, 255, 0.08) 0%, transparent 45%);
   animation: aurora-shift 12s ease-in-out infinite;
   pointer-events: none;
   z-index: 0;

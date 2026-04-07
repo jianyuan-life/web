@@ -6,20 +6,20 @@ import ReportPreview from '@/components/ReportPreview'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: '鑑源 JianYuan — 十五大命理系統精準分析｜八字、紫微斗數、奇門遁甲',
-  description: '鑑源整合八字、紫微斗數、奇門遁甲、西洋占星等十五大東西方命理系統，結合 34,458 條古籍規則深度分析，為您提供性格天賦、事業財運、感情婚姻的完整命格報告。免費體驗，30 秒出結果。',
+  title: '鑒源 JianYuan — 十五大命理系統精準分析｜八字、紫微斗數、奇門遁甲',
+  description: '鑒源整合八字、紫微斗數、奇門遁甲、西洋占星等十五大東西方命理系統，結合 34,458 條古籍規則深度分析，為您提供性格天賦、事業財運、感情婚姻的完整命格報告。免費體驗，30 秒出結果。',
   keywords: '命理, 八字, 紫微斗數, 奇門遁甲, 西洋占星, 命盤, 命格分析, 免費算命, 姓名學, 風水, 人類圖, 吠陀占星, 出門訣, 運勢',
   openGraph: {
-    title: '鑑源 JianYuan — 十五大命理系統精準分析',
+    title: '鑒源 JianYuan — 十五大命理系統精準分析',
     description: '整合東西方十五大命理系統，一份報告看清性格天賦、事業方向、感情運勢。免費體驗，不需註冊。',
     url: 'https://jianyuan.life',
-    siteName: '鑑源 JianYuan',
+    siteName: '鑒源 JianYuan',
     type: 'website',
     locale: 'zh_TW',
   },
   twitter: {
     card: 'summary_large_image',
-    title: '鑑源 JianYuan — 十五大命理系統精準分析',
+    title: '鑒源 JianYuan — 十五大命理系統精準分析',
     description: '整合東西方十五大命理系統，一份報告看清性格天賦、事業方向、感情運勢。',
   },
   alternates: {
@@ -80,7 +80,7 @@ export default function HomePage() {
 
         <div className="relative z-10 text-center max-w-[720px] mx-auto px-6 animate-[fade-up_1s_ease-out]">
           <div className="text-[13px] tracking-[0.3em] text-gold/50 mb-8" style={{ fontFamily: 'var(--font-body)' }}>
-            鑑源 &middot; JianYuan
+            鑒源 &middot; JianYuan
           </div>
           <h1 className="text-4xl md:text-[52px] leading-[1.3] mb-6" style={{ fontFamily: 'var(--font-sans)' }}>
             <span className="text-cream/90 block text-xl md:text-[32px] font-normal mb-2">
@@ -121,7 +121,7 @@ export default function HomePage() {
       {/* ========== 共情段落 — 接住用戶情緒 ========== */}
       <section className="py-24 relative">
         <div className="absolute inset-0 pointer-events-none"
-          style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(139, 92, 246, 0.05) 0%, transparent 60%)' }} />
+          style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(139, 92, 246, 0.10) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, rgba(74, 122, 255, 0.06) 0%, transparent 50%)' }} />
         <div className="max-w-[800px] mx-auto px-6">
           <div className="glass rounded-[20px] p-12 md:p-14 text-center border border-gold/[0.06]" style={{ background: 'rgba(15, 22, 40, 0.3)' }}>
             <div className="text-6xl text-gold/15 mb-2" style={{ fontFamily: 'var(--font-sans)' }}>&ldquo;</div>
@@ -135,7 +135,7 @@ export default function HomePage() {
               <strong className="text-cream font-medium">你來到這裡，本身就是一種勇氣。</strong><br />
               命理不是算命，不是迷信——<br />
               它是一面鏡子，幫助你<span className="text-gold">看見自己本來的樣子</span>。<br />
-              而鑑源，想做的是<strong className="text-cream font-medium">陪你一起照這面鏡子</strong>。
+              而鑒源，想做的是<strong className="text-cream font-medium">陪你一起照這面鏡子</strong>。
             </p>
           </div>
         </div>
@@ -169,18 +169,18 @@ export default function HomePage() {
       </section>
 
       {/* ========== 差異化對比 ========== */}
-      <section className="py-24" style={{ background: 'rgba(15, 22, 40, 0.3)' }}>
+      <section className="py-24" style={{ background: 'linear-gradient(180deg, rgba(15, 22, 40, 0.3) 0%, rgba(20, 16, 48, 0.25) 50%, rgba(15, 22, 40, 0.3) 100%)' }}>
         <div className="max-w-5xl mx-auto px-6">
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
             <span className="text-xs tracking-[0.2em]">差異</span>
           </div>
           <h2 className="text-2xl md:text-3xl text-center mb-12 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
-            市面上的命理服務，和鑑源有什麼不同？
+            市面上的命理服務，和鑒源有什麼不同？
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
               { title: '傳統命理師', items: ['只用 1-2 套系統', '結論因人而異，難以驗證', '收費 $100-$300 美金', '等待 3-7 天出結果', '人為偏見影響判斷'], highlight: false },
-              { title: '鑑源命理', items: ['15 套系統同時分析', '34,458 條規則客觀運算', '最低 $39 美金起', '最快 30 分鐘完成報告', '數據驅動，可重複驗證'], highlight: true },
+              { title: '鑒源命理', items: ['15 套系統同時分析', '34,458 條規則客觀運算', '最低 $39 美金起', '最快 30 分鐘完成報告', '數據驅動，可重複驗證'], highlight: true },
               { title: '免費算命網站', items: ['套公式的罐頭回覆', '千篇一律的描述', '沒有個人化深度', '無法回答「為什麼」', '沒有行動建議'], highlight: false },
             ].map((col) => (
               <div key={col.title} className={`glass rounded-2xl p-6 relative ${col.highlight ? 'border-gold/25 shadow-[0_0_40px_rgba(201,168,76,0.08)]' : ''}`}>
@@ -207,8 +207,9 @@ export default function HomePage() {
       </section>
 
       {/* ========== 四大核心優勢 ========== */}
-      <section className="py-24">
-        <div className="max-w-5xl mx-auto px-6">
+      <section className="py-24 relative">
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 20% 50%, rgba(139, 92, 246, 0.06) 0%, transparent 50%), radial-gradient(ellipse at 80% 30%, rgba(74, 122, 255, 0.05) 0%, transparent 45%)' }} />
+        <div className="max-w-5xl mx-auto px-6 relative z-[1]">
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
             <span className="text-xs tracking-[0.2em]">核心優勢</span>
           </div>
@@ -263,7 +264,7 @@ export default function HomePage() {
       </section>
 
       {/* ========== 十五大系統（帶圖示） ========== */}
-      <section id="systems" className="py-24" style={{ background: 'rgba(15, 22, 40, 0.3)' }}>
+      <section id="systems" className="py-24" style={{ background: 'linear-gradient(180deg, rgba(15, 22, 40, 0.3) 0%, rgba(18, 14, 45, 0.25) 50%, rgba(15, 22, 40, 0.3) 100%)' }}>
         <div className="max-w-6xl mx-auto px-6">
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
             <span className="text-xs tracking-[0.2em]">十五大系統</span>
@@ -330,7 +331,7 @@ export default function HomePage() {
       </section>
 
       {/* ========== 分析流程 ========== */}
-      <section id="how" className="py-24" style={{ background: 'rgba(15, 22, 40, 0.3)' }}>
+      <section id="how" className="py-24" style={{ background: 'linear-gradient(180deg, rgba(15, 22, 40, 0.3) 0%, rgba(16, 14, 42, 0.25) 50%, rgba(15, 22, 40, 0.3) 100%)' }}>
         <div className="max-w-5xl mx-auto px-6">
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
             <span className="text-xs tracking-[0.2em]">流程</span>
@@ -390,7 +391,7 @@ export default function HomePage() {
                 </svg>
               </div>
               <div className="flex-1">
-                <div className="text-gold text-xs tracking-[0.15em] mb-1">鑑源獨家</div>
+                <div className="text-gold text-xs tracking-[0.15em] mb-1">鑒源獨家</div>
                 <h2 className="text-2xl font-bold text-cream mb-4" style={{ fontFamily: 'var(--font-sans)' }}>
                   奇門遁甲出門訣 — 讓命理真正落地
                 </h2>
@@ -419,7 +420,7 @@ export default function HomePage() {
       <section className="py-24">
         <div className="max-w-3xl mx-auto px-6">
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
-            <span className="text-xs tracking-[0.2em]">為什麼是鑑源</span>
+            <span className="text-xs tracking-[0.2em]">為什麼是鑒源</span>
           </div>
 
           <div className="glass rounded-2xl p-8 md:p-12">
@@ -489,7 +490,7 @@ export default function HomePage() {
               </div>
 
               <p className="text-cream font-semibold">
-                這就是鑑源的初衷。<br />
+                這就是鑒源的初衷。<br />
                 回到源頭，看清本質。把選擇的權力，交還給你自己。
               </p>
             </div>
@@ -501,7 +502,7 @@ export default function HomePage() {
                 <div className="w-12 h-12 rounded-full bg-gold/15 flex items-center justify-center text-gold text-lg font-bold shrink-0" style={{ fontFamily: 'var(--font-sans)' }}>J</div>
                 <div>
                   <p className="text-sm font-semibold text-cream">Jamie</p>
-                  <p className="text-xs text-gold/70">鑑源創辦人</p>
+                  <p className="text-xs text-gold/70">鑒源創辦人</p>
                 </div>
               </div>
             </div>
@@ -510,7 +511,7 @@ export default function HomePage() {
       </section>
 
       {/* ========== 用戶評價 ========== */}
-      <section className="py-24" style={{ background: 'rgba(15, 22, 40, 0.3)' }}>
+      <section className="py-24" style={{ background: 'linear-gradient(180deg, rgba(15, 22, 40, 0.3) 0%, rgba(20, 16, 48, 0.2) 50%, rgba(15, 22, 40, 0.3) 100%)' }}>
         <div className="max-w-5xl mx-auto px-6">
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
             <span className="text-xs tracking-[0.2em]">用戶心聲</span>
@@ -518,11 +519,11 @@ export default function HomePage() {
           <h2 className="text-2xl md:text-3xl text-center mb-4 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
             真實用戶回饋
           </h2>
-          <p className="text-center text-text-muted text-sm mb-12">看看他們如何在鑑源的報告中找到答案</p>
+          <p className="text-center text-text-muted text-sm mb-12">看看他們如何在鑒源的報告中找到答案</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
               { name: '陳先生', location: '台北', plan: '人生藍圖', color: 'bg-gold/20',
-                text: '之前花了三千多找老師看八字，結論就兩頁紙。鑑源的報告十幾頁，十五套系統逐一分析，而且每個結論都說明了依據。最關鍵的是大運分析，直接點出了我 37-42 歲是事業黃金期，我正好在猶豫要不要創業。' },
+                text: '之前花了三千多找老師看八字，結論就兩頁紙。鑒源的報告十幾頁，十五套系統逐一分析，而且每個結論都說明了依據。最關鍵的是大運分析，直接點出了我 37-42 歲是事業黃金期，我正好在猶豫要不要創業。' },
               { name: '王女士', location: '香港', plan: '家族藍圖', color: 'bg-teal-500/20',
                 text: '幫全家四口人做了分析。我跟老公的合婚分析很精準——報告說我們在財務觀念上容易有摩擦，確實如此。更驚喜的是孩子的天賦分析，報告建議的學習方向跟孩子實際的興趣完全吻合。' },
               { name: '李先生', location: '深圳', plan: '心之所惑', color: 'bg-purple-500/20',
@@ -532,7 +533,7 @@ export default function HomePage() {
               { name: '林先生', location: '台中', plan: '合否？', color: 'bg-red-400/20',
                 text: '跟女友交往兩年一直在猶豫要不要結婚。報告不只分析了我們的相容性，還點出我在感情裡總是害怕「不夠好」所以不敢承諾。那段話讓我紅了眼眶——原來我猶豫的不是她對不對，而是我配不配。看完報告那天晚上就決定買戒指了。' },
               { name: '黃女士', location: '溫哥華', plan: '人生藍圖', color: 'bg-green-500/20',
-                text: '移民後事業一直不順，看了很多命理都說「再等等」。鑑源的報告不一樣——它沒有叫我等，而是告訴我「你的命格其實更適合自由業，你一直在用不適合的方式生活」。讀完整份報告的感覺像是被一個很懂你的老朋友聊了一整夜。現在已經開始籌備自己的工作室了。' },
+                text: '移民後事業一直不順，看了很多命理都說「再等等」。鑒源的報告不一樣——它沒有叫我等，而是告訴我「你的命格其實更適合自由業，你一直在用不適合的方式生活」。讀完整份報告的感覺像是被一個很懂你的老朋友聊了一整夜。現在已經開始籌備自己的工作室了。' },
             ].map((t) => (
               <div key={t.name} className="glass rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-3">
@@ -571,15 +572,15 @@ export default function HomePage() {
             您可能想知道
           </h2>
           {[
-            { q: '鑑源的命理分析準確嗎？', a: '排盤計算使用經過驗證的確定性算法，與專業命理軟體一致。分析解讀基於數十部經典古籍提煉的 34,458 條專業規則，再由智能引擎整合出個人化報告。最重要的是，鑑源用十五套系統交叉驗證——當多數系統得出相同結論時，準確度遠高於單一系統的判斷。' },
+            { q: '鑒源的命理分析準確嗎？', a: '排盤計算使用經過驗證的確定性算法，與專業命理軟體一致。分析解讀基於數十部經典古籍提煉的 34,458 條專業規則，再由智能引擎整合出個人化報告。最重要的是，鑒源用十五套系統交叉驗證——當多數系統得出相同結論時，準確度遠高於單一系統的判斷。' },
             { q: '報告多久可以收到？', a: '付款後系統自動開始運算。個人報告（人生藍圖、心之所惑）約 30 分鐘完成；出門訣需排算數百個時辰，約需 40 分鐘以上。完成後會立即寄送 Email 通知，您也可以在儀表板即時查看分析進度。' },
             { q: '需要提供什麼資料？', a: '姓名、出生日期、出生時間（時辰）、性別。出生時間越精確，分析越準確。如果不確定出生時間，可以選擇最接近的時辰，部分不依賴時辰的系統仍可正常分析。' },
-            { q: '15套系統會不會互相矛盾？', a: '不同系統觀察的角度不同，偶有差異屬正常。這正是鑑源的核心價值——我們用三層加權架構進行交叉驗證，取各系統共識作為最終結論。單一系統只有一個觀點，十五套系統交叉驗證才能得到更全面、更可靠的結論。' },
-            { q: '付款安全嗎？', a: '所有付款透過國際知名的 Stripe 安全系統處理，支援信用卡和各種支付方式。您的信用卡資訊完全由 Stripe 處理，不會經過鑑源伺服器。Stripe 已通過 PCI DSS Level 1 認證，是全球最高等級的支付安全標準。' },
+            { q: '15套系統會不會互相矛盾？', a: '不同系統觀察的角度不同，偶有差異屬正常。這正是鑒源的核心價值——我們用三層加權架構進行交叉驗證，取各系統共識作為最終結論。單一系統只有一個觀點，十五套系統交叉驗證才能得到更全面、更可靠的結論。' },
+            { q: '付款安全嗎？', a: '所有付款透過國際知名的 Stripe 安全系統處理，支援信用卡和各種支付方式。您的信用卡資訊完全由 Stripe 處理，不會經過鑒源伺服器。Stripe 已通過 PCI DSS Level 1 認證，是全球最高等級的支付安全標準。' },
             { q: '可以退款嗎？', a: '報告為虛擬數位內容，一旦開始生成即消耗運算資源，因此生成後不支持退款。如果報告品質有任何問題，請聯繫 support@jianyuan.life，我們會為您免費重新生成，確保您獲得滿意的分析結果。' },
             { q: '什麼是出門訣？', a: '出門訣源自奇門遁甲，是根據特定時辰的能量方位來擇吉出行的方法。系統會排算數百個時辰的奇門局，套入個人命格驗證，找出最適合您的 Top5 吉時與方位。操作簡單：在指定時間出門，往指定方向走，到達後靜待 40 分鐘。整個過程約 70 分鐘，報告附帶 Google Calendar 一鍵新增功能。' },
             { q: '報告是繁體還是簡體？', a: '根據您使用網站時的語言設定自動決定。網站右上角可隨時切換繁簡體，報告會以您選擇的語言版本生成。' },
-            { q: '報告會不會讓我更焦慮？', a: '不會。鑑源的報告融合正向心理學框架，所有分析都以「理解自己、找到方向」為目標，而非製造恐懼。我們不說「命中注定」「今年大凶」這類話。即使命盤中有挑戰的面向，我們也會用你聽得懂的語言解釋它的意義，並給出具體可行的方向。每份報告的最後都有一段「寫給你的話」，是鑑源團隊用心為你寫的個人化寄語。' },
+            { q: '報告會不會讓我更焦慮？', a: '不會。鑒源的報告融合正向心理學框架，所有分析都以「理解自己、找到方向」為目標，而非製造恐懼。我們不說「命中注定」「今年大凶」這類話。即使命盤中有挑戰的面向，我們也會用你聽得懂的語言解釋它的意義，並給出具體可行的方向。每份報告的最後都有一段「寫給你的話」，是鑒源團隊用心為你寫的個人化寄語。' },
           ].map((faq) => (
             <details key={faq.q} className="glass rounded-lg mb-3 group">
               <summary className="p-5 cursor-pointer font-semibold text-cream flex justify-between items-center text-sm">
@@ -595,7 +596,7 @@ export default function HomePage() {
       {/* ========== Final CTA ========== */}
       <section className="py-28 relative">
         <div className="absolute inset-0 pointer-events-none" style={{
-          background: 'radial-gradient(ellipse at 50% 100%, rgba(201,168,76,0.06) 0%, transparent 50%), radial-gradient(ellipse at 30% 50%, rgba(139,92,246,0.04) 0%, transparent 40%)',
+          background: 'radial-gradient(ellipse at 50% 100%, rgba(201,168,76,0.06) 0%, transparent 50%), radial-gradient(ellipse at 30% 50%, rgba(139,92,246,0.10) 0%, transparent 40%), radial-gradient(ellipse at 70% 30%, rgba(74,122,255,0.08) 0%, transparent 45%)',
         }} />
         <div className="relative z-10 max-w-2xl mx-auto px-6 text-center">
           <div className="divider-ornament text-gold/30 mb-6 justify-center">

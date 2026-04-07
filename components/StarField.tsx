@@ -48,9 +48,10 @@ export default function StarField() {
         className="absolute inset-0 pointer-events-none animate-aurora"
         style={{
           background: `
-            radial-gradient(ellipse at 30% 30%, rgba(139, 92, 246, 0.12) 0%, transparent 50%),
-            radial-gradient(ellipse at 70% 60%, rgba(45, 212, 191, 0.08) 0%, transparent 50%),
-            radial-gradient(ellipse at 50% 90%, rgba(201, 168, 76, 0.06) 0%, transparent 40%)
+            radial-gradient(ellipse at 30% 30%, rgba(139, 92, 246, 0.18) 0%, transparent 50%),
+            radial-gradient(ellipse at 70% 60%, rgba(45, 212, 191, 0.10) 0%, transparent 50%),
+            radial-gradient(ellipse at 50% 90%, rgba(201, 168, 76, 0.06) 0%, transparent 40%),
+            radial-gradient(ellipse at 80% 20%, rgba(74, 122, 255, 0.12) 0%, transparent 45%)
           `,
         }}
       />
