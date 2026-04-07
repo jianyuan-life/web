@@ -7,7 +7,7 @@ type Coupon = {
   code: string
   discount_type: 'percentage' | 'fixed' | 'free'
   discount_value: number
-  applicable_plans: string[] | null
+  applicable_products: string[] | null
   max_uses: number | null
   used_count: number
   expires_at: string | null
@@ -82,7 +82,7 @@ export default function AdminPage() {
   const [showCouponForm, setShowCouponForm] = useState(false)
   const [newCoupon, setNewCoupon] = useState({
     code: '', discount_type: 'percentage' as 'percentage' | 'fixed' | 'free',
-    discount_value: 20, applicable_plans: [] as string[],
+    discount_value: 20, applicable_products: [] as string[],
     max_uses: '', expires_at: '', note: '',
   })
 
@@ -104,7 +104,7 @@ export default function AdminPage() {
         code,
         discount_type: newCoupon.discount_type,
         discount_value: newCoupon.discount_type === 'free' ? 0 : Number(newCoupon.discount_value),
-        applicable_plans: newCoupon.applicable_plans,
+        applicable_products: newCoupon.applicable_products,
         max_uses: newCoupon.max_uses ? Number(newCoupon.max_uses) : null,
         expires_at: newCoupon.expires_at || null,
         note: newCoupon.note,
@@ -114,7 +114,7 @@ export default function AdminPage() {
     if (d.coupon) {
       setCoupons(prev => [d.coupon, ...prev])
       setShowCouponForm(false)
-      setNewCoupon({ code: '', discount_type: 'percentage', discount_value: 20, applicable_plans: [], max_uses: '', expires_at: '', note: '' })
+      setNewCoupon({ code: '', discount_type: 'percentage', discount_value: 20, applicable_products: [], max_uses: '', expires_at: '', note: '' })
     } else { alert(d.error || '建立失敗') }
   }
 
@@ -419,12 +419,12 @@ export default function AdminPage() {
                 <div className="flex flex-wrap gap-2">
                   {PLAN_OPTIONS.map(p => (
                     <label key={p} className="flex items-center gap-1.5 cursor-pointer">
-                      <input type="checkbox" checked={newCoupon.applicable_plans.includes(p)}
+                      <input type="checkbox" checked={newCoupon.applicable_products.includes(p)}
                         onChange={e => setNewCoupon(prev => ({
                           ...prev,
-                          applicable_plans: e.target.checked
-                            ? [...prev.applicable_plans, p]
-                            : prev.applicable_plans.filter(x => x !== p)
+                          applicable_products: e.target.checked
+                            ? [...prev.applicable_products, p]
+                            : prev.applicable_products.filter(x => x !== p)
                         }))} className="accent-amber-500" />
                       <span className="text-xs text-gray-300">{p} {PLAN_LABELS[p]}</span>
                     </label>
@@ -468,7 +468,7 @@ export default function AdminPage() {
                          `$${c.discount_value} 折抵`}
                       </td>
                       <td className="py-2.5 pr-3 text-gray-400 text-xs">
-                        {c.applicable_plans?.length ? c.applicable_plans.map(p => PLAN_LABELS[p] || p).join('、') : '全部方案'}
+                        {c.applicable_products?.length ? c.applicable_products.map(p => PLAN_LABELS[p] || p).join('、') : '全部方案'}
                       </td>
                       <td className="py-2.5 pr-3 text-center">
                         <span className={c.max_uses !== null && c.used_count >= c.max_uses ? 'text-red-400' : 'text-gray-300'}>

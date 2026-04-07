@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   if (!auth(req)) return NextResponse.json({ error: '無權限' }, { status: 403 })
   const body = await req.json()
-  const { code, discount_type, discount_value, applicable_plans, max_uses, expires_at, note } = body
+  const { code, discount_type, discount_value, applicable_products, max_uses, expires_at, note } = body
   if (!code) return NextResponse.json({ error: '優惠碼不能為空' }, { status: 400 })
   const { data, error } = await supabase
     .from('coupons')
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       code: code.toUpperCase().trim(),
       discount_type,
       discount_value: Number(discount_value) || 0,
-      applicable_plans: applicable_plans?.length ? applicable_plans : null,
+      applicable_products: applicable_products?.length ? applicable_products : null,
       max_uses: max_uses ?? null,
       expires_at: expires_at || null,
       note: note || '',
