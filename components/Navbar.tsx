@@ -39,7 +39,7 @@ export default function Navbar() {
     <nav className="fixed top-0 w-full z-50 border-b border-gold/10" style={{ background: 'rgba(10,14,26,0.92)', backdropFilter: 'blur(12px)' }}>
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <a href="/" className="flex items-center gap-2">
-          <img src="/logo.svg" alt="鑒源 JianYuan" className="h-8" />
+          <img src="/logo.svg" alt="鑒源 JianYuan" className="h-10" />
         </a>
         <div className="hidden md:flex items-center gap-8 text-sm">
           <a href="/#systems" className="text-text-muted hover:text-gold transition-colors">{txt.nav_systems}</a>
