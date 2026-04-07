@@ -8,10 +8,10 @@ export default function Astrolabe() {
         width="580" height="580" viewBox="0 0 580 580"
         style={{ animationDuration: '120s' }}
       >
-        <circle cx="290" cy="290" r="270" fill="none" stroke="rgba(201,168,76,0.06)" strokeWidth="1" />
-        <circle cx="290" cy="290" r="260" fill="none" stroke="rgba(201,168,76,0.04)" strokeWidth="0.5" strokeDasharray="4 8" />
+        <circle cx="290" cy="290" r="270" fill="none" stroke="rgba(201,168,76,0.18)" strokeWidth="1.5" />
+        <circle cx="290" cy="290" r="260" fill="none" stroke="rgba(201,168,76,0.12)" strokeWidth="0.8" strokeDasharray="4 8" />
         {/* 12 宮位分割線 */}
-        <g stroke="rgba(201,168,76,0.05)" strokeWidth="0.5">
+        <g stroke="rgba(201,168,76,0.15)" strokeWidth="0.8">
           <line x1="290" y1="20" x2="290" y2="60" />
           <line x1="425" y1="55" x2="405" y2="85" />
           <line x1="525" y1="155" x2="495" y2="175" />
@@ -26,7 +26,7 @@ export default function Astrolabe() {
           <line x1="155" y1="55" x2="175" y2="85" />
         </g>
         {/* 天干符號 */}
-        <g fill="rgba(201,168,76,0.08)" fontFamily="Noto Serif TC, serif" fontSize="13">
+        <g fill="rgba(201,168,76,0.25)" fontFamily="Noto Serif TC, serif" fontSize="14">
           <text x="290" y="48" textAnchor="middle">甲</text>
           <text x="430" y="78" textAnchor="middle">乙</text>
           <text x="530" y="178" textAnchor="middle">丙</text>
@@ -48,10 +48,10 @@ export default function Astrolabe() {
         width="380" height="380" viewBox="0 0 380 380"
         style={{ animationDuration: '90s' }}
       >
-        <circle cx="190" cy="190" r="170" fill="none" stroke="rgba(201,168,76,0.06)" strokeWidth="1" />
-        <circle cx="190" cy="190" r="120" fill="none" stroke="rgba(201,168,76,0.04)" strokeWidth="0.5" />
+        <circle cx="190" cy="190" r="170" fill="none" stroke="rgba(201,168,76,0.2)" strokeWidth="1.5" />
+        <circle cx="190" cy="190" r="120" fill="none" stroke="rgba(201,168,76,0.15)" strokeWidth="0.8" />
         {/* 八卦 */}
-        <g fill="rgba(201,168,76,0.1)" fontFamily="Noto Serif TC, serif" fontSize="16">
+        <g fill="rgba(201,168,76,0.3)" fontFamily="Noto Serif TC, serif" fontSize="18">
           <text x="190" y="38" textAnchor="middle">&#9776;</text>
           <text x="320" y="100" textAnchor="middle">&#9777;</text>
           <text x="355" y="196" textAnchor="middle">&#9778;</text>
@@ -62,10 +62,10 @@ export default function Astrolabe() {
           <text x="60" y="100" textAnchor="middle">&#9783;</text>
         </g>
         {/* 太極 */}
-        <circle cx="190" cy="190" r="30" fill="none" stroke="rgba(201,168,76,0.08)" strokeWidth="1" />
-        <path d="M190,160 A30,30 0 0 1 190,220 A15,15 0 0 0 190,190 A15,15 0 0 1 190,160Z" fill="rgba(201,168,76,0.05)" />
-        <circle cx="190" cy="175" r="4" fill="rgba(201,168,76,0.08)" />
-        <circle cx="190" cy="205" r="4" fill="rgba(10,14,26,0.5)" stroke="rgba(201,168,76,0.06)" strokeWidth="0.5" />
+        <circle cx="190" cy="190" r="30" fill="none" stroke="rgba(201,168,76,0.2)" strokeWidth="1.5" />
+        <path d="M190,160 A30,30 0 0 1 190,220 A15,15 0 0 0 190,190 A15,15 0 0 1 190,160Z" fill="rgba(201,168,76,0.15)" />
+        <circle cx="190" cy="175" r="4" fill="rgba(201,168,76,0.2)" />
+        <circle cx="190" cy="205" r="4" fill="rgba(10,14,26,0.5)" stroke="rgba(201,168,76,0.15)" strokeWidth="0.8" />
       </svg>
     </div>
   )
