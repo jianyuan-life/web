@@ -117,7 +117,7 @@ function calcWuge(surname: string, givenName: string) {
     renge = A + B
     dige = B + 1
     zongge = A + B
-    waige = zongge - renge + 1  // 單姓單名：總格-人格+1，最小為2
+    waige = Math.max(zongge - renge + 1, 2)  // 單姓單名：總格-人格+1，最小為2
   } else if (sLen === 2 && nLen === 2) {
     // 複姓雙名（如：歐陽修文）
     const [A, B] = surnameStrokes
