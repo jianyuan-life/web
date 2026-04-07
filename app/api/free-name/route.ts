@@ -107,8 +107,8 @@ function calcWuge(surname: string, givenName: string) {
     tiange = A + 1
     renge = A + B
     dige = B + C
-    waige = A + C + 1
     zongge = A + B + C
+    waige = zongge - renge + 1  // 正確公式：總格-人格+1（何宣逸：31-16+1=16）
   } else if (sLen === 1 && nLen === 1) {
     // 單姓單名（如：王力）
     const [A] = surnameStrokes
@@ -116,8 +116,8 @@ function calcWuge(surname: string, givenName: string) {
     tiange = A + 1
     renge = A + B
     dige = B + 1
-    waige = 2  // 固定值
     zongge = A + B
+    waige = zongge - renge + 1  // 單姓單名：總格-人格+1，最小為2
   } else if (sLen === 2 && nLen === 2) {
     // 複姓雙名（如：歐陽修文）
     const [A, B] = surnameStrokes
@@ -125,8 +125,8 @@ function calcWuge(surname: string, givenName: string) {
     tiange = A + B
     renge = B + C
     dige = C + D
-    waige = A + D + 1
     zongge = A + B + C + D
+    waige = zongge - renge + 1
   } else if (sLen === 2 && nLen === 1) {
     // 複姓單名（如：司馬遷）
     const [A, B] = surnameStrokes
@@ -134,8 +134,8 @@ function calcWuge(surname: string, givenName: string) {
     tiange = A + B
     renge = B + C
     dige = C + 1
-    waige = A + 1
     zongge = A + B + C
+    waige = zongge - renge + 1
   } else {
     // 通用兜底
     const sTotal = surnameStrokes.reduce((a, b) => a + b, 0)
@@ -143,8 +143,8 @@ function calcWuge(surname: string, givenName: string) {
     tiange = sTotal + 1
     renge = sTotal + (givenStrokes[0] || 0)
     dige = nLen === 1 ? nTotal + 1 : nTotal
-    waige = 2
     zongge = sTotal + nTotal
+    waige = Math.max(zongge - renge + 1, 2)
   }
 
   return { tiange, renge, dige, waige, zongge, surnameStrokes, givenStrokes }
