@@ -1,11 +1,11 @@
 // 星盤 SVG 裝飾（外環慢轉 + 內環反轉）
 export default function Astrolabe() {
   return (
-    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[580px] h-[580px] pointer-events-none max-md:w-[360px] max-md:h-[360px]">
+    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[580px] h-[580px] pointer-events-none max-md:w-[min(360px,90vw)] max-md:h-[min(360px,90vw)]">
       {/* 外環 — 天干地支 */}
       <svg
-        className="absolute top-1/2 left-1/2 -ml-[290px] -mt-[290px] max-md:-ml-[180px] max-md:-mt-[180px] animate-spin-slow"
-        width="580" height="580" viewBox="0 0 580 580"
+        className="absolute inset-0 w-full h-full animate-spin-slow"
+        viewBox="0 0 580 580"
         style={{ animationDuration: '120s' }}
       >
         <circle cx="290" cy="290" r="270" fill="none" stroke="rgba(201,168,76,0.18)" strokeWidth="1.5" />
@@ -44,8 +44,8 @@ export default function Astrolabe() {
 
       {/* 內環 — 八卦 + 太極 */}
       <svg
-        className="absolute top-1/2 left-1/2 -ml-[190px] -mt-[190px] max-md:-ml-[120px] max-md:-mt-[120px] animate-spin-reverse"
-        width="380" height="380" viewBox="0 0 380 380"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[65.5%] h-[65.5%] animate-spin-reverse"
+        viewBox="0 0 380 380"
         style={{ animationDuration: '90s' }}
       >
         <circle cx="190" cy="190" r="170" fill="none" stroke="rgba(201,168,76,0.2)" strokeWidth="1.5" />
