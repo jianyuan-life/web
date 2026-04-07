@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     const birthDataStr = session.metadata?.birth_data // 向後兼容舊格式
     const sessionLocale = session.metadata?.locale || 'zh-TW'
     const amount = (session.amount_total || 0) / 100
-    const customerEmail = session.customer_details?.email || session.customer_email || ''
+    const customerEmail = (session.customer_details?.email || session.customer_email || '').toLowerCase()
 
     console.log(`✅ 付款成功！方案${planCode}, $${amount}`)
 
