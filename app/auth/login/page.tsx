@@ -59,6 +59,12 @@ export default function LoginPage() {
 
           {error && <p className="text-red-400 text-sm text-center">{error}</p>}
 
+          <div className="flex justify-end">
+            <a href="/auth/reset-password" className="text-xs text-gold/70 hover:text-gold hover:underline">
+              忘記密碼？
+            </a>
+          </div>
+
           <button type="submit" disabled={loading}
             className="w-full py-3 bg-gold text-dark font-bold rounded-xl btn-glow disabled:opacity-50">
             {loading ? '登入中...' : '登入'}
