@@ -144,14 +144,36 @@ export function cleanFinalReport(text: string, clientName?: string): string {
   console.log('[cleanFinalReport] 開始最終清理...')
 
   // 1. 刪除重複報告標題（保留第一個）
+  // 策略 A：如果有客戶名字，匹配含客戶名的 h1/h2 標題
   if (clientName) {
-    const titlePattern = new RegExp(`^##\\s*${clientName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}.*全方位命格分析報告.*$`, 'gm')
-    let titleCount = 0
-    cleaned = cleaned.replace(titlePattern, (match) => {
-      titleCount++
-      return titleCount === 1 ? match : ''
+    const escapedName = clientName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const namePattern = new RegExp(`^#{1,2}\\s*.*${escapedName}.*報告.*$`, 'gm')
+    let count = 0
+    cleaned = cleaned.replace(namePattern, (match) => {
+      count++
+      return count === 1 ? match : ''
     })
-    if (titleCount > 1) console.log(`[cleanFinalReport] 刪除 ${titleCount - 1} 個重複報告標題`)
+    if (count > 1) console.log(`[cleanFinalReport] 刪除 ${count - 1} 個含客戶名的重複標題`)
+  }
+  // 策略 B：刪除所有重複的 # 報告標題（匹配 # ...報告 格式）
+  {
+    const h1Pattern = /^# .+報告.*$/gm
+    let h1Count = 0
+    cleaned = cleaned.replace(h1Pattern, (match) => {
+      h1Count++
+      return h1Count === 1 ? match : ''
+    })
+    if (h1Count > 1) console.log(`[cleanFinalReport] 刪除 ${h1Count - 1} 個重複 H1 報告標題`)
+  }
+  // 策略 C：刪除重複的客戶資料區塊（**客戶：** ... **報告撰寫日：**）
+  {
+    const infoPattern = /^\*\*客戶[：:]?\*\*.*$(\n^\*\*.+\*\*.*$)*/gm
+    let infoCount = 0
+    cleaned = cleaned.replace(infoPattern, (match) => {
+      infoCount++
+      return infoCount === 1 ? match : ''
+    })
+    if (infoCount > 1) console.log(`[cleanFinalReport] 刪除 ${infoCount - 1} 個重複客戶資料區塊`)
   }
 
   // 2. 合併重複章節（如「刻意練習」出現兩次，保留內容較長的）

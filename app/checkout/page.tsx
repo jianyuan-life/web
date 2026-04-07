@@ -111,9 +111,6 @@ function CheckoutForm() {
             cityResults={ctx.cityResults}
             onCitySearch={ctx.handleCitySearch}
             onCitySelect={ctx.selectCity}
-            previousBirthData={ctx.previousBirthData}
-            importedPrevious={ctx.importedPrevious}
-            importPreviousData={ctx.importPreviousData}
             dTopic={ctx.dTopic}
             setDTopic={ctx.setDTopic}
             dOtherDesc={ctx.dOtherDesc}

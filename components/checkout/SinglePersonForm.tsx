@@ -16,10 +16,6 @@ interface SinglePersonFormProps {
   cityResults: City[]
   onCitySearch: (val: string) => void
   onCitySelect: (c: City) => void
-  // 歷史資料導入
-  previousBirthData: Record<string, unknown> | null
-  importedPrevious: boolean
-  importPreviousData: () => void
   // D 方案
   dTopic: string
   setDTopic: (v: string) => void
@@ -46,7 +42,6 @@ interface SinglePersonFormProps {
 export default function SinglePersonForm({
   planCode, form, setForm, timeMode, setTimeMode,
   cityResults, onCitySearch, onCitySelect,
-  previousBirthData, importedPrevious, importPreviousData,
   dTopic, setDTopic, dOtherDesc, setDOtherDesc,
   e1StartDate, setE1StartDate, e1EndDate, setE1EndDate,
   eSelectedBlocks, setESelectedBlocks,
@@ -60,25 +55,6 @@ export default function SinglePersonForm({
         setForm(f => ({ ...f, name: fig.name, year: fig.year, month: fig.month, day: fig.day, hour: fig.hour, minute: fig.minute, gender: fig.gender as 'M' | 'F' }))
         setTimeMode('shichen')
       }} />
-
-      {/* 一鍵導入上次資料 */}
-      {previousBirthData && !importedPrevious && (
-        <div className="flex items-center justify-between bg-gold/8 border border-gold/20 rounded-xl px-4 py-3">
-          <div>
-            <p className="text-sm text-cream font-medium">偵測到上次的資料</p>
-            <p className="text-xs text-text-muted mt-0.5">
-              {String(previousBirthData.name || '')}&middot;{String(previousBirthData.year || '')}年{String(previousBirthData.month || '')}月{String(previousBirthData.day || '')}日
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={importPreviousData}
-            className="ml-4 shrink-0 px-4 py-1.5 bg-gold text-dark text-xs font-bold rounded-lg btn-glow"
-          >
-            一鍵導入
-          </button>
-        </div>
-      )}
 
       {/* 出生資料欄位 */}
       <BirthDataFields

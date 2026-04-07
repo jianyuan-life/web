@@ -66,8 +66,6 @@ export function useCheckoutForm() {
 
   // Auth
   const [authChecked, setAuthChecked] = useState(false)
-  const [previousBirthData, setPreviousBirthData] = useState<Record<string, unknown> | null>(null)
-  const [importedPrevious, setImportedPrevious] = useState(false)
 
   // 計算金額
   const extraMemberCount = Math.max(0, familyMembers.length - 2)
@@ -115,9 +113,9 @@ export function useCheckoutForm() {
     setCityResults([])
   }
 
-  // Auth guard + 歷史 birth_data
+  // Auth guard
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data }) => {
+    supabase.auth.getUser().then(({ data }) => {
       if (!data.user) {
         sessionStorage.setItem('pending_plan', planCode)
         window.location.href = '/auth/login'
@@ -129,18 +127,6 @@ export function useCheckoutForm() {
           try { sessionStorage.setItem('jianyuan_email', data.user.email) } catch {}
         }
         setAuthChecked(true)
-
-        if (!params.get('name') && data.user.email) {
-          try {
-            const res = await fetch(`/api/reports?email=${encodeURIComponent(data.user.email)}`)
-            const { reports } = await res.json()
-            const prev = (reports || []).find(
-              (r: { birth_data?: Record<string, unknown>; plan_code?: string }) =>
-                r.birth_data && r.plan_code && !['R', 'G15'].includes(r.plan_code as string)
-            )
-            if (prev?.birth_data) setPreviousBirthData(prev.birth_data)
-          } catch { /* 靜默失敗 */ }
-        }
       }
     })
   }, [planCode])
@@ -165,26 +151,6 @@ export function useCheckoutForm() {
   }
   const removeRMember = (index: number) => {
     if (index >= 2) setRMembers(prev => prev.filter((_, i) => i !== index))
-  }
-
-  // 導入上次資料
-  const importPreviousData = () => {
-    if (!previousBirthData) return
-    const d = previousBirthData
-    setForm(f => ({
-      ...f,
-      name: String(d.name || f.name),
-      year: String(d.year || f.year),
-      month: String(d.month || f.month),
-      day: String(d.day || f.day),
-      hour: String(d.hour || f.hour),
-      minute: String(d.minute || f.minute),
-      gender: String(d.gender || f.gender) as 'M' | 'F',
-      birthCity: String(d.birth_city || ''),
-      calendarType: (d.calendar_type as 'solar' | 'lunar') || f.calendarType,
-    }))
-    if (d.time_mode) setTimeMode(d.time_mode as 'unknown' | 'shichen' | 'exact')
-    setImportedPrevious(true)
   }
 
   // 提交
@@ -372,7 +338,7 @@ export function useCheckoutForm() {
     // 金額
     extraMemberCount, extraPrice, rExtraCount, totalPrice, finalPrice,
     // Auth
-    authChecked, previousBirthData, importedPrevious, importPreviousData,
+    authChecked,
     // 提交
     handleCheckout,
   }

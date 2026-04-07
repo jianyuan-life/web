@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
 
 interface Figure {
   name: string
@@ -25,8 +26,13 @@ export default function HistoricalFigures({ onSelect }: HistoricalFiguresProps) 
   useEffect(() => {
     if (loaded) return
     setLoaded(true)
-    fetch('/api/reports?history=1')
-      .then(r => r.ok ? r.json() : null)
+    // 先取得用戶 email，再查詢歷史報告
+    supabase.auth.getUser().then(({ data }) => {
+      const email = data.user?.email
+      if (!email) return
+      return fetch(`/api/reports?email=${encodeURIComponent(email)}`)
+    })
+      .then(r => r?.ok ? r.json() : null)
       .then(data => {
         if (!data?.reports?.length) return
         const seen = new Set<string>()
