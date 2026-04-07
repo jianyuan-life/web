@@ -89,6 +89,13 @@ function parseStructuredContent(markdown: string): ContentSection[] {
 // 將純文字 markdown 段落轉 HTML（不含 ### 處理）
 function renderInlineMarkdown(text: string): string {
   let html = text
+    // 清理 Markdown 殘留和 prompt 結構標籤
+    .replace(/^---+$/gm, '')
+    .replace(/^\|[-:]+\|[-:| ]*$/gm, '') // 表格分隔線
+    .replace(/^→ 完整分析請繼續閱讀.*$/gm, '')
+    .replace(/^# 第[一二三]幕.*$/gm, '')
+    .replace(/^# 壓軸.*$/gm, '')
+    .replace(/^# 收尾.*$/gm, '')
     .replace(/\*\*(.+?)\*\*/g, '<strong class="report-bold">$1</strong>')
     .replace(/✅/g, '<span style="color:#6ab04c">✅</span>')
     .replace(/⚠️/g, '<span style="color:#e0963a">⚠️</span>')
@@ -250,17 +257,34 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   // 結構化解析 — 保留原始章節順序
   const allSections = parseStructuredContent(aiContent)
 
-  // 網頁版只顯示重點摘要（完整內容在 PDF）
-  // 提取：命格總覽、結論類（好的地方/需注意/改善建議）、刻意練習、寫給你的話
-  const summarySections = allSections.filter(sec => {
+  // 先過濾掉不該顯示的章節
+  const cleanedSections = allSections.filter(sec => {
     const t = sec.title
+    const c = sec.content
+    // 過濾空章節（只有標題沒內容）
+    if (!c || c.trim().length < 20) return false
+    // 過濾 prompt 結構標籤
+    if (/第一幕|第二幕|第三幕|壓軸|收尾|完整分析請繼續閱讀/.test(t)) return false
+    // 過濾附錄（術語表在 PDF 看就好）
+    if (/附錄|術語對照/.test(t)) return false
+    // 過濾報告標題行
+    if (/全方位命格分析報告/.test(t)) return false
+    // 過濾重複的評分表（上面已有可視化圖表）
+    if (/系統綜合評分|評分表|系統名稱.*評分.*關鍵發現/.test(t)) return false
+    if (/15.*系統.*評分|十五.*系統.*評分/.test(t)) return false
+    return true
+  })
+
+  // 網頁版只顯示客戶最關注的重點
+  const summarySections = cleanedSections.filter(sec => {
+    const t = sec.title
+    // 一分鐘重點 / 命格名片
+    if (/一分鐘|命格重點|命格名片|命格角色/.test(t)) return true
     // 命格總覽
-    if (/命格總覽|命格名片|你是誰/.test(t)) return true
-    // 結論類
-    if (/好的地方|好的方面|天賦優勢|你的優勢|你的強項|相容性/.test(t)) return true
-    if (/需要注意|需注意|注意的地方|關係張力/.test(t)) return true
-    if (/改善方案|改善建議|行動指南|建議詳解/.test(t)) return true
-    // 交叉驗證
+    if (/命格總覽|你是誰/.test(t)) return true
+    // 年度運勢 / 月曆
+    if (/年度|月曆|月運勢|行事曆|運勢行事/.test(t)) return true
+    // 交叉驗證結論
     if (/交叉驗證|全局鳥瞰|十五系統/.test(t)) return true
     // 刻意練習
     if (/刻意練習/.test(t)) return true
@@ -272,8 +296,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   })
 
   // 如果篩選出的摘要太少（< 3），退回顯示全部（可能是非 C 方案）
-  const sections = summarySections.length >= 3 ? summarySections : allSections
-  const isShowingSummary = summarySections.length >= 3 && allSections.length > summarySections.length
+  const sections = summarySections.length >= 3 ? summarySections : cleanedSections
+  const isShowingSummary = summarySections.length >= 3 && cleanedSections.length > summarySections.length
 
   // 排序系統評分（高到低）
   const sortedScores = [...analysesSummary].sort((a, b) => b.score - a.score)
