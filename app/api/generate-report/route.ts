@@ -42,12 +42,16 @@ function cleanAIResponse(text: string): string {
   return cleaned.trim()
 }
 
-// ── Claude API 串流呼叫函式 ──
+// ── Claude API 串流呼叫函式（含 200s 超時，避免 Vercel 300s 限制）──
 async function callClaudeStreaming(
   systemPrompt: string,
   userPrompt: string,
   maxTokens: number,
+  timeoutMs: number = 200000,
 ): Promise<string> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+
   const res = await fetch(CLAUDE_API, {
     method: 'POST',
     headers: {
@@ -65,6 +69,7 @@ async function callClaudeStreaming(
       system: systemPrompt,
       temperature: 0.7,
     }),
+    signal: controller.signal,
   })
 
   if (!res.ok) {
@@ -104,6 +109,7 @@ async function callClaudeStreaming(
     }
   }
 
+  clearTimeout(timeout)
   return result
 }
 
