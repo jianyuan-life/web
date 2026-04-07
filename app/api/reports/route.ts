@@ -38,12 +38,12 @@ export async function GET() {
     return NextResponse.json({ error: '未登入' }, { status: 401 })
   }
 
-  // 用 service role + user_id 過濾，確保只取該用戶的報告
+  // 用 service role + email 過濾，確保只取該用戶的報告
   const supabase = getServiceSupabase()
   const { data, error } = await supabase
     .from('paid_reports')
     .select('*')
-    .eq('user_id', user.id)
+    .eq('customer_email', user.email)
     .order('created_at', { ascending: false })
     .limit(50)
 
@@ -71,7 +71,7 @@ export async function PATCH(req: NextRequest) {
     .from('paid_reports')
     .select('*')
     .eq('id', id)
-    .eq('user_id', user.id)
+    .eq('customer_email', user.email)
     .single()
 
   if (fetchErr || !report) {
@@ -127,7 +127,7 @@ export async function DELETE(req: NextRequest) {
     .from('paid_reports')
     .delete()
     .eq('id', id)
-    .eq('user_id', user.id)
+    .eq('customer_email', user.email)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
