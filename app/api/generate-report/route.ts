@@ -562,15 +562,33 @@ async function markReportFailed(reportId: string, errorMessage: string) {
 export async function POST(req: NextRequest) {
   let reportId = ''
   try {
-    const { reportId: rid, accessToken, customerEmail, planCode, birthData, additionalPeople, topic, question } = await req.json()
+    let { reportId: rid, accessToken, customerEmail, planCode, birthData, additionalPeople, topic, question } = await req.json()
     reportId = rid
 
-    // Step 0: 檢查重試次數（最多 3 次）
+    // Step 0: 檢查重試次數（最多 3 次）+ 從 Supabase 補齊缺失資料
     const { data: existingReport } = await supabase
       .from('paid_reports')
-      .select('retry_count, status')
+      .select('retry_count, status, birth_data, plan_code, access_token, customer_email')
       .eq('id', reportId)
       .single()
+
+    // 若 request body 沒帶完整資料，從 Supabase 記錄補齊（支援僅傳 reportId 重新觸發）
+    if (!birthData && existingReport?.birth_data) {
+      birthData = existingReport.birth_data
+    }
+    if (!planCode && existingReport?.plan_code) {
+      planCode = existingReport.plan_code
+    }
+    if (!accessToken && existingReport?.access_token) {
+      accessToken = existingReport.access_token
+    }
+    if (!customerEmail && existingReport?.customer_email) {
+      customerEmail = existingReport.customer_email
+    }
+
+    if (!birthData) {
+      return NextResponse.json({ error: '缺少出生資料' }, { status: 400 })
+    }
 
     const retryCount = existingReport?.retry_count ?? 0
     if (retryCount >= 3) {
