@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import crypto from 'crypto'
 
 function getSupabase() {
   return createClient(
@@ -97,6 +98,21 @@ export async function POST(req: NextRequest) {
         coupon_code: verifiedCouponCode,
       })
 
+      // 建立 paid_reports 記錄（跟 webhook 一樣的流程）
+      const accessToken = crypto.randomUUID()
+      const { data: reportData } = await supabase.from('paid_reports').insert({
+        client_name: birthData?.name || '',
+        plan_code: planCode,
+        amount_usd: 0,
+        stripe_session_id: fakeSessionId,
+        birth_data: birthData,
+        status: 'pending',
+        access_token: accessToken,
+        customer_email: (birthData?.email || '').toLowerCase(),
+      }).select('id').single()
+
+      const reportId = reportData?.id || ''
+
       // 記錄優惠碼使用
       const { data: couponRow } = await supabase.from('coupons').select('id').eq('code', verifiedCouponCode).single()
       if (couponRow) {
@@ -106,6 +122,15 @@ export async function POST(req: NextRequest) {
           order_id: fakeSessionId, customer_email: birthData?.email || '',
           plan_code: planCode, original_amount: baseAmount / 100, discount_applied: baseAmount / 100,
         })
+      }
+
+      // 觸發 Workflow 生成報告
+      if (reportId) {
+        fetch(`${siteUrl}/api/workflows/generate-report`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reportId }),
+        }).catch(err => console.error('免費方案 Workflow 觸發失敗:', err))
       }
 
       return NextResponse.json({ url: `${siteUrl}/dashboard?payment=success&free=1` })
