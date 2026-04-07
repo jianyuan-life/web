@@ -7,9 +7,9 @@ import { createClient } from '@supabase/supabase-js'
 
 const PYTHON_API = 'https://fortune-reports-api.fly.dev'
 const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions'
-const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || 'sk-6b1936d5aef34413b4742b3269332c33'
+const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || ''
 const KIMI_API = 'https://api.moonshot.cn/v1/chat/completions'
-const KIMI_KEY = process.env.KIMI_API_KEY || 'sk-gOORAMUexDoitHPlMnVP2obKAsKztgMcZc0LerOGpPL2TfXA'
+const KIMI_KEY = process.env.KIMI_API_KEY || ''
 
 // ── 紫微十四主星特質 ──
 const STAR_PROFILES: Record<string, { nature: string; personality: string; strengths: string; challenges: string; career: string; love: string }> = {

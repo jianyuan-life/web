@@ -57,9 +57,7 @@ function DashboardContent() {
       if (sessionData.session?.user?.email) {
         const email = sessionData.session.user.email
         setUserEmail(email)
-        // 同步存入 sessionStorage，確保 Stripe 重導向後仍可取得
         try { sessionStorage.setItem('jianyuan_email', email) } catch {}
-        console.log('[Dashboard] email from getSession:', email)
         return
       }
       // 方法2: getUser（需要伺服器端驗證 token）
@@ -68,7 +66,6 @@ function DashboardContent() {
         const email = userData.user.email
         setUserEmail(email)
         try { sessionStorage.setItem('jianyuan_email', email) } catch {}
-        console.log('[Dashboard] email from getUser:', email)
         return
       }
       // 方法3: 從 sessionStorage 恢復（Stripe 重導向後 auth 可能尚未初始化）
@@ -76,11 +73,13 @@ function DashboardContent() {
         const cached = sessionStorage.getItem('jianyuan_email')
         if (cached) {
           setUserEmail(cached)
-          console.log('[Dashboard] email from sessionStorage:', cached)
           return
         }
       } catch {}
-      console.warn('[Dashboard] 無法取得 email，所有方法均失敗')
+      // 所有方法均失敗，且不是付款成功重導向 → 跳轉登入頁
+      if (!paymentSuccess) {
+        window.location.href = '/auth/login'
+      }
     }
     getEmail()
     // 監聽 auth 變化
@@ -290,14 +289,14 @@ function DashboardContent() {
           <div className="space-y-4">
             {reports.map((r) => (
               <div key={r.id} className={`glass rounded-xl p-5 transition-all hover:border-gold/30 ${justCompletedIds.has(r.id) ? 'ring-2 ring-green-500/50 animate-pulse' : ''}`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gold/15 flex items-center justify-center text-gold font-bold text-lg" style={{ fontFamily: 'var(--font-sans)' }}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="w-12 h-12 rounded-full bg-gold/15 flex items-center justify-center text-gold font-bold text-lg shrink-0" style={{ fontFamily: 'var(--font-sans)' }}>
                       {r.client_name[0]}
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-cream">{r.client_name}</h3>
-                      <div className="flex items-center gap-3 text-xs text-text-muted mt-1">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-cream truncate">{r.client_name}</h3>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted mt-1">
                         <span>{PLAN_NAMES[r.plan_code] || `方案 ${r.plan_code}`}</span>
                         <span>
                           {['E1', 'E2'].includes(r.plan_code)

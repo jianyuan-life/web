@@ -10,6 +10,7 @@ export default function Navbar() {
   const [user, setUser] = useState<User | null>(null)
   const [txt, setTxt] = useState(UI_TEXT['zh-TW'])
   const [toolsOpen, setToolsOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     setTxt(UI_TEXT[getLocale()])
@@ -60,24 +61,68 @@ export default function Navbar() {
         </div>
         <div className="flex items-center gap-3">
           <LocaleSwitcher />
-          {user ? (
-            <>
-              <a href="/dashboard" className="text-sm text-text-muted hover:text-gold transition-colors">{txt.nav_my_reports}</a>
-              <button onClick={handleLogout} className="text-sm text-text-muted/60 hover:text-text-muted transition-colors">{txt.nav_logout}</button>
-              <div className="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center text-gold text-xs font-bold">
-                {(user.user_metadata?.full_name?.[0] || user.email?.[0] || '?').toUpperCase()}
-              </div>
-            </>
-          ) : (
-            <>
-              <a href="/auth/login" className="text-sm text-text-muted hover:text-gold transition-colors">{txt.nav_login}</a>
-              <a href="/auth/signup" className="px-4 py-2 bg-gold/90 text-dark font-semibold rounded-lg text-sm btn-glow hover:bg-gold">
-                {txt.nav_signup}
-              </a>
-            </>
-          )}
+          {/* 桌面版用戶區域 */}
+          <div className="hidden md:flex items-center gap-3">
+            {user ? (
+              <>
+                <a href="/dashboard" className="text-sm text-text-muted hover:text-gold transition-colors">{txt.nav_my_reports}</a>
+                <button onClick={handleLogout} className="text-sm text-text-muted/60 hover:text-text-muted transition-colors">{txt.nav_logout}</button>
+                <div className="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center text-gold text-xs font-bold">
+                  {(user.user_metadata?.full_name?.[0] || user.email?.[0] || '?').toUpperCase()}
+                </div>
+              </>
+            ) : (
+              <>
+                <a href="/auth/login" className="text-sm text-text-muted hover:text-gold transition-colors">{txt.nav_login}</a>
+                <a href="/auth/signup" className="px-4 py-2 bg-gold/90 text-dark font-semibold rounded-lg text-sm btn-glow hover:bg-gold">
+                  {txt.nav_signup}
+                </a>
+              </>
+            )}
+          </div>
+          {/* 手機漢堡選單按鈕 */}
+          <button
+            className="md:hidden p-2 text-text-muted hover:text-gold transition-colors"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="開啟選單"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              {mobileMenuOpen
+                ? <><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></>
+                : <><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" /></>
+              }
+            </svg>
+          </button>
         </div>
       </div>
+
+      {/* 手機版展開選單 */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-t border-gold/10 px-6 py-4 space-y-3" style={{ background: 'rgba(10,14,26,0.97)' }}>
+          <a href="/#systems" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_systems}</a>
+          <a href="/pricing" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_pricing}</a>
+          <a href="/blog" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_blog}</a>
+          <div className="border-t border-gold/10 pt-2">
+            <p className="text-xs text-gold/60 mb-2">{txt.nav_free}</p>
+            <a href="/tools/bazi" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">八字命理速算</a>
+            <a href="/tools/ziwei" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">紫微斗數速算</a>
+            <a href="/tools/name" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">姓名學速算</a>
+          </div>
+          <div className="border-t border-gold/10 pt-2">
+            {user ? (
+              <>
+                <a href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_my_reports}</a>
+                <button onClick={() => { setMobileMenuOpen(false); handleLogout() }} className="block text-sm text-text-muted/60 hover:text-text-muted py-1">{txt.nav_logout}</button>
+              </>
+            ) : (
+              <>
+                <a href="/auth/login" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_login}</a>
+                <a href="/auth/signup" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-gold font-semibold py-1">{txt.nav_signup}</a>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </nav>
   )
 }

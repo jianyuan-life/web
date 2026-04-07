@@ -117,10 +117,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </div>
               </div>
               <div>
-                <h4 className="text-gold/80 font-semibold mb-3">系統介紹</h4>
+                <h4 className="text-gold/80 font-semibold mb-3">了解更多</h4>
                 <div className="space-y-2 text-text-muted">
                   <a href="/#systems" className="block hover:text-gold transition-colors">十五大系統</a>
                   <a href="/#how" className="block hover:text-gold transition-colors">分析流程</a>
+                  <a href="/blog" className="block hover:text-gold transition-colors">命理知識</a>
                 </div>
               </div>
               <div>

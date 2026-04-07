@@ -10,9 +10,9 @@ import * as OpenCC from 'opencc-js'
 const s2tConverter = OpenCC.Converter({ from: 'cn', to: 'tw' })
 
 const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions'
-const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || 'sk-6b1936d5aef34413b4742b3269332c33'
+const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || ''
 const KIMI_API = 'https://api.moonshot.cn/v1/chat/completions'
-const KIMI_KEY = process.env.KIMI_API_KEY || 'sk-gOORAMUexDoitHPlMnVP2obKAsKztgMcZc0LerOGpPL2TfXA'
+const KIMI_KEY = process.env.KIMI_API_KEY || ''
 
 // ── 康熙筆畫對照表（常用字，簡化版）──
 // 完整版應查詢資料庫，這裡用 Unicode CJK 筆畫近似

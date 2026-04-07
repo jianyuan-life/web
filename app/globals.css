@@ -215,6 +215,15 @@ select, option {
   color: #e8eaf0;
 }
 
+/* 無障礙：減少動態效果 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* 科技感邊框發光 */
 .border-glow {
   border: 1px solid rgba(74, 122, 255, 0.2);

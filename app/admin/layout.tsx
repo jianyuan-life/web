@@ -76,7 +76,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <AdminAuthContext.Provider value={{ authed, adminKey, setAuthed, setAdminKey }}>
       <div className="min-h-screen flex" style={{ background: '#0f0f0f', color: '#e5e5e5' }}>
         {/* 側邊導航 */}
-        <aside className={`${sidebarCollapsed ? 'w-16' : 'w-56'} shrink-0 border-r border-white/5 bg-[#141414] transition-all duration-200 flex flex-col`}>
+        <aside className={`${sidebarCollapsed ? 'w-16' : 'w-56'} shrink-0 border-r border-white/5 bg-[#141414] transition-all duration-200 flex flex-col max-md:hidden`}>
           <div className="p-4 border-b border-white/5 flex items-center justify-between">
             {!sidebarCollapsed && <span className="text-sm font-bold text-amber-400">鑒源後台</span>}
             <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -111,9 +111,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </aside>
 
         {/* 主內容 */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto pb-16 md:pb-0">
           {children}
         </main>
+
+        {/* 手機版底部導航 */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#141414] border-t border-white/10 flex justify-around py-2 z-50">
+          {NAV_ITEMS.slice(0, 5).map(item => {
+            const active = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))
+            return (
+              <a key={item.href} href={item.href}
+                className={`flex flex-col items-center gap-0.5 px-2 py-1 text-[10px] ${active ? 'text-amber-400' : 'text-gray-500'}`}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d={item.icon} />
+                </svg>
+                {item.label}
+              </a>
+            )
+          })}
+        </nav>
       </div>
     </AdminAuthContext.Provider>
   )

@@ -195,9 +195,16 @@ export function useCheckoutForm() {
           alert(`請輸入第 ${i + 1} 位成員的姓名`)
           return
         }
+        const yr = parseInt(familyMembers[i].year)
+        if (yr < 1900 || yr > new Date().getFullYear()) {
+          alert(`第 ${i + 1} 位成員的出生年份不正確`)
+          return
+        }
       }
     } else {
       if (!form.name.trim()) { alert('請輸入姓名'); return }
+      const yr = parseInt(form.year)
+      if (yr < 1900 || yr > new Date().getFullYear()) { alert('出生年份範圍需在 1900 至今年之間'); return }
     }
 
     if (planCode === 'R') {
