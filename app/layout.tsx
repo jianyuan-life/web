@@ -105,8 +105,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="max-w-6xl mx-auto px-6 py-16">
             {/* 古典分隔裝飾 */}
             <div className="text-center mb-10">
-              <Image src="/logo.svg" alt="鑒源" width={40} height={40} className="mx-auto mb-2" />
-              <p className="text-sm text-text-muted">回到源頭 &middot; 看清本質</p>
+              <Image src="/logo.svg" alt="鑒源" width={80} height={80} className="mx-auto mb-3" />
+              <p className="text-base text-text-muted font-medium tracking-wider">回到源頭 &middot; 看清本質</p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-sm">
               <div>

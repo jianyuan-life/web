@@ -31,8 +31,8 @@ export async function GET(req: NextRequest) {
   if (coupon.max_uses !== null && coupon.used_count >= coupon.max_uses) {
     return NextResponse.json({ valid: false, message: '優惠碼已達使用上限' })
   }
-  if (coupon.applicable_plans && coupon.applicable_plans.length > 0 && planCode) {
-    if (!coupon.applicable_plans.includes(planCode)) {
+  if (coupon.applicable_products && coupon.applicable_products.length > 0 && planCode) {
+    if (!coupon.applicable_products.includes(planCode)) {
       return NextResponse.json({ valid: false, message: `此優惠碼不適用於此方案` })
     }
   }
