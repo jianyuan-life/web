@@ -12,12 +12,11 @@ function getSupabase() {
 const PRICE_MAP: Record<string, { amount: number; name: string }> = {
   C: { amount: 8900, name: '人生藍圖' },
   D: { amount: 3900, name: '心之所惑' },
-  G15: { amount: 15900, name: '家族藍圖' },
+  G15: { amount: 5900, name: '家族藍圖' },
   R: { amount: 5900, name: '合否？' },
   E1: { amount: 11900, name: '事件出門訣' },
   E2: { amount: 8900, name: '月盤出門訣' },
-  // 加人附加費
-  'G15-ADD': { amount: 6900, name: '家族藍圖加1人' },
+  // 加人附加費（G15 已改為固定 $59，不再加人加價）
   'R-ADD': { amount: 1900, name: '合否？加1人' },
 }
 
@@ -60,10 +59,11 @@ export async function POST(req: NextRequest) {
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
 
-    // G15 家族藍圖：使用前端動態計算的金額（單位：美元），轉為美分
+    // G15 家族藍圖：固定 $59，不再按人數加價
+    // R 方案：可加人（前端傳 totalPrice）
     // 其他方案：使用固定金額
-    const isFamilyPlan = planCode === 'G15'
-    let baseAmount = isFamilyPlan && typeof totalPrice === 'number'
+    const isVariablePrice = planCode === 'R' && typeof totalPrice === 'number'
+    let baseAmount = isVariablePrice
       ? Math.round(totalPrice * 100)
       : plan.amount
 
@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
     params.set('success_url', `${siteUrl}/dashboard?payment=success`)
     params.set('cancel_url', `${siteUrl}/pricing`)
     params.set('line_items[0][price_data][currency]', 'usd')
-    params.set('line_items[0][price_data][product_data][name]', `Fortune Report - Plan ${planCode}`)
+    params.set('line_items[0][price_data][product_data][name]', `鑒源命理 - ${plan.name}`)
     params.set('line_items[0][price_data][unit_amount]', finalAmount.toString())
     params.set('line_items[0][quantity]', '1')
     params.set('metadata[plan_code]', planCode)

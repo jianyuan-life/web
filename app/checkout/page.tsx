@@ -24,6 +24,7 @@ function CheckoutForm() {
           planName={ctx.plan.name}
           isFamilyPlan={ctx.isFamilyPlan}
           isRelationPlan={ctx.isRelationPlan}
+          isG15Plan={ctx.isG15Plan}
           extraMemberCount={ctx.extraMemberCount}
           extraPrice={ctx.extraPrice}
           rExtraCount={ctx.rExtraCount}
@@ -62,6 +63,81 @@ function CheckoutForm() {
             finalPrice={ctx.finalPrice}
             onSubmit={ctx.handleCheckout}
           />
+        ) : ctx.isG15Plan ? (
+          /* G15 家族藍圖：email 驗證表單 */
+          <form onSubmit={ctx.handleCheckout} className="space-y-4">
+            <div className="glass rounded-xl p-4 mb-2">
+              <p className="text-sm text-text-muted leading-relaxed">
+                請輸入每位家庭成員購買「人生藍圖」時使用的 Email。系統會自動讀取已完成的報告資料，
+                進行家族互動分析。每位成員需先購買人生藍圖（$89）。
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {ctx.g15Emails.map((entry, index) => (
+                <div key={index} className="glass rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gold">
+                      家庭成員 {index + 1}
+                    </span>
+                    {index >= 2 && (
+                      <button
+                        type="button"
+                        onClick={() => ctx.removeG15Email(index)}
+                        className="text-red-400 text-xs hover:text-red-300 transition-colors"
+                      >
+                        移除
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      placeholder="example@email.com"
+                      value={entry.email}
+                      onChange={(e) => ctx.updateG15Email(index, e.target.value)}
+                      className="flex-1 bg-dark-lighter border border-gold/20 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-text-muted/40 focus:outline-none focus:border-gold/60 transition-colors"
+                    />
+                  </div>
+                  {/* 驗證結果 */}
+                  {entry.verified && (
+                    <div className="mt-2 flex items-center gap-1.5 text-green-400 text-xs">
+                      <span>&#10003;</span>
+                      <span>已驗證 — {entry.name || '已找到報告'}</span>
+                    </div>
+                  )}
+                  {entry.errorMsg && (
+                    <div className="mt-2 text-red-400 text-xs">
+                      {entry.errorMsg}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {ctx.g15Emails.length < 8 && (
+              <button
+                type="button"
+                onClick={ctx.addG15Email}
+                className="w-full py-3 border border-gold/30 rounded-xl text-gold text-sm hover:bg-gold/10 transition-all"
+              >
+                + 加入第 {ctx.g15Emails.length + 1} 位家庭成員
+              </button>
+            )}
+
+            {ctx.error && <p className="text-red-400 text-sm text-center">{ctx.error}</p>}
+
+            <button
+              type="submit"
+              disabled={ctx.loading || ctx.g15VerifyLoading}
+              className="w-full py-3.5 bg-gold text-dark font-bold rounded-xl text-lg btn-glow disabled:opacity-50 mt-4"
+            >
+              {ctx.g15VerifyLoading ? '驗證成員資料中...' : ctx.loading ? '跳轉付款中...' : `確認付款 — $${ctx.finalPrice}`}
+            </button>
+            <p className="text-xs text-text-muted/60 text-center">
+              付款由 Stripe 安全處理。報告平均需 30 分鐘以上。
+            </p>
+          </form>
         ) : ctx.isFamilyPlan ? (
           /* 家庭方案表單 */
           <form onSubmit={ctx.handleCheckout} className="space-y-4">

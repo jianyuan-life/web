@@ -404,7 +404,26 @@ function buildGenericUserPrompt(
   question?: string,
   additionalPeople?: Array<{ name: string; gender: string; year: number; month: number; day: number; hour: string | number; time_unknown?: boolean }>,
 ): string {
-  let userPrompt = `${birthData.name}，${birthData.gender === 'M' ? '男' : '女'}，${birthData.year}年${birthData.month}月${birthData.day}日${birthData.hour}時
+  // G15 家族方案（舊版 family 模式）安全防護：多人 birthData 不能走單人 prompt
+  if (birthData.plan_type === 'family' && Array.isArray(birthData.members)) {
+    let memberPrompts = '家庭成員資料：\n'
+    for (const m of birthData.members as Array<{ name?: string; gender?: string; year?: number; month?: number; day?: number; hour?: number }>) {
+      memberPrompts += `\n【${m.name || ''}】${m.gender === 'M' ? '男' : '女'}，${m.year}年${m.month}月${m.day}日${m.hour}時\n`
+    }
+    memberPrompts += `\n八字：${cd.bazi || ''} | 用神：${cd.yongshen || ''} | 五行：${JSON.stringify(cd.five_elements || {})}\n`
+    memberPrompts += `${analyses.length}套系統排盤完整數據：\n`
+    // 繼續走下方分析資料拼接
+    let userPrompt = memberPrompts
+    for (const a of analyses.slice(0, 15)) {
+      userPrompt += `\n【${a.system}】評分：${a.score}分`
+      if (a.summary) userPrompt += `\n摘要：${a.summary}`
+    }
+    if (topic) userPrompt += `\n分析方向：${topic}\n`
+    if (question) userPrompt += `客戶問題描述：${question}\n`
+    return userPrompt
+  }
+
+  let userPrompt = `${birthData.name || ''}，${birthData.gender === 'M' ? '男' : '女'}，${birthData.year}年${birthData.month}月${birthData.day}日${birthData.hour}時
 八字：${cd.bazi || ''} | 用神：${cd.yongshen || ''} | 五行：${JSON.stringify(cd.five_elements || {})}
 農曆：${cd.lunar_date || ''} | 納音：${cd.nayin || ''} | 命宮：${cd.ming_gong || ''}
 ${analyses.length}套系統排盤完整數據：
@@ -450,6 +469,17 @@ ${analyses.length}套系統排盤完整數據：
       }
     }
     userPrompt += '\n'
+  }
+
+  // 出門訣時間限制：客戶選的可配合時段
+  if (birthData.available_time_slots && Array.isArray(birthData.available_time_slots) && birthData.available_time_slots.length > 0) {
+    const slotsDesc = birthData.available_time_slots.map((s: { start?: string; end?: string }) => `${s.start || ''}~${s.end || ''}`).join('、')
+    userPrompt += `\n【重要】客戶只有以下時段有空出門：${slotsDesc}\nTop5 吉時必須只推薦在這些時段內的時機，不可推薦客戶無法出門的時段。\n`
+  }
+
+  // E1 事件時間範圍
+  if (birthData.event_start_date) {
+    userPrompt += `\n事件時間範圍：${birthData.event_start_date} 至 ${birthData.event_end_date || birthData.event_start_date}\n`
   }
 
   if (topic) userPrompt += `\n分析方向：${topic}\n`
@@ -581,6 +611,93 @@ export async function aiGenerateGeneric(
 }
 aiGenerateGeneric.maxRetries = 2
 
+// ── G15 家族藍圖：載入家庭成員的已完成人生藍圖報告 ──
+export interface FamilyMemberReport {
+  email: string
+  name: string
+  reportContent: string
+  birthData: BirthData
+}
+
+export async function loadFamilyReports(
+  memberEmails: string[], memberNames: string[],
+): Promise<FamilyMemberReport[]> {
+  "use step";
+  await emitProgress({ step: '載入資料', progress: 10, message: '正在載入家庭成員的人生藍圖報告...' })
+
+  const supabase = getSupabase()
+  const results: FamilyMemberReport[] = []
+
+  for (let i = 0; i < memberEmails.length; i++) {
+    const email = memberEmails[i].trim().toLowerCase()
+    const { data, error } = await supabase
+      .from('paid_reports')
+      .select('client_name, report_result, birth_data')
+      .eq('customer_email', email)
+      .eq('plan_code', 'C')
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (error || !data) {
+      throw new FatalError(`找不到 ${email} 的已完成人生藍圖報告`)
+    }
+
+    results.push({
+      email,
+      name: data.client_name || memberNames[i] || '',
+      reportContent: typeof data.report_result === 'string'
+        ? data.report_result
+        : JSON.stringify(data.report_result || ''),
+      birthData: data.birth_data as BirthData,
+    })
+  }
+
+  console.log(`載入 ${results.length} 份家庭成員報告`)
+  return results
+}
+loadFamilyReports.maxRetries = 2
+
+// ── G15 家族藍圖：AI 生成家族互動分析 ──
+export async function aiGenerateG15(
+  familyReports: FamilyMemberReport[], planCode: string, systemPrompt: string,
+) {
+  "use step";
+  await emitProgress({ step: 'AI分析', progress: 30, message: '正在分析家族成員互動關係...' })
+
+  // 為每位成員摘取報告重點（避免超出 token 上限）
+  let userPrompt = `家族藍圖分析 — 共 ${familyReports.length} 位成員\n\n`
+
+  for (let i = 0; i < familyReports.length; i++) {
+    const member = familyReports[i]
+    const bd = member.birthData
+    userPrompt += `=== 成員${i + 1}：${member.name} ===\n`
+    userPrompt += `性別：${bd.gender === 'M' ? '男' : '女'}，出生：${bd.year}年${bd.month}月${bd.day}日${bd.hour}時\n`
+
+    // 摘取報告前 4000 字作為分析素材（每人的完整人生藍圖太長）
+    const reportExcerpt = member.reportContent.slice(0, 4000)
+    userPrompt += `人生藍圖報告摘要：\n${reportExcerpt}\n\n`
+  }
+
+  userPrompt += `\n請根據以上所有成員的命理資料與人生藍圖報告，撰寫完整的家族互動分析報告。
+重要提醒：
+1. 每個分析論點都必須引用成員報告中的具體命理結果。
+2. 著重分析成員之間的互動關係、能量互補或衝突。
+3. 不要重複各成員個人報告已有的內容，聚焦在「家族整體」的視角。`
+
+  const localizedPrompt = localizePrompt(systemPrompt, familyReports[0]?.birthData?.locale)
+
+  if (!CLAUDE_API_KEY) {
+    throw new FatalError('G15 家族藍圖：缺少 CLAUDE_API_KEY，付費報告必須使用 Claude Opus。')
+  }
+  const content = await claudeStreamingCall(localizedPrompt, userPrompt, 32768)
+  const cleaned = cleanAIResponse(content)
+  console.log(`G15 家族藍圖 AI 完成: ${cleaned.length} 字`)
+  return { content: cleaned, model: 'claude-opus-4-6' }
+}
+aiGenerateG15.maxRetries = 2
+
 // ── Step 3: 生成 PDF ──
 export async function generatePDF(
   reportId: string, planCode: string, birthData: BirthData,
@@ -606,7 +723,11 @@ export async function generatePDF(
     body: JSON.stringify({
       report_id: reportId,
       plan_code: planCode,
-      client_name: birthData.name,
+      client_name: birthData.plan_type === 'family_email'
+        ? ((birthData.member_names as string[] | undefined)?.filter(Boolean).join('、') || 'Unknown')
+        : birthData.plan_type === 'family'
+        ? ((birthData.members as Array<{ name?: string }> | undefined)?.map(m => m.name).filter(Boolean).join('、') || 'Unknown')
+        : (birthData.name || 'Unknown'),
       plan_name: planName,
       ai_content: reportContent,
       locale: birthData.locale || 'zh-TW',
@@ -692,6 +813,52 @@ export async function qualityGate(
     }
   }
 
+  // 2c. E1/E2 出門訣必要章節檢查
+  if (planCode === 'E1' || planCode === 'E2') {
+    const e1e2Required = [
+      { pattern: /事件吉凶|事件命理|本月運勢|本月命理/, name: planCode === 'E1' ? '事件吉凶分析' : '本月運勢概覽' },
+      { pattern: /好的地方|優勢|有利/, name: '好的地方' },
+      { pattern: /需要注意|注意|風險/, name: '需要注意的地方' },
+      { pattern: /改善|建議|行動/, name: '改善建議' },
+      { pattern: /補運|操作指南/, name: '補運操作指南' },
+      { pattern: /忌方|忌日|注意事項/, name: '忌方忌日' },
+    ]
+    for (const sec of e1e2Required) {
+      if (!sec.pattern.test(reportContent)) {
+        warnings.push(`出門訣缺少必要章節: ${sec.name}`)
+      }
+    }
+    // Top5 JSON 檢查
+    if (!/===TOP5_JSON_START===/.test(reportContent)) {
+      warnings.push('出門訣缺少 Top5 吉時 JSON 區塊')
+    }
+    // 內容長度檢查
+    if (reportContent.length < 3000) {
+      warnings.push(`出門訣內容偏短: ${reportContent.length} 字（期望 > 3,000 字）`)
+    }
+  }
+
+  // 2d. G15 家族藍圖必要章節檢查
+  if (planCode === 'G15') {
+    const g15Required = [
+      { pattern: /家族能量|能量圖譜/, name: '家族能量圖譜' },
+      { pattern: /互動關係|成員互動/, name: '成員互動關係深度分析' },
+      { pattern: /溝通模式/, name: '家庭溝通模式' },
+      { pattern: /家運走勢|家運/, name: '家運走勢' },
+      { pattern: /行動指南|家族行動/, name: '家族行動指南' },
+      { pattern: /寫給.*家|寫給這個家/, name: '寫給這個家的話' },
+    ]
+    for (const sec of g15Required) {
+      if (!sec.pattern.test(reportContent)) {
+        warnings.push(`家族藍圖缺少必要章節: ${sec.name}`)
+      }
+    }
+    // 內容長度檢查（依家庭人數）
+    if (reportContent.length < 4000) {
+      warnings.push(`家族藍圖內容偏短: ${reportContent.length} 字（期望 > 4,000 字）`)
+    }
+  }
+
   // 3. 禁止字眼檢查（命理報告禁用語）
   const forbiddenPatterns = [
     { pattern: /命中注定/, replacement: '命盤顯示傾向' },
@@ -726,7 +893,7 @@ export async function qualityGate(
 // ── Step 3.5: AI 審核員（用客戶視角審查報告品質）──
 export async function aiReviewReport(reportContent: string, planCode: string): Promise<{ score: number; issues: string[] }> {
   "use step";
-  if (planCode !== 'C') return { score: 85, issues: [] } // 非 C 方案跳過 AI 審核
+  if (!['C', 'E1', 'E2', 'G15'].includes(planCode)) return { score: 85, issues: [] } // D/R 方案跳過 AI 審核
 
   await emitProgress({ step: 'AI審核', progress: 72, message: '正在進行品質審核...' })
 
@@ -842,8 +1009,19 @@ export async function sendReportEmail(
     brand: isCN ? '鉴 源' : '鑑 源',
     subtitle: isCN ? 'JIANYUAN · 东西方命理整合平台' : 'JIANYUAN · 東西方命理整合平台',
     notice: isCN ? '✦ 报告完成通知' : '✦ 報告完成通知',
-    title: isCN ? `${birthData.name}，您的报告已完成` : `${birthData.name}，您的報告已完成`,
-    systemCount: isCN ? `${planName} · ${analysesCount} 套命理系统分析` : `${planName} · ${analysesCount} 套命理系統分析`,
+    title: (() => {
+      const displayName = birthData.plan_type === 'family_email'
+        ? ((birthData.member_names as string[] | undefined)?.filter(Boolean).join('、') || '')
+        : birthData.plan_type === 'family'
+        ? ((birthData.members as Array<{ name?: string }> | undefined)?.map(m => m.name).filter(Boolean).join('、') || '')
+        : (birthData.name || '')
+      return isCN ? `${displayName}，您的报告已完成` : `${displayName}，您的報告已完成`
+    })(),
+    systemCount: ['E1', 'E2'].includes(planCode)
+      ? (isCN ? `${planName} · 奇门遁甲精算` : `${planName} · 奇門遁甲精算`)
+      : planCode === 'G15'
+      ? (isCN ? `${planName} · 家族互动分析` : `${planName} · 家族互動分析`)
+      : (isCN ? `${planName} · ${analysesCount} 套命理系统分析` : `${planName} · ${analysesCount} 套命理系統分析`),
     cta: isCN ? '查看完整报告 →' : '查看完整報告 →',
     linkNote: isCN ? '此链接专属于您，无需登录即可查看' : '此連結專屬於您，無需登入即可查看',
     promoTitle: isCN ? '🧭 加强您的命理能量' : '🧭 加強您的命理能量',

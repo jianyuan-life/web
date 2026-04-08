@@ -8,6 +8,7 @@ import { searchCities, type City } from '@/lib/cities'
 import {
   PLANS, FAMILY_EXTRA_PRICE, D_TOPICS, TIME_BLOCKS,
   newMember, type FamilyMember,
+  newFamilyEmail, type FamilyEmailEntry,
 } from '@/components/checkout/types'
 
 export function useCheckoutForm() {
@@ -52,7 +53,11 @@ export function useCheckoutForm() {
   const [rMembers, setRMembers] = useState<FamilyMember[]>([newMember(), newMember()])
   const [rRelationDesc, setRRelationDesc] = useState('')
 
-  // 方案 G15
+  // 方案 G15（新版：用 email 查找已完成的人生藍圖）
+  const [g15Emails, setG15Emails] = useState<FamilyEmailEntry[]>([newFamilyEmail(), newFamilyEmail()])
+  const [g15VerifyLoading, setG15VerifyLoading] = useState(false)
+
+  // 方案 G15（舊版保留兼容）
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([newMember(), newMember()])
 
   // 方案 E1
@@ -72,14 +77,18 @@ export function useCheckoutForm() {
   const extraMemberCount = Math.max(0, familyMembers.length - 2)
   const extraPrice = FAMILY_EXTRA_PRICE[planCode] ?? 0
   const rExtraCount = Math.max(0, rMembers.length - 2)
-  const totalPrice = ['G15', 'G3'].includes(planCode)
+  // G15 新版固定 $59，不再按人數加價
+  const totalPrice = planCode === 'G15'
+    ? plan.price
+    : planCode === 'G3'
     ? plan.price + extraMemberCount * extraPrice
     : planCode === 'R'
     ? plan.price + rExtraCount * 19
     : plan.price
   const finalPrice = couponApplied ? Math.max(0, totalPrice - couponApplied.discountAmount) : totalPrice
 
-  const isFamilyPlan = planCode === 'G15' || planCode === 'G3'
+  const isFamilyPlan = planCode === 'G3'  // G15 now uses email form, not family member form
+  const isG15Plan = planCode === 'G15'
   const isRelationPlan = planCode === 'R'
 
   // 優惠碼驗證
@@ -144,6 +153,52 @@ export function useCheckoutForm() {
     if (index >= 2) setFamilyMembers(prev => prev.filter((_, i) => i !== index))
   }
 
+  // G15 email 操作
+  const updateG15Email = (index: number, email: string) => {
+    setG15Emails(prev => prev.map((e, i) => i === index ? { ...e, email, verified: false, name: undefined, errorMsg: undefined } : e))
+  }
+  const addG15Email = () => {
+    if (g15Emails.length < 8) setG15Emails(prev => [...prev, newFamilyEmail()])
+  }
+  const removeG15Email = (index: number) => {
+    if (index >= 2) setG15Emails(prev => prev.filter((_, i) => i !== index))
+  }
+  const verifyG15Emails = async (): Promise<boolean> => {
+    setG15VerifyLoading(true)
+    try {
+      const res = await fetch('/api/checkout/verify-family', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emails: g15Emails.map(e => e.email.trim().toLowerCase()) }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || '驗證失敗')
+        return false
+      }
+      // data.results: { email, valid, name?, error? }[]
+      const updated = g15Emails.map((entry, i) => {
+        const result = data.results?.[i]
+        if (result?.valid) {
+          return { ...entry, verified: true, name: result.name, errorMsg: undefined }
+        } else {
+          return { ...entry, verified: false, errorMsg: result?.error || '找不到已完成的人生藍圖報告' }
+        }
+      })
+      setG15Emails(updated)
+      const allValid = updated.every(e => e.verified)
+      if (!allValid) {
+        setError('部分家庭成員尚未購買人生藍圖報告，請確認後再試')
+      }
+      return allValid
+    } catch {
+      setError('驗證失敗，請稍後再試')
+      return false
+    } finally {
+      setG15VerifyLoading(false)
+    }
+  }
+
   // R 方案成員操作
   const updateRMember = (index: number, updated: FamilyMember) => {
     setRMembers(prev => prev.map((m, i) => i === index ? updated : m))
@@ -159,7 +214,18 @@ export function useCheckoutForm() {
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (['G15', 'G3'].includes(planCode)) {
+    if (planCode === 'G15') {
+      // G15 新版：驗證 email
+      for (let i = 0; i < g15Emails.length; i++) {
+        if (!g15Emails[i].email.trim()) {
+          alert(`請輸入第 ${i + 1} 位家庭成員的 Email`)
+          return
+        }
+      }
+      // 驗證所有 email 都有已完成的人生藍圖
+      const allVerified = await verifyG15Emails()
+      if (!allVerified) return
+    } else if (planCode === 'G3') {
       for (let i = 0; i < familyMembers.length; i++) {
         if (!familyMembers[i].name.trim()) {
           alert(`請輸入第 ${i + 1} 位成員的姓名`)
@@ -204,7 +270,14 @@ export function useCheckoutForm() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let birthData: Record<string, any> = {}
 
-      if (['G15', 'G3'].includes(planCode)) {
+      if (planCode === 'G15') {
+        // G15 新版：只傳 email，後端從已有報告取出生資料
+        birthData = {
+          plan_type: 'family_email',
+          member_emails: g15Emails.map(e => e.email.trim().toLowerCase()),
+          member_names: g15Emails.map(e => e.name || ''),
+        }
+      } else if (planCode === 'G3') {
         birthData = {
           plan_type: 'family',
           members: familyMembers.map(m => ({
@@ -318,7 +391,7 @@ export function useCheckoutForm() {
 
   return {
     // 基本資訊
-    planCode, plan, isFamilyPlan, isRelationPlan,
+    planCode, plan, isFamilyPlan, isRelationPlan, isG15Plan,
     // 表單
     form, setForm, timeMode, setTimeMode,
     cityResults, handleCitySearch, selectCity,
@@ -332,7 +405,9 @@ export function useCheckoutForm() {
     dTopic, setDTopic, dOtherDesc, setDOtherDesc,
     // R 方案
     rMembers, updateRMember, addRMember, removeRMember, rRelationDesc, setRRelationDesc,
-    // G15 方案
+    // G15 方案（新版 email）
+    g15Emails, updateG15Email, addG15Email, removeG15Email, g15VerifyLoading,
+    // G15/G3 方案（舊版 family members）
     familyMembers, updateFamilyMember, addFamilyMember, removeFamilyMember,
     // E1 方案
     e1StartDate, setE1StartDate, e1EndDate, setE1EndDate,

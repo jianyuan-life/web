@@ -34,6 +34,9 @@ interface ReportData {
     hour?: number
     gender: string
     locale?: string
+    plan_type?: string
+    member_names?: string[]
+    member_emails?: string[]
   }
   report_result: {
     ai_content: string
@@ -242,15 +245,21 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         <div className="glass rounded-2xl p-12 text-center max-w-md">
           <div className="text-5xl mb-4">⏳</div>
           <h1 className="text-xl font-bold text-cream mb-2">
-            {['E1','E2'].includes(report.plan_code) ? '奇門遁甲出門訣排算中' : '命理分析進行中'}
+            {['E1','E2'].includes(report.plan_code) ? '奇門遁甲出門訣排算中'
+              : report.plan_code === 'G15' ? '家族藍圖分析進行中'
+              : '命理分析進行中'}
           </h1>
           <p className="text-text-muted text-sm mb-2">
             {['E1','E2'].includes(report.plan_code)
               ? '系統正以 25 層古籍評分體系逐時辰排算奇門局，套入個人年命宮驗證吉位'
+              : report.plan_code === 'G15'
+              ? '正在為您的家庭成員進行多人命格交叉分析，整合家族互動關係'
               : '系統正同步調用東西方十五大命理系統，逐一進行排盤運算與深度解析'}
           </p>
           <p className="text-text-muted/60 text-xs mb-1">
-            {['E1','E2'].includes(report.plan_code) ? '出門訣排算通常需要 40–50 分鐘' : '完整分析通常需要 40–60 分鐘'}
+            {['E1','E2'].includes(report.plan_code) ? '出門訣排算通常需要 40–50 分鐘'
+              : report.plan_code === 'G15' ? '家族分析通常需要 30–45 分鐘'
+              : '完整分析通常需要 40–60 分鐘'}
           </p>
           <p className="text-text-muted/60 text-xs mb-6">完成後將自動寄送 Email 通知您，無需持續等候</p>
           <p className="text-gold text-sm">如需確認進度，可稍後重新整理此頁面</p>
@@ -266,6 +275,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
     ? Math.round(analysesSummary.reduce((s, a) => s + a.score, 0) / analysesSummary.length)
     : 0
   const isChumenji = ['E1', 'E2'].includes(report.plan_code)
+  const isFamily = report.plan_code === 'G15'
 
   // 報告內容完整性檢查 — 數據零容忍
   const isContentEmpty = !aiContent || aiContent.trim().length < 100
@@ -311,9 +321,33 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
     return false
   })
 
+  // 出門訣專屬：把章節分為 三色分析卡片、補運指南、忌方忌日、其他
+  let chumenjiAnalysis: ContentSection[] = []   // 事件吉凶分析 / 本月運勢概覽（含好的/注意/改善）
+  let chumenjiGuide: ContentSection[] = []      // 補運操作指南 / 行動建議
+  let chumenjiWarnings: ContentSection[] = []   // 忌方忌日 / 注意事項
+  let chumenjiOther: ContentSection[] = []      // 其餘章節
+
+  if (isChumenji) {
+    for (const sec of cleanedSections) {
+      const t = sec.title
+      if (/事件吉凶|事件命理|本月運勢|本月命理/.test(t)) {
+        chumenjiAnalysis.push(sec)
+      } else if (/補運|操作指南/.test(t)) {
+        chumenjiGuide.push(sec)
+      } else if (/忌方|忌日|注意事項/.test(t)) {
+        chumenjiWarnings.push(sec)
+      } else if (/Top5|最佳出行|最佳出門/.test(t)) {
+        // Top5 已有專屬卡片渲染，跳過
+      } else {
+        chumenjiOther.push(sec)
+      }
+    }
+  }
+
+  // G15 家族藍圖：顯示全部章節，不做摘要篩選
   // 如果篩選出的摘要太少（< 3），退回顯示全部（可能是非 C 方案）
-  const sections = summarySections.length >= 3 ? summarySections : cleanedSections
-  const isShowingSummary = summarySections.length >= 3 && cleanedSections.length > summarySections.length
+  const sections = isChumenji ? [] : isFamily ? cleanedSections : (summarySections.length >= 3 ? summarySections : cleanedSections)
+  const isShowingSummary = !isChumenji && !isFamily && summarySections.length >= 3 && cleanedSections.length > summarySections.length
 
   // 排序系統評分（高到低）
   const sortedScores = [...analysesSummary].sort((a, b) => b.score - a.score)
@@ -358,13 +392,15 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             {PLAN_NAMES[report.plan_code] || '命理分析報告'}
           </div>
           <h1 className="text-3xl font-bold text-cream mb-1" style={{ fontFamily: 'var(--font-sans)' }}>
-            {report.client_name}
+            {isFamily && report.birth_data?.member_names
+              ? (report.birth_data.member_names as string[]).filter(Boolean).join('、') + ' 家族'
+              : report.client_name}
           </h1>
           <div className="text-text-muted/40 text-xs mt-2">
             {new Date(report.created_at).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })}
           </div>
 
-          {avgScore > 0 && !isChumenji && (
+          {avgScore > 0 && !isChumenji && !isFamily && (
             <div className="mt-8 inline-flex items-center gap-4">
               <div className="text-6xl font-extrabold text-gradient-gold">{avgScore}</div>
               <div className="text-left">
@@ -420,7 +456,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         )}
 
         {/* ──── 各系統評分橫條圖（出門訣方案不顯示）──── */}
-        {sortedScores.length > 0 && !isChumenji && (
+        {sortedScores.length > 0 && !isChumenji && !isFamily && (
           <div className="glass rounded-xl p-7 mb-8">
             <div className="text-gold/70 text-xs tracking-[2px] mb-5">各系統評分</div>
             <div className="space-y-4">
@@ -452,6 +488,23 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             <div className="text-4xl mb-4">⏳</div>
             <h3 className="text-cream font-semibold text-lg mb-2">報告生成中</h3>
             <p className="text-text-muted text-sm">系統正在為您生成完整報告，請稍後重新整理頁面。</p>
+          </div>
+        )}
+
+        {/* ──── 出門訣 E1/E2 專屬：事件吉凶分析 / 本月運勢概覽 ──── */}
+        {isChumenji && chumenjiAnalysis.length > 0 && (
+          <div className="mb-8">
+            {chumenjiAnalysis.map((sec, i) => (
+              <div key={`analysis-${i}`} className="section-card glass" style={{ borderLeft: '3px solid rgba(197,150,58,0.4)' }}>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg" style={{ background: 'rgba(197,150,58,0.15)' }}>
+                    {report.plan_code === 'E1' ? '⚔' : '📅'}
+                  </div>
+                  <h2 className="text-lg font-semibold text-gold" style={{ fontFamily: 'var(--font-sans)' }}>{sec.title}</h2>
+                </div>
+                <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
+              </div>
+            ))}
           </div>
         )}
 
@@ -555,6 +608,47 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             </div>
           </div>
         )}
+
+        {/* ──── 出門訣 E1/E2 專屬：補運操作指南 ──── */}
+        {isChumenji && chumenjiGuide.length > 0 && (
+          <div className="mb-8">
+            {chumenjiGuide.map((sec, i) => (
+              <div key={`guide-${i}`} className="section-card" style={{ background: 'rgba(197,150,58,0.06)', border: '1px solid rgba(197,150,58,0.15)' }}>
+                <div className="flex items-center gap-2.5 mb-5">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg" style={{ background: 'rgba(197,150,58,0.15)' }}>&#9788;</div>
+                  <h2 className="text-lg font-semibold text-gold" style={{ fontFamily: 'var(--font-sans)' }}>{sec.title}</h2>
+                </div>
+                <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ──── 出門訣 E1/E2 專屬：忌方忌日 / 注意事項 ──── */}
+        {isChumenji && chumenjiWarnings.length > 0 && (
+          <div className="mb-8">
+            {chumenjiWarnings.map((sec, i) => (
+              <div key={`warn-${i}`} className="section-card" style={{ background: 'rgba(224,150,58,0.06)', border: '1px solid rgba(224,150,58,0.15)' }}>
+                <div className="flex items-center gap-2.5 mb-5">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg" style={{ background: 'rgba(224,150,58,0.15)' }}>⚡</div>
+                  <h2 className="text-lg font-semibold" style={{ color: '#e0963a', fontFamily: 'var(--font-sans)' }}>{sec.title}</h2>
+                </div>
+                <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ──── 出門訣 E1/E2 專屬：其餘章節 ──── */}
+        {isChumenji && chumenjiOther.map((sec, i) => (
+          <div key={`other-${i}`} className="glass section-card" style={{ borderLeft: '3px solid rgba(197,150,58,0.4)' }}>
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-xs text-gold/40 font-mono font-bold">{String(i + 1).padStart(2, '0')}</span>
+              <h2 className="text-lg font-semibold text-gold" style={{ fontFamily: 'var(--font-sans)' }}>{sec.title}</h2>
+            </div>
+            <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
+          </div>
+        ))}
 
         {/* ──── 報告章節（保留原始順序，依類型套用不同視覺）──── */}
         {sections.map((sec, i) => {

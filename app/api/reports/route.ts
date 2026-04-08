@@ -63,20 +63,13 @@ export async function PATCH(req: NextRequest) {
     retry_count: (report.retry_count ?? 0) + 1,
   }).eq('id', id)
 
-  // 觸發報告生成
-  const PYTHON_API = process.env.NEXT_PUBLIC_API_URL || 'https://fortune-reports-api.fly.dev'
-  fetch(`${PYTHON_API}/api/generate-report-async`, {
+  // 觸發 Workflow 報告生成（不用舊版 Fly.io 端點）
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
+  fetch(`${siteUrl}/api/workflows/generate-report`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      report_id: report.id,
-      access_token: report.access_token,
-      plan_code: report.plan_code,
-      birth_data: report.birth_data,
-      customer_email: report.customer_email,
-      additional_people: null,
-    }),
-  }).catch(err => console.error('重試觸發失敗:', err))
+    body: JSON.stringify({ reportId: report.id }),
+  }).catch(err => console.error('重試 Workflow 觸發失敗:', err))
 
   return NextResponse.json({ success: true, message: '報告已重新排入生成佇列' })
 }

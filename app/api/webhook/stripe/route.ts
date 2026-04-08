@@ -72,7 +72,11 @@ export async function POST(req: NextRequest) {
     let accessToken = ''
     try {
       const { data: insertData, error: insertErr } = await supabase.from('paid_reports').insert({
-        client_name: birthData?.name || birthData?.members?.[0]?.name || 'Unknown',
+        client_name: birthData?.plan_type === 'family_email'
+          ? (birthData?.member_names?.filter(Boolean).join('、') || 'Unknown')
+          : birthData?.plan_type === 'family'
+          ? (birthData?.members?.map((m: { name?: string }) => m.name).filter(Boolean).join('、') || 'Unknown')
+          : (birthData?.name || 'Unknown'),
         plan_code: planCode,
         amount_usd: amount,
         stripe_session_id: session.id,

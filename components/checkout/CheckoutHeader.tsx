@@ -8,6 +8,7 @@ interface CheckoutHeaderProps {
   planName: string
   isFamilyPlan: boolean
   isRelationPlan: boolean
+  isG15Plan?: boolean
   extraMemberCount: number
   extraPrice: number
   rExtraCount: number
@@ -20,7 +21,7 @@ interface CheckoutHeaderProps {
 }
 
 export default function CheckoutHeader({
-  planCode, planName, isFamilyPlan, isRelationPlan,
+  planCode, planName, isFamilyPlan, isRelationPlan, isG15Plan,
   extraMemberCount, extraPrice, rExtraCount,
   familyCount, rCount,
   totalPrice, finalPrice, couponApplied, planSystems,
@@ -45,7 +46,9 @@ export default function CheckoutHeader({
           <div className="text-xs text-gold font-mono">方案 {planCode}</div>
           <div className="text-lg font-bold text-white">{planName}</div>
           <div className="text-xs text-text-muted">
-            {isFamilyPlan
+            {isG15Plan
+              ? '家族互動分析（需每位成員已購人生藍圖）'
+              : isFamilyPlan
               ? `基礎 2 人 $159，每加一人 +$${extraPrice}`
               : isRelationPlan
               ? '含兩人分析，每加1人 +$19/人'

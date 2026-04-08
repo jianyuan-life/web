@@ -11,6 +11,8 @@ import {
   aiGenerateCall3,
   aiGenerateCall4,
   aiGenerateGeneric,
+  loadFamilyReports,
+  aiGenerateG15,
   cleanFinalReport,
   qualityGate,
   aiReviewReport,
@@ -37,6 +39,84 @@ export async function generateReportWorkflow(reportId: string) {
   }
 
   const { birthData, planCode, accessToken, customerEmail } = record
+
+  // ── G15 家族藍圖：特殊流程（不排盤，直接讀取已有報告）──
+  if (planCode === 'G15' && birthData.plan_type === 'family_email') {
+    try {
+      const memberEmails = (birthData.member_emails || []) as string[]
+      const memberNames = (birthData.member_names || []) as string[]
+
+      // 載入所有成員的已完成人生藍圖
+      const familyReports = await loadFamilyReports(memberEmails, memberNames)
+
+      // AI 生成家族互動分析
+      const systemPrompt = PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C']
+      const result = await aiGenerateG15(familyReports, planCode, systemPrompt)
+      const reportContent = result.content
+
+      if (!reportContent) {
+        await markReportFailed(reportId, 'AI 未回覆：AI 回傳空內容')
+        await closeProgressStream()
+        return { success: false, error: 'AI 未回覆' }
+      }
+
+      // 品質閘門
+      try {
+        const qResult = await qualityGate(reportContent, 'G15', familyReports.length)
+        if (!qResult.passed) {
+          console.warn(`G15 品質閘門警告: ${qResult.warnings.join('; ')}`)
+        }
+      } catch (e) {
+        console.error('G15 品質閘門執行失敗:', e)
+      }
+
+      // AI 審核
+      try {
+        const review = await aiReviewReport(reportContent, 'G15')
+        if (review.score < 70) {
+          console.warn(`G15 AI 審核分數偏低: ${review.score}`)
+        }
+      } catch (e) {
+        console.error('G15 AI 審核失敗（不阻塞）:', e)
+      }
+
+      // G15 用全體成員名字
+      const familyNames = familyReports.map(r => r.name).join('、')
+      const familyBirthData = { ...familyReports[0].birthData, name: familyNames + ' 家族' }
+
+      // 生成 PDF
+      let pdfUrl: string | null = null
+      try {
+        pdfUrl = await generatePDF(reportId, planCode, familyBirthData, reportContent, [])
+      } catch (e) {
+        console.error('G15 PDF 生成失敗（不影響報告）:', e)
+      }
+
+      // 儲存到 Supabase
+      await saveReportToSupabase(reportId, reportContent, result.model, [], pdfUrl, null)
+
+      // 寄送 Email
+      try {
+        await sendReportEmail(reportId, customerEmail, accessToken, familyBirthData, planCode, reportContent, familyReports.length)
+      } catch (e) {
+        console.error('G15 Email 寄送失敗（報告已完成）:', e)
+      }
+
+      await closeProgressStream()
+      return {
+        success: true,
+        reportId,
+        contentLength: reportContent.length,
+        systemsCount: familyReports.length,
+        aiModel: result.model,
+      }
+    } catch (e) {
+      const errMsg = e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e) || '未知錯誤'
+      await markReportFailed(reportId, `G15 家族藍圖生成失敗: ${errMsg.slice(0, 500)}`)
+      await closeProgressStream()
+      return { success: false, error: 'G15 生成失敗' }
+    }
+  }
 
   // Step 1: 排盤計算
   let calcResult
@@ -165,10 +245,31 @@ export async function generateReportWorkflow(reportId: string) {
   const top5Match = reportContent.match(/===TOP5_JSON_START===\s*([\s\S]*?)\s*===TOP5_JSON_END===/)
   if (top5Match) {
     try {
-      top5Timings = JSON.parse(top5Match[1])
+      // AI 可能在 JSON 外面包 ```json``` 標記，需要清理
+      let jsonStr = top5Match[1].trim()
+      jsonStr = jsonStr.replace(/^```json\s*/i, '').replace(/\s*```\s*$/, '').trim()
+      const parsed = JSON.parse(jsonStr)
+
+      // AI 可能輸出不同結構，統一轉換成前端期望的 Top5Timing 格式
+      const rawTimings = parsed.top5_auspicious_times || parsed.top5 || parsed
+      if (Array.isArray(rawTimings)) {
+        top5Timings = rawTimings.map((t: Record<string, unknown>, i: number) => ({
+          rank: t.rank || i + 1,
+          title: t.title || t.star_door_combo || `第${i + 1}吉時`,
+          date: t.date || '',
+          time_start: (t.time_start || (typeof t.time_range === 'string' ? (t.time_range as string).split('-')[0] : '') || '').toString(),
+          time_end: (t.time_end || (typeof t.time_range === 'string' ? (t.time_range as string).split('-')[1] : '') || '').toString(),
+          direction: t.direction || '',
+          reason: t.reason || t.analysis || t.detail || '',
+          confidence: t.confidence || '',
+          shensha_warning: t.shensha_warning || '',
+          zhishi_info: t.zhishi_info || '',
+        }))
+      }
       reportContent = reportContent.replace(/===TOP5_JSON_START===[\s\S]*?===TOP5_JSON_END===/g, '').trim()
-    } catch {
-      // JSON 解析失敗不阻塞
+      console.log(`Top5 吉時解析成功: ${top5Timings?.length || 0} 項`)
+    } catch (e) {
+      console.error('Top5 JSON 解析失敗:', e)
     }
   }
 
