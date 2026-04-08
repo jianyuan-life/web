@@ -19,12 +19,13 @@ export async function GET(req: NextRequest) {
     detail?: string
   }> = []
 
-  // 1. Claude (Anthropic) — 用一個最小請求測試是否有額度
+  // 1. Claude (Anthropic) — 用最便宜的 Haiku 測試額度，再嘗試 Admin API 查精確餘額
   try {
     const claudeKey = process.env.CLAUDE_API_KEY || ''
     if (!claudeKey) {
       results.push({ name: 'Claude (Anthropic)', balance: '未設定', currency: '', status: 'error', detail: '缺少 CLAUDE_API_KEY' })
     } else {
+      // Step 1: 用 Haiku（最便宜）測試能不能用
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -35,22 +36,39 @@ export async function GET(req: NextRequest) {
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 1,
-          messages: [{ role: 'user', content: 'hi' }],
+          messages: [{ role: 'user', content: '1' }],
         }),
         signal: AbortSignal.timeout(10000),
       })
 
       if (res.ok) {
-        results.push({ name: 'Claude (Anthropic)', balance: '有餘額', currency: 'USD', status: 'ok', detail: 'API 呼叫成功' })
+        // Step 2: 嘗試 Admin API 查精確用量（需要 Admin Key）
+        let costDetail = '可用（Anthropic 不提供餘額 API，請到 console.anthropic.com 查看）'
+        try {
+          const costRes = await fetch('https://api.anthropic.com/v1/organizations/cost_report', {
+            headers: {
+              'x-api-key': claudeKey,
+              'anthropic-version': '2023-06-01',
+              'anthropic-beta': 'admin-2025-04-15',
+            },
+            signal: AbortSignal.timeout(5000),
+          })
+          if (costRes.ok) {
+            const costData = await costRes.json()
+            costDetail = `本月用量: $${JSON.stringify(costData).slice(0, 80)}`
+          }
+        } catch { /* Admin API 不可用，用預設說明 */ }
+
+        results.push({ name: 'Claude (Anthropic)', balance: '可用 ✓', currency: 'USD', status: 'ok', detail: costDetail })
       } else {
         const errData = await res.json().catch(() => ({}))
         const msg = (errData as { error?: { message?: string } })?.error?.message || ''
         if (msg.includes('credit balance is too low')) {
-          results.push({ name: 'Claude (Anthropic)', balance: '$0', currency: 'USD', status: 'critical', detail: '額度不足，請充值' })
+          results.push({ name: 'Claude (Anthropic)', balance: '$0 額度耗盡', currency: 'USD', status: 'critical', detail: '請到 console.anthropic.com 充值' })
         } else if (res.status === 429) {
-          results.push({ name: 'Claude (Anthropic)', balance: '有餘額', currency: 'USD', status: 'warning', detail: '限流中，但有餘額' })
+          results.push({ name: 'Claude (Anthropic)', balance: '可用（限流中）', currency: 'USD', status: 'warning', detail: 'API 暫時限流，稍後恢復' })
         } else {
-          results.push({ name: 'Claude (Anthropic)', balance: '未知', currency: 'USD', status: 'error', detail: `HTTP ${res.status}: ${msg.slice(0, 100)}` })
+          results.push({ name: 'Claude (Anthropic)', balance: '異常', currency: 'USD', status: 'error', detail: `HTTP ${res.status}: ${msg.slice(0, 100)}` })
         }
       }
     }
