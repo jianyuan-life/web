@@ -67,18 +67,49 @@ export async function POST(req: NextRequest) {
       const pyRes = await fetch(`${PYTHON_API}/api/calculate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ year, month, day, hour, gender, calendar_type, systems: ['ziwei'] }),
-        signal: AbortSignal.timeout(15000),
+        body: JSON.stringify({ name: '用戶', year, month, day, hour, minute: 0, gender }),
+        signal: AbortSignal.timeout(60000),
       })
       if (pyRes.ok) {
         const pyJson = await pyRes.json()
-        pythonData = pyJson?.results?.ziwei || null
-        // 從 Python 結果提取命宮主星
-        if (pythonData) {
-          const palaces = pythonData.palaces as Record<string, { main_stars?: Array<{ name: string }> }> | undefined
-          const mingStars = palaces?.['命宮']?.main_stars
-          if (mingStars && mingStars.length > 0) {
-            mainStar = mingStars[0].name
+        // Python API 返回 analyses 陣列，找到紫微斗數的項目
+        const analyses = pyJson?.analyses || []
+        const ziweiAnalysis = analyses.find((a: { system: string }) => a.system === '紫微斗數')
+        if (ziweiAnalysis) {
+          pythonData = ziweiAnalysis
+          // 從 tables 中找命宮主星
+          // 表格格式：['命宮', '宮位地支', '主星（頓號分隔）', '輔星']
+          const tables = ziweiAnalysis.tables || []
+          for (const table of tables) {
+            if (table.title?.includes('十二宮') || table.title?.includes('命盤') || table.title?.includes('主星')) {
+              const rows = table.rows || []
+              for (const row of rows) {
+                if (row[0] === '命宮' && row.length > 2) {
+                  // 主星在第三欄（index 2），格式如 '廉貞、天府'
+                  const starCell = row[2] || row[1] || ''
+                  mainStar = starCell.split('、')[0].split('/')[0].split('（')[0].trim()
+                  if (mainStar === '—' || mainStar === '-') mainStar = ''
+                  break
+                }
+              }
+            }
+            if (mainStar) break
+          }
+          // 備用：從 details 或 summary 中提取
+          if (!mainStar && ziweiAnalysis.summary) {
+            const match = String(ziweiAnalysis.summary).match(/命宮主星[：:]\s*(\S+)/)
+            if (match) mainStar = match[1]
+          }
+          // 再備用：從 good_points 中找
+          if (!mainStar) {
+            const allText = JSON.stringify(ziweiAnalysis)
+            const starNames = Object.keys(STAR_PROFILES)
+            for (const star of starNames) {
+              if (allText.includes(`命宮`) && allText.includes(star)) {
+                mainStar = star
+                break
+              }
+            }
           }
         }
       }

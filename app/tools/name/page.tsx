@@ -121,7 +121,21 @@ export default function NameToolPage() {
           <span className="text-gradient-gold">姓名學速算</span>
         </h1>
         <p className="text-center text-text-muted mb-2">五格剖象法 + 三才配置 + 數理吉凶分析</p>
-        <p className="text-center text-xs text-text-muted/60 mb-10">不需註冊 &middot; 即時出結果 &middot; 完全免費</p>
+        <p className="text-center text-xs text-text-muted/60 mb-4">不需註冊 &middot; 即時出結果 &middot; 完全免費</p>
+
+        {/* 姓名學由來與說明 */}
+        <div className="max-w-2xl mx-auto mb-10">
+          <details className="glass rounded-xl p-4 cursor-pointer">
+            <summary className="text-sm font-medium text-gold-400 flex items-center gap-2">
+              <span>&#128218;</span> 關於姓名學：為什麼用康熙字典筆畫？
+            </summary>
+            <div className="mt-3 text-xs text-text-muted/80 space-y-2 leading-relaxed">
+              <p><strong className="text-white/90">姓名學的由來：</strong>五格剖象法由日本學者熊崎健翁於 1918 年創立，後傳入華人世界並與中國傳統數理、五行學說結合，成為目前最廣泛使用的姓名分析方法。透過姓名的筆畫數，計算出天格、人格、地格、外格、總格五格數理，搭配八十一靈動數與三才配置，推算姓名的吉凶能量。</p>
+              <p><strong className="text-white/90">為什麼必須用繁體字（康熙字典）計算？</strong>姓名學的數理基礎建立在《康熙字典》的筆畫標準之上，而非現代簡化字。康熙字典成書於 1716 年，是中國歷史上最權威的字典，其筆畫系統基於 214 個部首的完整字形。簡化字改變了許多字的筆畫數（例如「張」簡體7畫、繁體11畫；「陳」簡體7畫、繁體16畫），若用簡體計算將導致五格數理完全錯誤。</p>
+              <p><strong className="text-white/90">鑒源的做法：</strong>本系統採用 Unicode 官方 Unihan 數據庫（涵蓋 102,998 個漢字），以 214 個康熙部首的標準筆畫為基礎計算。無論您輸入繁體或簡體，系統都會自動轉換為繁體字後再進行筆畫查詢，確保結果準確無誤。</p>
+            </div>
+          </details>
+        </div>
 
         {/* 分析進度動畫 */}
         {loading && !result && (

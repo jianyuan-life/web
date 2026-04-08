@@ -115,7 +115,21 @@ export default function FreeToolPage() {
       <div className="max-w-5xl mx-auto px-6">
         <h1 className="text-3xl font-bold text-center mb-2"><span className="text-gradient-gold">命理速算</span></h1>
         <p className="text-center text-text-muted mb-2">精確排盤 + 深度分析 + 個人化命格解讀</p>
-        <p className="text-center text-xs text-text-muted/60 mb-10">不需註冊 &middot; 即時出結果 &middot; 完全免費</p>
+        <p className="text-center text-xs text-text-muted/60 mb-4">不需註冊 &middot; 即時出結果 &middot; 完全免費</p>
+
+        {/* 八字由來說明 */}
+        <div className="max-w-2xl mx-auto mb-10">
+          <details className="glass rounded-xl p-4 cursor-pointer">
+            <summary className="text-sm font-medium text-gold-400 flex items-center gap-2">
+              <span>&#128218;</span> 關於八字命理：三千年的智慧
+            </summary>
+            <div className="mt-3 text-xs text-text-muted/80 space-y-2 leading-relaxed">
+              <p><strong className="text-white/90">八字的由來：</strong>八字命理（又稱四柱推命）源自中國古代天文曆法，歷經兩千餘年發展。唐代李虛中以年柱為主創立雛形，宋代徐子平改以日柱為核心，奠定了現代八字學的基礎，故又稱「子平術」。八字以出生的年、月、日、時四柱天干地支共八個字，推算一個人的先天命格與後天運勢。</p>
+              <p><strong className="text-white/90">核心原理：</strong>八字的理論基礎是陰陽五行（金木水火土）的生剋制化。透過分析日主（出生日的天干）與其他七個字的關係，推導出十神（正官、偏財、食神等），再結合大運和流年的變化，解讀一個人在性格、事業、感情、財運等方面的傾向與時機。</p>
+              <p><strong className="text-white/90">鑒源的做法：</strong>本系統使用天文級精度的萬年曆進行排盤，支援農曆／國曆雙向查詢，並可根據出生地經度進行真太陽時校正，確保時柱的準確性。分析涵蓋五行能量分佈、十神關係、格局判定與大運流年推演。</p>
+            </div>
+          </details>
+        </div>
 
         {/* 分析進度動畫 */}
         {loading && !result && (

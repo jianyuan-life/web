@@ -114,9 +114,9 @@ export async function POST(req: NextRequest) {
       const reportId = reportData?.id || ''
 
       // 記錄優惠碼使用
-      const { data: couponRow } = await supabase.from('coupons').select('id').eq('code', verifiedCouponCode).single()
+      const { data: couponRow } = await supabase.from('coupons').select('id, used_count').eq('code', verifiedCouponCode).single()
       if (couponRow) {
-        await supabase.from('coupons').update({ used_count: supabase.rpc('increment', { x: 1 }) }).eq('id', couponRow.id)
+        await supabase.from('coupons').update({ used_count: (couponRow.used_count || 0) + 1 }).eq('id', couponRow.id)
         await supabase.from('coupon_uses').insert({
           coupon_id: couponRow.id, coupon_code: verifiedCouponCode,
           order_id: fakeSessionId, customer_email: birthData?.email || '',

@@ -455,8 +455,33 @@ ${analyses.length}套系統排盤完整數據：
   return userPrompt
 }
 
+// ── Claude → DeepSeek 自動 fallback 輔助函式 ──
+async function callAIWithFallback(
+  systemPrompt: string, userPrompt: string, maxTokens: number, label: string,
+): Promise<{ content: string; model: string }> {
+  // 優先用 Claude Opus
+  if (CLAUDE_API_KEY) {
+    try {
+      const content = await claudeStreamingCall(systemPrompt, userPrompt, maxTokens)
+      console.log(`${label} 完成 (claude-opus-4-6): ${content.length} 字`)
+      return { content, model: 'claude-opus-4-6' }
+    } catch (e) {
+      const errMsg = e instanceof Error ? e.message : String(e)
+      console.warn(`${label} Claude 失敗，自動切換 DeepSeek: ${errMsg.slice(0, 200)}`)
+      // 如果是額度不足、認證失敗等，自動 fallback DeepSeek
+    }
+  }
+  // Fallback: DeepSeek
+  if (!DEEPSEEK_KEY) {
+    throw new FatalError(`${label}: Claude 和 DeepSeek API Key 都不可用`)
+  }
+  const content = await deepseekCall(systemPrompt, userPrompt, Math.min(maxTokens, 8000))
+  console.log(`${label} 完成 (deepseek-chat fallback): ${content.length} 字`)
+  return { content, model: 'deepseek-chat' }
+}
+
 // ── Step 2a: C 方案 AI 生成 — Call A（系統1-4：東方三大） ──
-// C 方案永遠用 Claude Opus，不 fallback DeepSeek。失敗由 Workflow 自動重試。
+// C 方案優先用 Claude Opus，Claude 不可用時自動 fallback DeepSeek
 export async function aiGenerateCall1(
   calcResult: CalcResult, birthData: BirthData, question?: string,
 ) {
@@ -466,15 +491,11 @@ export async function aiGenerateCall1(
   const ageGroup = getAgeGroup(birthData.year)
   const clientNeed = question || undefined
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call1, birthData)
+  const systemPrompt = buildCall1Prompt(ageGroup, clientNeed, birthData.locale)
 
-  if (!CLAUDE_API_KEY) {
-    throw new FatalError('缺少 CLAUDE_API_KEY，C 方案必須使用 Claude Opus')
-  }
-
-  const content = await claudeStreamingCall(buildCall1Prompt(ageGroup, clientNeed, birthData.locale), userPrompt, 16384)
-  const cleaned = cleanAIResponse(content)
-  console.log(`Call A 完成 (claude-opus-4-6): ${cleaned.length} 字`)
-  return { content: cleaned, model: 'claude-opus-4-6' }
+  const result = await callAIWithFallback(systemPrompt, userPrompt, 16384, 'Call A')
+  result.content = cleanAIResponse(result.content)
+  return result
 }
 aiGenerateCall1.maxRetries = 3
 
@@ -487,15 +508,11 @@ export async function aiGenerateCall2(
 
   const ageGroup = getAgeGroup(birthData.year)
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call2, birthData)
+  const systemPrompt = buildCall2Prompt(ageGroup, birthData.locale)
 
-  if (!CLAUDE_API_KEY) {
-    throw new FatalError('缺少 CLAUDE_API_KEY，C 方案必須使用 Claude Opus')
-  }
-
-  const content = await claudeStreamingCall(buildCall2Prompt(ageGroup, birthData.locale), userPrompt, 12288)
-  const cleaned = cleanAIResponse(content)
-  console.log(`Call B 完成 (claude-opus-4-6): ${cleaned.length} 字`)
-  return { content: cleaned, model: 'claude-opus-4-6' }
+  const result = await callAIWithFallback(systemPrompt, userPrompt, 12288, 'Call B')
+  result.content = cleanAIResponse(result.content)
+  return result
 }
 aiGenerateCall2.maxRetries = 3
 
@@ -508,15 +525,11 @@ export async function aiGenerateCall3(
 
   const ageGroup = getAgeGroup(birthData.year)
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call3, birthData)
+  const systemPrompt = buildCall3Prompt(ageGroup, birthData.locale)
 
-  if (!CLAUDE_API_KEY) {
-    throw new FatalError('缺少 CLAUDE_API_KEY，C 方案必須使用 Claude Opus')
-  }
-
-  const content = await claudeStreamingCall(buildCall3Prompt(ageGroup, birthData.locale), userPrompt, 8192)
-  const cleaned = cleanAIResponse(content)
-  console.log(`Call C 完成 (claude-opus-4-6): ${cleaned.length} 字`)
-  return { content: cleaned, model: 'claude-opus-4-6' }
+  const result = await callAIWithFallback(systemPrompt, userPrompt, 8192, 'Call C')
+  result.content = cleanAIResponse(result.content)
+  return result
 }
 aiGenerateCall3.maxRetries = 3
 
@@ -535,15 +548,12 @@ export async function aiGenerateCall4(
     userPrompt += `\n\n【重要提醒——你上次漏掉了以下章節，這次必須全部補上】\n${missingParts.map((p, i) => `${i + 1}. ${p}`).join('\n')}\n\n不要寫任何前言，直接從章節標題開始。`
   }
 
-  if (!CLAUDE_API_KEY) {
-    throw new FatalError('缺少 CLAUDE_API_KEY，C 方案必須使用 Claude Opus')
-  }
-
   const maxTokens = isRetry ? 32768 : 16384
-  const content = await claudeStreamingCall(buildCall4Prompt(ageGroup, birthData.name, birthData.locale), userPrompt, maxTokens)
-  const cleaned = cleanAIResponse(content)
-  console.log(`Call D 完成 (claude-opus-4-6): ${cleaned.length} 字`)
-  return { content: cleaned, model: 'claude-opus-4-6' }
+  const systemPrompt = buildCall4Prompt(ageGroup, birthData.name, birthData.locale)
+
+  const result = await callAIWithFallback(systemPrompt, userPrompt, maxTokens, 'Call D')
+  result.content = cleanAIResponse(result.content)
+  return result
 }
 aiGenerateCall4.maxRetries = 3
 

@@ -30,7 +30,8 @@ export async function generateReportWorkflow(reportId: string) {
   try {
     record = await loadReportRecord(reportId)
   } catch (e) {
-    await markReportFailed(reportId, `載入報告記錄失敗: ${e instanceof Error ? e.message : '未知錯誤'}`)
+    const errMsg = e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e) || '未知錯誤'
+    await markReportFailed(reportId, `載入報告記錄失敗: ${errMsg.slice(0, 500)}`)
     await closeProgressStream()
     return { success: false, error: '載入記錄失敗' }
   }
@@ -42,7 +43,8 @@ export async function generateReportWorkflow(reportId: string) {
   try {
     calcResult = await callPythonCalculate(birthData)
   } catch (e) {
-    await markReportFailed(reportId, `排盤計算失敗: ${e instanceof Error ? e.message : '未知錯誤'}`)
+    const errMsg2 = e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e) || '未知錯誤'
+    await markReportFailed(reportId, `排盤計算失敗: ${errMsg2.slice(0, 500)}`)
     await closeProgressStream()
     return { success: false, error: '排盤計算失敗' }
   }
@@ -96,7 +98,13 @@ export async function generateReportWorkflow(reportId: string) {
       aiModelUsed = result.model
     }
   } catch (e) {
-    await markReportFailed(reportId, `AI 生成失敗: ${e instanceof Error ? e.message : '未知錯誤'}`)
+    // Workflow 環境的錯誤可能不是標準 Error 實例，需要多種方式擷取
+    const errMsg = e instanceof Error ? e.message
+      : typeof e === 'string' ? e
+      : (e && typeof e === 'object' && 'message' in e) ? String((e as { message: unknown }).message)
+      : JSON.stringify(e) || '未知錯誤'
+    console.error('AI 生成失敗完整錯誤:', e)
+    await markReportFailed(reportId, `AI 生成失敗: ${errMsg.slice(0, 500)}`)
     await closeProgressStream()
     return { success: false, error: 'AI 生成失敗' }
   }
@@ -177,7 +185,8 @@ export async function generateReportWorkflow(reportId: string) {
   try {
     await saveReportToSupabase(reportId, reportContent, aiModelUsed, analysesSummary, pdfUrl, top5Timings)
   } catch (e) {
-    await markReportFailed(reportId, `儲存報告失敗: ${e instanceof Error ? e.message : '未知錯誤'}`)
+    const errMsg3 = e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e) || '未知錯誤'
+    await markReportFailed(reportId, `儲存報告失敗: ${errMsg3.slice(0, 500)}`)
     await closeProgressStream()
     return { success: false, error: '儲存失敗' }
   }

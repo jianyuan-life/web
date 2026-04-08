@@ -108,7 +108,21 @@ export default function ZiweiToolPage() {
           <span className="text-gradient-gold">紫微斗數速算</span>
         </h1>
         <p className="text-center text-text-muted mb-2">排列紫微命盤 + 十四主星解讀 + 十二宮位分析</p>
-        <p className="text-center text-xs text-text-muted/60 mb-10">不需註冊 &middot; 即時出結果 &middot; 完全免費</p>
+        <p className="text-center text-xs text-text-muted/60 mb-4">不需註冊 &middot; 即時出結果 &middot; 完全免費</p>
+
+        {/* 紫微斗數由來說明 */}
+        <div className="max-w-2xl mx-auto mb-10">
+          <details className="glass rounded-xl p-4 cursor-pointer">
+            <summary className="text-sm font-medium text-gold-400 flex items-center gap-2">
+              <span>&#128218;</span> 關於紫微斗數：帝王之學
+            </summary>
+            <div className="mt-3 text-xs text-text-muted/80 space-y-2 leading-relaxed">
+              <p><strong className="text-white/90">紫微斗數的由來：</strong>紫微斗數相傳由宋代陳希夷（陳摶老祖）所創，是中國命理學中最精密的推命術之一，素有「帝王之學」的美譽。其名來自紫微星——北極星，古人認為它是天帝的居所，統領群星，因此紫微斗數以紫微星為核心，佈列十四主星於十二宮位，形成每個人獨一無二的命盤。</p>
+              <p><strong className="text-white/90">核心原理：</strong>紫微斗數以農曆出生年月日時為基礎，將 108 顆星曜按照特定規則排入十二宮位（命宮、兄弟、夫妻、子女、財帛、疾厄、遷移、交友、事業、田宅、福德、父母），每顆星有廟旺利陷四種狀態，再搭配四化飛星（化祿、化權、化科、化忌）的流轉，推演一生各面向的吉凶起伏。</p>
+              <p><strong className="text-white/90">鑒源的做法：</strong>本系統精確計算紫微星的安星起始位置，完整排列十四主星與輔星，並逐宮分析星曜組合的意涵。支援農曆／國曆輸入，閏月自動處理，確保命盤排列的準確性。</p>
+            </div>
+          </details>
+        </div>
 
         {/* 分析進度動畫 */}
         {loading && !result && (
