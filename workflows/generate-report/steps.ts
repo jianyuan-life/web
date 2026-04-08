@@ -455,29 +455,17 @@ ${analyses.length}套系統排盤完整數據：
   return userPrompt
 }
 
-// ── Claude → DeepSeek 自動 fallback 輔助函式 ──
-async function callAIWithFallback(
+// ── 付費報告 AI 呼叫（只用 Claude Opus，不降級）──
+// 客戶付了錢，就必須給最高品質。Claude 沒額度就報錯，不給次級品質。
+async function callClaudeOnly(
   systemPrompt: string, userPrompt: string, maxTokens: number, label: string,
 ): Promise<{ content: string; model: string }> {
-  // 優先用 Claude Opus
-  if (CLAUDE_API_KEY) {
-    try {
-      const content = await claudeStreamingCall(systemPrompt, userPrompt, maxTokens)
-      console.log(`${label} 完成 (claude-opus-4-6): ${content.length} 字`)
-      return { content, model: 'claude-opus-4-6' }
-    } catch (e) {
-      const errMsg = e instanceof Error ? e.message : String(e)
-      console.warn(`${label} Claude 失敗，自動切換 DeepSeek: ${errMsg.slice(0, 200)}`)
-      // 如果是額度不足、認證失敗等，自動 fallback DeepSeek
-    }
+  if (!CLAUDE_API_KEY) {
+    throw new FatalError(`${label}: 缺少 CLAUDE_API_KEY，付費報告必須使用 Claude Opus。請到 console.anthropic.com 充值。`)
   }
-  // Fallback: DeepSeek
-  if (!DEEPSEEK_KEY) {
-    throw new FatalError(`${label}: Claude 和 DeepSeek API Key 都不可用`)
-  }
-  const content = await deepseekCall(systemPrompt, userPrompt, Math.min(maxTokens, 8000))
-  console.log(`${label} 完成 (deepseek-chat fallback): ${content.length} 字`)
-  return { content, model: 'deepseek-chat' }
+  const content = await claudeStreamingCall(systemPrompt, userPrompt, maxTokens)
+  console.log(`${label} 完成 (claude-opus-4-6): ${content.length} 字`)
+  return { content, model: 'claude-opus-4-6' }
 }
 
 // ── Step 2a: C 方案 AI 生成 — Call A（系統1-4：東方三大） ──
@@ -493,7 +481,7 @@ export async function aiGenerateCall1(
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call1, birthData)
   const systemPrompt = buildCall1Prompt(ageGroup, clientNeed, birthData.locale)
 
-  const result = await callAIWithFallback(systemPrompt, userPrompt, 16384, 'Call A')
+  const result = await callClaudeOnly(systemPrompt, userPrompt, 16384, 'Call A')
   result.content = cleanAIResponse(result.content)
   return result
 }
@@ -510,7 +498,7 @@ export async function aiGenerateCall2(
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call2, birthData)
   const systemPrompt = buildCall2Prompt(ageGroup, birthData.locale)
 
-  const result = await callAIWithFallback(systemPrompt, userPrompt, 12288, 'Call B')
+  const result = await callClaudeOnly(systemPrompt, userPrompt, 12288, 'Call B')
   result.content = cleanAIResponse(result.content)
   return result
 }
@@ -527,7 +515,7 @@ export async function aiGenerateCall3(
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call3, birthData)
   const systemPrompt = buildCall3Prompt(ageGroup, birthData.locale)
 
-  const result = await callAIWithFallback(systemPrompt, userPrompt, 8192, 'Call C')
+  const result = await callClaudeOnly(systemPrompt, userPrompt, 8192, 'Call C')
   result.content = cleanAIResponse(result.content)
   return result
 }
@@ -551,7 +539,7 @@ export async function aiGenerateCall4(
   const maxTokens = isRetry ? 32768 : 16384
   const systemPrompt = buildCall4Prompt(ageGroup, birthData.name, birthData.locale)
 
-  const result = await callAIWithFallback(systemPrompt, userPrompt, maxTokens, 'Call D')
+  const result = await callClaudeOnly(systemPrompt, userPrompt, maxTokens, 'Call D')
   result.content = cleanAIResponse(result.content)
   return result
 }
@@ -566,25 +554,14 @@ export async function aiGenerateGeneric(
   const userPrompt = buildGenericUserPrompt(birthData, calcResult.client_data, calcResult.analyses, topic, question)
   const localizedPrompt = localizePrompt(systemPrompt, birthData.locale)
 
-  let content = ''
-  let model = 'unknown'
-
-  if (CLAUDE_API_KEY) {
-    try {
-      content = await claudeStreamingCall(localizedPrompt, userPrompt, 32768)
-      model = 'claude-opus-4-6'
-    } catch (e) {
-      console.error(`方案 ${planCode} Claude 失敗，fallback DeepSeek:`, e)
-    }
+  // 付費報告只用 Claude Opus，不降級
+  if (!CLAUDE_API_KEY) {
+    throw new FatalError(`方案 ${planCode}: 缺少 CLAUDE_API_KEY，付費報告必須使用 Claude Opus。請到 console.anthropic.com 充值。`)
   }
-  if (!content) {
-    content = await deepseekCall(localizedPrompt, userPrompt, 8000)
-    model = 'deepseek-chat'
-  }
-
+  const content = await claudeStreamingCall(localizedPrompt, userPrompt, 32768)
   const cleaned = cleanAIResponse(content)
-  console.log(`方案 ${planCode} AI 完成 (${model}): ${cleaned.length} 字`)
-  return { content: cleaned, model }
+  console.log(`方案 ${planCode} AI 完成 (claude-opus-4-6): ${cleaned.length} 字`)
+  return { content: cleaned, model: 'claude-opus-4-6' }
 }
 aiGenerateGeneric.maxRetries = 2
 
