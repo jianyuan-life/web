@@ -497,7 +497,7 @@ export async function aiGenerateCall1(
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call1, birthData)
   const systemPrompt = buildCall1Prompt(ageGroup, clientNeed, birthData.locale)
 
-  const result = await callClaudeOnly(systemPrompt, userPrompt, 16384, 'Call A')
+  const result = await callClaudeOnly(systemPrompt, userPrompt, 24000, 'Call A')
   result.content = cleanAIResponse(result.content)
   return result
 }
@@ -514,7 +514,7 @@ export async function aiGenerateCall2(
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call2, birthData)
   const systemPrompt = buildCall2Prompt(ageGroup, birthData.locale)
 
-  const result = await callClaudeOnly(systemPrompt, userPrompt, 12288, 'Call B')
+  const result = await callClaudeOnly(systemPrompt, userPrompt, 20000, 'Call B')
   result.content = cleanAIResponse(result.content)
   return result
 }
@@ -531,7 +531,7 @@ export async function aiGenerateCall3(
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call3, birthData)
   const systemPrompt = buildCall3Prompt(ageGroup, birthData.locale)
 
-  const result = await callClaudeOnly(systemPrompt, userPrompt, 8192, 'Call C')
+  const result = await callClaudeOnly(systemPrompt, userPrompt, 20000, 'Call C')
   result.content = cleanAIResponse(result.content)
   return result
 }
@@ -552,7 +552,7 @@ export async function aiGenerateCall4(
     userPrompt += `\n\n【重要提醒——你上次漏掉了以下章節，這次必須全部補上】\n${missingParts.map((p, i) => `${i + 1}. ${p}`).join('\n')}\n\n不要寫任何前言，直接從章節標題開始。`
   }
 
-  const maxTokens = isRetry ? 32768 : 16384
+  const maxTokens = isRetry ? 32768 : 24000
   const systemPrompt = buildCall4Prompt(ageGroup, birthData.name, birthData.locale)
 
   const result = await callClaudeOnly(systemPrompt, userPrompt, maxTokens, 'Call D')
