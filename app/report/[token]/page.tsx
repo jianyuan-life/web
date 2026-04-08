@@ -15,6 +15,9 @@ interface Top5Timing {
   time_end: string    // HH:MM
   direction: string
   reason: string
+  confidence?: string     // v3.0 信心指數（如「極高 95%」）
+  shensha_warning?: string // v3.0 神煞警告（如「注意：此方位接近三煞方」）
+  zhishi_info?: string     // v3.0 值使門資訊（如「值使門：開門，利出行」）
 }
 
 interface ReportData {
@@ -482,6 +485,33 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                       <div className="text-gold font-semibold text-sm">{timing.direction}</div>
                     </div>
                   </div>
+
+                  {/* 信心指數 + 值使門（v3.0 新增）*/}
+                  {(timing.confidence || timing.zhishi_info) && (
+                    <div className="flex gap-3 mb-3">
+                      {timing.confidence && (
+                        <div className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{
+                          background: timing.confidence.includes('極高') || timing.confidence.includes('高') ? 'rgba(34,197,94,0.1)' : timing.confidence.includes('中') ? 'rgba(234,179,8,0.1)' : 'rgba(239,68,68,0.1)',
+                          color: timing.confidence.includes('極高') || timing.confidence.includes('高') ? '#22c55e' : timing.confidence.includes('中') ? '#eab308' : '#ef4444',
+                          border: `1px solid ${timing.confidence.includes('極高') || timing.confidence.includes('高') ? 'rgba(34,197,94,0.2)' : timing.confidence.includes('中') ? 'rgba(234,179,8,0.2)' : 'rgba(239,68,68,0.2)'}`,
+                        }}>
+                          信心指數：{timing.confidence}
+                        </div>
+                      )}
+                      {timing.zhishi_info && (
+                        <div className="px-3 py-1.5 rounded-lg text-xs text-blue-400" style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                          {timing.zhishi_info}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 神煞警告（v3.0 新增）*/}
+                  {timing.shensha_warning && (
+                    <div className="mb-3 px-3 py-2 rounded-lg text-xs text-amber-400" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                      ⚠ {timing.shensha_warning}
+                    </div>
+                  )}
 
                   {/* 命理依據 */}
                   <div className="mb-4 px-4 py-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', borderLeft: '3px solid var(--color-gold)' }}>
