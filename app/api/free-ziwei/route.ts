@@ -196,6 +196,10 @@ export async function POST(req: NextRequest) {
       }, { onConflict: 'name,birth_year,birth_month,birth_day' }).then(() => {}, () => {})
     }
 
+    // 記錄免費工具使用
+    const supabaseTrack = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || '', process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '')
+    supabaseTrack.from('free_tool_usage').insert({ tool_name: 'ziwei', input_summary: `${year}/${month}/${day} ${gender}` }).then(() => {}, () => {})
+
     return NextResponse.json({
       mainStar,
       starNature: profile.nature,
