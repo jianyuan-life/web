@@ -595,8 +595,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 <h3 className="text-gold text-lg font-semibold mb-3" style={{ fontFamily: 'var(--font-sans)' }}>讓命理能量落地：出門訣</h3>
                 <p className="text-text-muted text-sm leading-7 mb-4">
                   您的命格報告揭示了先天能量分佈，而<strong className="text-cream">出門訣</strong>是將這些能量轉化為行動的實戰工具。
-                  系統根據奇門遁甲精確排算數百個時辰，套入您的個人命格驗證，找出最適合出行的吉時與方位——
-                  每次約 70 分鐘，效果可持續整個月。
+                  源自《煙波釣叟歌》的千年擇吉術，系統以 25 層評分體系精算每個時辰八方位的能量——三吉門、三奇、八神、九星旺衰、天地盤干生剋、九遁格局，
+                  再套入您的個人年命宮驗證。操作方法：在推薦的吉時出門，朝吉方走 500 公尺以上，到達後面朝吉方靜坐 40 分鐘接氣。
+                  支援 15 種事件分類（求財、事業、感情、考試、談判、簽約等），每個推薦附帶信心指數。
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 items-start">
                   <a href="/pricing"
