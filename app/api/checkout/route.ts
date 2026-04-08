@@ -24,7 +24,7 @@ const PRICE_MAP: Record<string, { amount: number; name: string }> = {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { planCode, birthData, totalPrice, locale, couponCode, couponDiscount } = body
+    const { planCode, birthData, totalPrice, locale, couponCode, couponDiscount, userEmail } = body
 
     const plan = PRICE_MAP[planCode]
     if (!plan) {
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
         birth_data: birthData,
         status: 'pending',
         access_token: accessToken,
-        customer_email: (birthData?.email || '').toLowerCase(),
+        customer_email: (userEmail || birthData?.email || '').toLowerCase(),
       }).select('id').single()
 
       const reportId = reportData?.id || ''

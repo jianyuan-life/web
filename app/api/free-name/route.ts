@@ -311,7 +311,7 @@ export async function POST(req: NextRequest) {
 
     // 記錄免費工具使用
     const supabaseTrack = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || '', process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '')
-    supabaseTrack.from('free_tool_usage').insert({ tool_name: 'name', input_summary: `${originalFullName}` }).then(() => {}, () => {})
+    supabaseTrack.from('free_tool_usage').insert({ client_name: `name_${originalFullName}`, birth_year: year || null, gender: gender || null, has_ai_result: true }).then(() => {}, () => {})
 
     return NextResponse.json({
       fullName: originalFullName,

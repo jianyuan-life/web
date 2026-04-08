@@ -66,6 +66,7 @@ export function useCheckoutForm() {
 
   // Auth
   const [authChecked, setAuthChecked] = useState(false)
+  const [authEmail, setAuthEmail] = useState('')
 
   // 計算金額
   const extraMemberCount = Math.max(0, familyMembers.length - 2)
@@ -124,6 +125,7 @@ export function useCheckoutForm() {
         if (fullName && !params.get('name')) setForm(f => ({ ...f, name: fullName }))
         // 快取 email，供 dashboard 在 Stripe 重導向後使用
         if (data.user.email) {
+          setAuthEmail(data.user.email)
           try { sessionStorage.setItem('jianyuan_email', data.user.email) } catch {}
         }
         setAuthChecked(true)
@@ -292,6 +294,7 @@ export function useCheckoutForm() {
           locale: userLocale,
           couponCode: couponApplied?.code || undefined,
           couponDiscount: couponApplied?.discountAmount || undefined,
+          userEmail: authEmail || sessionStorage.getItem('jianyuan_email') || undefined,
         }),
       })
       const data = await res.json()

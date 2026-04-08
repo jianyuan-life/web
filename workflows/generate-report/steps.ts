@@ -114,7 +114,23 @@ function cleanAIResponse(text: string): string {
   // 5. 禁止字眼整行刪除
   cleaned = cleaned.replace(/^.*(?:跳過|本次數據不足|待分析|本次不適用|需面部照片|需掌紋照片|需即時起卦|需即時抽牌|手相掌紋).*$/gm, '')
 
-  // 6. Markdown 垃圾
+  // 6. __TABLE__ 原始標記清理（AI 不應該回吐排盤原始數據的表格標記）
+  // 把 __TABLE__ 行轉成可讀的格式：__TABLE__ key1 val1 key2 val2 → 「key1：val1｜key2：val2」
+  cleaned = cleaned.replace(/^__TABLE__\s+(.+)$/gm, (_match, content) => {
+    const parts = content.trim().split(/\s{2,}/)
+    if (parts.length >= 4) {
+      // 偶數個 token → key-value 對
+      const pairs: string[] = []
+      for (let i = 0; i < parts.length - 1; i += 2) {
+        pairs.push(`**${parts[i]}**：${parts[i + 1]}`)
+      }
+      return pairs.join('　｜　')
+    }
+    // 奇數個 token → 用分隔符連接
+    return parts.join('　｜　')
+  })
+
+  // 7. Markdown 垃圾
   cleaned = cleaned.replace(/^---+$/gm, '')
   cleaned = cleaned.replace(/^\|[-:]+\|[-:| ]*$/gm, '')
   cleaned = cleaned.replace(/-{6,}/g, ' — ')

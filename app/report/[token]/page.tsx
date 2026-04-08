@@ -103,6 +103,11 @@ function renderInlineMarkdown(text: string): string {
     .replace(/✅/g, '<span style="color:#6ab04c">✅</span>')
     .replace(/⚠️/g, '<span style="color:#e0963a">⚠️</span>')
     .replace(/🔧/g, '<span style="color:#c9a84c">🔧</span>')
+    // __TABLE__ 安全網：如果後處理沒清乾淨，在渲染時轉成可讀格式
+    .replace(/^__TABLE__\s+(.+)$/gm, (_m: string, content: string) => {
+      const parts = content.trim().split(/\s{2,}/)
+      return '<div style="padding:8px 12px;margin:6px 0;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);font-size:13px;line-height:1.8">' + parts.join(' ｜ ') + '</div>'
+    })
     .replace(/^[•·]\s*(.+)$/gm, '<li class="report-li">$1</li>')
     .replace(/^- (.+)$/gm, '<li class="report-li">$1</li>')
     .replace(/^(\d+)\. (.+)$/gm, '<li class="report-li-num">$2</li>')

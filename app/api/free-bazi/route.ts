@@ -460,7 +460,7 @@ export async function POST(req: NextRequest) {
 
     // 記錄免費工具使用（不阻塞回應）
     const supabaseTrack = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || '', process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '')
-    supabaseTrack.from('free_tool_usage').insert({ tool_name: 'bazi', input_summary: `${year}/${month}/${day} ${gender}` }).then(() => {}, () => {})
+    supabaseTrack.from('free_tool_usage').insert({ client_name: `bazi_${year}/${month}/${day}`, birth_year: year, gender, has_ai_result: Object.keys(aiSections).length > 0 }).then(() => {}, () => {})
 
     return NextResponse.json({
       ...bazi,
