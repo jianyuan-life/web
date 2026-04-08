@@ -1006,7 +1006,7 @@ export async function sendReportEmail(
   const emailLang = isCN ? 'zh-CN' : 'zh-TW'
 
   const emailText = {
-    brand: isCN ? '鉴 源' : '鑑 源',
+    brand: isCN ? '鉴 源' : '鑒 源',
     subtitle: isCN ? 'JIANYUAN · 东西方命理整合平台' : 'JIANYUAN · 東西方命理整合平台',
     notice: isCN ? '✦ 报告完成通知' : '✦ 報告完成通知',
     title: (() => {
@@ -1031,9 +1031,16 @@ export async function sendReportEmail(
     promoLink: isCN ? '了解出门诀方案 →' : '了解出門訣方案 →',
     footer: isCN ? '如有任何问题，请联系' : '如有任何問題，請聯繫',
     copyright: isCN ? '© 2026 鉴源命理平台 · jianyuan.life' : '© 2026 鑒源命理平台 · jianyuan.life',
-    subject: isCN
-      ? `【鉴源命理】您的${planName}报告已完成 — ${birthData.name}`
-      : `【鑒源命理】您的${planName}報告已完成 — ${birthData.name}`,
+    subject: (() => {
+      const subjectName = birthData.plan_type === 'family_email'
+        ? ((birthData.member_names as string[] | undefined)?.filter(Boolean).join('、') || '')
+        : birthData.plan_type === 'family'
+        ? ((birthData.members as Array<{ name?: string }> | undefined)?.map(m => m.name).filter(Boolean).join('、') || '')
+        : (birthData.name || '')
+      return isCN
+        ? `【鉴源命理】您的${planName}报告已完成 — ${subjectName}`
+        : `【鑒源命理】您的${planName}報告已完成 — ${subjectName}`
+    })(),
     from: isCN ? '鉴源命理 <reports@jianyuan.life>' : '鑒源命理 <reports@jianyuan.life>',
   }
 

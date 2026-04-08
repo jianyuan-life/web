@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
         plan_code: planCode,
         amount_usd: 0,
         status: 'pending',
-        customer_email: birthData?.email || '',
+        customer_email: customerEmail,
         birth_data: birthData,
         coupon_code: verifiedCouponCode,
       })
@@ -123,7 +123,11 @@ export async function POST(req: NextRequest) {
       // 建立 paid_reports 記錄（跟 webhook 一樣的流程）
       const accessToken = crypto.randomUUID()
       const { data: reportData } = await supabase.from('paid_reports').insert({
-        client_name: birthData?.name || '',
+        client_name: birthData?.plan_type === 'family_email'
+          ? (birthData?.member_names?.filter(Boolean).join('、') || 'Unknown')
+          : birthData?.plan_type === 'family'
+          ? (birthData?.members?.map((m: { name?: string }) => m.name).filter(Boolean).join('、') || 'Unknown')
+          : (birthData?.name || 'Unknown'),
         plan_code: planCode,
         amount_usd: 0,
         stripe_session_id: fakeSessionId,
@@ -141,7 +145,7 @@ export async function POST(req: NextRequest) {
         await supabase.from('coupons').update({ used_count: (couponRow.used_count || 0) + 1 }).eq('id', couponRow.id)
         await supabase.from('coupon_uses').insert({
           coupon_id: couponRow.id, coupon_code: verifiedCouponCode,
-          order_id: fakeSessionId, customer_email: birthData?.email || '',
+          order_id: fakeSessionId, customer_email: customerEmail,
           plan_code: planCode, original_amount: baseAmount / 100, discount_applied: baseAmount / 100,
         })
       }

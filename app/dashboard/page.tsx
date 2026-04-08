@@ -292,7 +292,7 @@ function DashboardContent() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-4 min-w-0">
                     <div className="w-12 h-12 rounded-full bg-gold/15 flex items-center justify-center text-gold font-bold text-lg shrink-0" style={{ fontFamily: 'var(--font-sans)' }}>
-                      {(r.client_name || '?')[0]}
+                      {(r.client_name && r.client_name.length > 0) ? r.client_name[0] : '?'}
                     </div>
                     <div className="min-w-0">
                       <h3 className="font-semibold text-cream truncate">{r.client_name}</h3>
