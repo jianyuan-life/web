@@ -30,13 +30,24 @@ const PLAN_CONFIG: Record<string, { systems: number; totalMinutes: number; label
   E2:  { systems: 1,  totalMinutes: 45, label: '月盤 360 時辰排算' },
 }
 
-// 分析階段定義
-const PHASES = [
-  { label: '排盤運算',   desc: '調取東西方命理系統，逐一起盤推算' },
+// 分析階段定義（依方案不同顯示不同文字）
+const PHASES_DEFAULT = [
+  { label: '排盤運算',   desc: '調取東西方十五大命理系統，逐一起盤推算' },
   { label: '命理解析',   desc: '分析命格結構、五行格局、關鍵節點' },
   { label: '深度分析',   desc: '多系統交叉驗證，撰寫個人化解讀' },
   { label: '整合報告',   desc: '彙整所有系統結論，生成完整報告' },
 ]
+
+const PHASES_CHUMENJI = [
+  { label: '奇門排盤',   desc: '以時家奇門遁甲起局，計算天地盤干支' },
+  { label: '時辰掃描',   desc: '逐時辰排算八方位吉凶，25 層古籍理論評分' },
+  { label: '方位評分',   desc: '三吉門、九遁、天地盤干生剋、神煞過濾' },
+  { label: '生成報告',   desc: '套入個人年命宮驗證，產出 Top5 吉時方位' },
+]
+
+function getPhases(planCode: string) {
+  return ['E1', 'E2'].includes(planCode) ? PHASES_CHUMENJI : PHASES_DEFAULT
+}
 
 function getPhaseIndex(pct: number) {
   if (pct < 25) return 0
@@ -65,8 +76,9 @@ export default function ReportProgress({ createdAt, planCode }: { createdAt: str
     return () => clearInterval(timer)
   }, [createdAt, totalMs, cfg.systems])
 
+  const phases = getPhases(planCode)
   const phaseIdx = getPhaseIndex(pct)
-  const phase = PHASES[phaseIdx]
+  const phase = phases[phaseIdx]
   const elapsedMin = Math.round((Date.now() - new Date(createdAt).getTime()) / 60000)
   const remainMin = Math.max(cfg.totalMinutes - elapsedMin, 1)
 
@@ -75,7 +87,7 @@ export default function ReportProgress({ createdAt, planCode }: { createdAt: str
 
       {/* 階段指示器 */}
       <div className="flex items-center gap-1">
-        {PHASES.map((p, i) => (
+        {phases.map((p, i) => (
           <div key={i} className="flex items-center flex-1">
             <div className={`flex items-center gap-1.5 flex-1 ${i <= phaseIdx ? 'opacity-100' : 'opacity-30'}`}>
               <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 transition-all duration-700 ${
@@ -89,7 +101,7 @@ export default function ReportProgress({ createdAt, planCode }: { createdAt: str
                 {p.label}
               </span>
             </div>
-            {i < PHASES.length - 1 && (
+            {i < phases.length - 1 && (
               <div className={`h-px w-3 mx-1 flex-shrink-0 ${i < phaseIdx ? 'bg-gold/40' : 'bg-white/10'}`} />
             )}
           </div>

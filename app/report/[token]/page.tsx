@@ -241,9 +241,17 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(180deg, #0a0e1a 0%, #0f1628 40%, #0a0e1a 100%)' }}>
         <div className="glass rounded-2xl p-12 text-center max-w-md">
           <div className="text-5xl mb-4">⏳</div>
-          <h1 className="text-xl font-bold text-cream mb-2">命理分析進行中</h1>
-          <p className="text-text-muted text-sm mb-2">系統正同步調用東西方十五大命理系統，逐一進行排盤運算與深度解析</p>
-          <p className="text-text-muted/60 text-xs mb-1">完整分析通常需要 40–60 分鐘</p>
+          <h1 className="text-xl font-bold text-cream mb-2">
+            {['E1','E2'].includes(report.plan_code) ? '奇門遁甲出門訣排算中' : '命理分析進行中'}
+          </h1>
+          <p className="text-text-muted text-sm mb-2">
+            {['E1','E2'].includes(report.plan_code)
+              ? '系統正以 25 層古籍評分體系逐時辰排算奇門局，套入個人年命宮驗證吉位'
+              : '系統正同步調用東西方十五大命理系統，逐一進行排盤運算與深度解析'}
+          </p>
+          <p className="text-text-muted/60 text-xs mb-1">
+            {['E1','E2'].includes(report.plan_code) ? '出門訣排算通常需要 40–50 分鐘' : '完整分析通常需要 40–60 分鐘'}
+          </p>
           <p className="text-text-muted/60 text-xs mb-6">完成後將自動寄送 Email 通知您，無需持續等候</p>
           <p className="text-gold text-sm">如需確認進度，可稍後重新整理此頁面</p>
         </div>
