@@ -31,6 +31,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '無效的方案代碼' }, { status: 400 })
     }
 
+    // 從 Supabase Auth 取得用戶真實 email（不依賴前端傳值）
+    let verifiedEmail = ''
+    try {
+      const authHeader = req.headers.get('authorization') || req.headers.get('cookie') || ''
+      const supabaseAuth = getSupabase()
+      // 嘗試用 cookie 中的 token 驗證用戶
+      const cookies = req.headers.get('cookie') || ''
+      const accessTokenMatch = cookies.match(/sb-[^=]+-auth-token[^=]*=([^;]+)/)
+      if (accessTokenMatch) {
+        try {
+          const tokenData = JSON.parse(decodeURIComponent(accessTokenMatch[1]))
+          const token = Array.isArray(tokenData) ? tokenData[0] : tokenData?.access_token || tokenData
+          if (typeof token === 'string' && token.length > 20) {
+            const { data } = await supabaseAuth.auth.getUser(token)
+            if (data?.user?.email) verifiedEmail = data.user.email
+          }
+        } catch { /* token 解析失敗，用 fallback */ }
+      }
+    } catch { /* auth 驗證失敗，用 fallback */ }
+    // Fallback: 前端傳來的 email
+    const customerEmail = (verifiedEmail || userEmail || birthData?.email || '').toLowerCase()
+
     const stripeKey = process.env.STRIPE_SECRET_KEY
     if (!stripeKey || stripeKey === 'sk_test_placeholder') {
       return NextResponse.json({ error: 'Stripe 尚未設定' }, { status: 500 })
@@ -108,7 +130,7 @@ export async function POST(req: NextRequest) {
         birth_data: birthData,
         status: 'pending',
         access_token: accessToken,
-        customer_email: (userEmail || birthData?.email || '').toLowerCase(),
+        customer_email: customerEmail,
       }).select('id').single()
 
       const reportId = reportData?.id || ''
