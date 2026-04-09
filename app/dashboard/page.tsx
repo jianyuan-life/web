@@ -226,7 +226,7 @@ function DashboardContent() {
 
   // 判斷 pending 是否超過 30 分鐘
   const isPendingTooLong = (r: Report) => {
-    if (r.status !== 'pending') return false
+    if (r.status !== 'pending' && r.status !== 'generating') return false
     const elapsed = Date.now() - new Date(r.created_at).getTime()
     return elapsed > 30 * 60 * 1000
   }
@@ -255,7 +255,7 @@ function DashboardContent() {
           const newReports = allReports.filter(
             (r: Report) => !deletedIds.has(r.id)
           )
-          const previousPendingIds = new Set(reports.filter(r => r.status === 'pending').map(r => r.id))
+          const previousPendingIds = new Set(reports.filter(r => r.status === 'pending' || r.status === 'generating').map(r => r.id))
           const newlyCompleted = newReports.filter(
             (r: Report) => r.status === 'completed' && previousPendingIds.has(r.id)
           )
@@ -274,7 +274,7 @@ function DashboardContent() {
             }, 5000)
           }
           setReports(newReports)
-          if (!newReports.some((r: Report) => r.status === 'pending')) {
+          if (!newReports.some((r: Report) => r.status === 'pending' || r.status === 'generating')) {
             clearInterval(interval)
           }
         })
@@ -284,10 +284,10 @@ function DashboardContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentSuccess, deletedIds, pollStartTime, userEmail])
 
-  // 無論是否剛付款，只要有 pending 報告就持續輪詢（15秒間隔，60分鐘上限）
+  // 無論是否剛付款，只要有 pending/generating 報告就持續輪詢（15秒間隔，60分鐘上限）
   useEffect(() => {
     if (loading || !userEmail) return
-    const hasPending = reports.some(r => r.status === 'pending')
+    const hasPending = reports.some(r => r.status === 'pending' || r.status === 'generating')
     if (!hasPending) return
 
     const interval = setInterval(() => {
@@ -300,7 +300,7 @@ function DashboardContent() {
           const newReports = allReports.filter(
             (r: Report) => !deletedIds.has(r.id)
           )
-          const previousPendingIds = new Set(reports.filter(r => r.status === 'pending').map(r => r.id))
+          const previousPendingIds = new Set(reports.filter(r => r.status === 'pending' || r.status === 'generating').map(r => r.id))
           const newlyCompleted = newReports.filter(
             (r: Report) => r.status === 'completed' && previousPendingIds.has(r.id)
           )
@@ -319,7 +319,7 @@ function DashboardContent() {
             }, 5000)
           }
           setReports(newReports)
-          if (!newReports.some((r: Report) => r.status === 'pending')) {
+          if (!newReports.some((r: Report) => r.status === 'pending' || r.status === 'generating')) {
             clearInterval(interval)
           }
         })
@@ -466,7 +466,7 @@ function DashboardContent() {
                           )}
                         </div>
                       </>
-                    ) : r.status === 'pending' ? (
+                    ) : (r.status === 'pending' || r.status === 'generating') ? (
                       <div className="flex items-center gap-2">
                         {isPendingTooLong(r) ? (
                           <div className="text-right">
@@ -479,7 +479,7 @@ function DashboardContent() {
                           <>
                             <div className="w-4 h-4 border-2 border-gold/50 border-t-gold rounded-full animate-spin" />
                             <div className="text-right">
-                              <span className="text-xs text-gold/70 block">分析中</span>
+                              <span className="text-xs text-gold/70 block">{r.status === 'generating' ? '深度分析中' : '分析中'}</span>
                               <span className="text-[10px] text-text-muted/50">
                                 {['E1', 'E2'].includes(r.plan_code) ? '約 40 分鐘以上' : '約 30 分鐘以上'}
                               </span>
@@ -528,7 +528,7 @@ function DashboardContent() {
                   </div>
                 )}
                 {/* pending 時顯示進度條 */}
-                {r.status === 'pending' && (
+                {(r.status === 'pending' || r.status === 'generating') && (
                   <ReportProgress createdAt={r.created_at} planCode={r.plan_code} />
                 )}
                 {/* 刪除確認 */}
