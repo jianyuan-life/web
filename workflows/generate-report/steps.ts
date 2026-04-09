@@ -627,11 +627,11 @@ export async function callPythonCalculate(birthData: BirthData) {
 }
 callPythonCalculate.maxRetries = 3
 
-// ── Claude 串流呼叫（內部輔助，非 step）——含 200s 超時 ──
+// ── Claude 串流呼叫（內部輔助，非 step）——含 290s 超時 ──
 async function claudeStreamingCall(systemPrompt: string, userPrompt: string, maxTokens: number): Promise<string> {
-  // 200 秒超時：串流需要較長時間，但不能無限等待
+  // 290 秒超時：Vercel Functions 預設 300s 上限，留 10s 緩衝
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 200000)
+  const timeout = setTimeout(() => controller.abort(), 290000)
 
   let res: Response
   try {
@@ -704,7 +704,8 @@ async function claudeStreamingCall(systemPrompt: string, userPrompt: string, max
   } catch (e) {
     if (e instanceof Error && e.name === 'AbortError') {
       // 串流讀取中超時：回傳已收到的部分內容（如果夠長就用）
-      if (result.length > 5000) {
+      // 閾值 15000 字：一個完整的 call 通常 20000+ 字，低於 15000 字代表被嚴重截斷
+      if (result.length > 15000) {
         console.warn(`Claude 串流超時但已收到 ${result.length} 字，使用部分結果`)
         clearTimeout(timeout)
         return result
