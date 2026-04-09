@@ -29,6 +29,9 @@ export async function GET(req: NextRequest) {
   const sinceISO = since.toISOString()
   const supabase = getSupabase()
 
+  // 已知 bot User-Agent 關鍵字（用於過濾非真人訪客）
+  const BOT_UA_PATTERNS = ['HeadlessChrome', 'vercel-screenshot', 'bot', 'crawler', 'spider', 'Googlebot', 'Bingbot', 'Slurp', 'DuckDuckBot', 'Baiduspider', 'YandexBot', 'facebookexternalhit', 'Twitterbot']
+
   // 並行查詢所有數據
   const [
     visitorsRes,
@@ -38,24 +41,30 @@ export async function GET(req: NextRequest) {
     countriesRes,
     devicesRes,
   ] = await Promise.all([
-    // 訪客總數（去重 session_id）
-    supabase.from('visitor_events').select('session_id', { count: 'exact' }).gte('created_at', sinceISO),
+    // 訪客總數（去重 session_id）— 包含 user_agent 用於 bot 過濾
+    supabase.from('visitor_events').select('session_id, user_agent', { count: 'exact' }).gte('created_at', sinceISO),
     // 付費報告
     supabase.from('paid_reports').select('*').gte('created_at', sinceISO).order('created_at', { ascending: false }),
     // 免費工具使用
     supabase.from('free_tool_usage').select('*', { count: 'exact' }).gte('created_at', sinceISO),
-    // 熱門頁面 Top 10
-    supabase.from('visitor_events').select('page_path').gte('created_at', sinceISO),
-    // 國家分佈
-    supabase.from('visitor_events').select('country').gte('created_at', sinceISO),
-    // 設備分佈
-    supabase.from('visitor_events').select('device_type').gte('created_at', sinceISO),
+    // 熱門頁面 Top 10（含 user_agent 用於 bot 過濾）
+    supabase.from('visitor_events').select('page_path, user_agent').gte('created_at', sinceISO),
+    // 國家分佈（含 user_agent 用於 bot 過濾）
+    supabase.from('visitor_events').select('country, user_agent').gte('created_at', sinceISO),
+    // 設備分佈（含 user_agent 用於 bot 過濾）
+    supabase.from('visitor_events').select('device_type, user_agent').gte('created_at', sinceISO),
   ])
 
-  // 計算統計
-  const visitors = visitorsRes.data || []
+  // Bot 過濾函式
+  const isBot = (ua: string) => BOT_UA_PATTERNS.some(p => ua.toLowerCase().includes(p.toLowerCase()))
+
+  // 計算統計（過濾 bot）
+  const allVisitors = visitorsRes.data || []
+  const visitors = allVisitors.filter(v => !isBot(v.user_agent || ''))
   const uniqueSessions = new Set(visitors.map(v => v.session_id)).size
   const totalPageviews = visitors.length
+  // bot 統計（供參考）
+  const botCount = allVisitors.length - visitors.length
 
   const reports = reportsRes.data || []
   const totalRevenue = reports.reduce((sum, r) => sum + (parseFloat(r.amount_usd) || 0), 0)
@@ -74,9 +83,10 @@ export async function GET(req: NextRequest) {
     .map(([plan, data]) => ({ plan, ...data }))
     .sort((a, b) => b.revenue - a.revenue)
 
-  // 熱門頁面
+  // 熱門頁面（過濾 bot）
   const pageCounts: Record<string, number> = {}
   for (const p of (topPagesRes.data || [])) {
+    if (isBot(p.user_agent || '')) continue
     pageCounts[p.page_path] = (pageCounts[p.page_path] || 0) + 1
   }
   const topPages = Object.entries(pageCounts)
@@ -84,9 +94,10 @@ export async function GET(req: NextRequest) {
     .sort((a, b) => b.count - a.count)
     .slice(0, 10)
 
-  // 國家分佈
+  // 國家分佈（過濾 bot）
   const countryCounts: Record<string, number> = {}
   for (const c of (countriesRes.data || [])) {
+    if (isBot(c.user_agent || '')) continue
     const country = c.country || 'Unknown'
     countryCounts[country] = (countryCounts[country] || 0) + 1
   }
@@ -94,9 +105,10 @@ export async function GET(req: NextRequest) {
     .map(([country, count]) => ({ country, count, pct: Math.round(count / Math.max(totalPageviews, 1) * 100) }))
     .sort((a, b) => b.count - a.count)
 
-  // 設備分佈
+  // 設備分佈（過濾 bot）
   const deviceCounts: Record<string, number> = {}
   for (const d of (devicesRes.data || [])) {
+    if (isBot(d.user_agent || '')) continue
     deviceCounts[d.device_type || 'unknown'] = (deviceCounts[d.device_type || 'unknown'] || 0) + 1
   }
 
@@ -117,6 +129,10 @@ export async function GET(req: NextRequest) {
     .map(([date, d]) => ({ date, revenue: Math.round(d.revenue * 100) / 100, orders: d.orders }))
     .sort((a, b) => a.date.localeCompare(b.date))
 
+  // 真實營收（排除 $0 測試訂單）
+  const realRevenue = reports.filter(r => parseFloat(r.amount_usd) > 0).reduce((sum, r) => sum + (parseFloat(r.amount_usd) || 0), 0)
+  const testOrders = reports.filter(r => parseFloat(r.amount_usd) === 0).length
+
   return NextResponse.json({
     range,
     overview: {
@@ -124,9 +140,12 @@ export async function GET(req: NextRequest) {
       total_pageviews: totalPageviews,
       total_orders: reports.length,
       completed_reports: completedReports,
-      total_revenue_usd: Math.round(totalRevenue * 100) / 100,
+      total_revenue_usd: Math.round(realRevenue * 100) / 100,
       free_tool_usage: freeToolCount,
       conversion_rate_pct: conversionRate,
+      // 額外統計供後台參考
+      bot_pageviews: botCount,
+      test_orders: testOrders,
     },
     top_products: topProducts,
     top_pages: topPages,

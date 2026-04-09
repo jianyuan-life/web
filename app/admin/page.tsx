@@ -17,6 +17,7 @@ type AdminData = {
     unique_visitors: number; total_pageviews: number; total_orders: number
     completed_reports: number; total_revenue_usd: number
     free_tool_usage: number; conversion_rate_pct: number
+    bot_pageviews?: number; test_orders?: number
   }
   top_products: { plan: string; count: number; revenue: number }[]
   top_pages: { path: string; count: number }[]

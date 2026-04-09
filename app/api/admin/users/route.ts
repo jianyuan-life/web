@@ -33,23 +33,25 @@ export async function GET(req: NextRequest) {
 
     const users = usersData?.users || []
 
-    // 取得所有付費報告（關聯用戶 email）
+    // 取得所有付費報告（用 customer_email 關聯用戶，因為 paid_reports 沒有 user_id 欄位）
     const { data: reports } = await getSupabase()
       .from('paid_reports')
-      .select('id, user_id, client_name, plan_code, amount_usd, status, created_at')
+      .select('id, client_name, customer_email, plan_code, amount_usd, status, created_at')
       .order('created_at', { ascending: false })
 
-    // 按 user_id 分組報告
-    const reportsByUser: Record<string, typeof reports> = {}
+    // 按 customer_email 分組報告
+    const reportsByEmail: Record<string, typeof reports> = {}
     for (const r of (reports || [])) {
-      if (!r.user_id) continue
-      if (!reportsByUser[r.user_id]) reportsByUser[r.user_id] = []
-      reportsByUser[r.user_id]!.push(r)
+      const email = (r.customer_email || '').toLowerCase().trim()
+      if (!email) continue
+      if (!reportsByEmail[email]) reportsByEmail[email] = []
+      reportsByEmail[email]!.push(r)
     }
 
     // 組合用戶資料
     const userList = users.map(u => {
-      const userReports = reportsByUser[u.id] || []
+      const email = (u.email || '').toLowerCase().trim()
+      const userReports = reportsByEmail[email] || []
       const totalSpent = userReports.reduce((sum, r) => sum + (parseFloat(r.amount_usd) || 0), 0)
       return {
         id: u.id,

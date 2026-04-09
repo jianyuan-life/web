@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await getSupabase()
     .from('paid_reports')
-    .select('id, client_name, customer_email, plan_code, amount_usd, status, created_at, updated_at, error_message, retry_count, access_token, birth_data')
+    .select('id, client_name, customer_email, plan_code, amount_usd, status, created_at, error_message, retry_count, access_token, birth_data')
     .order('created_at', { ascending: false })
     .limit(500)
 
