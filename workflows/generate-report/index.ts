@@ -12,6 +12,7 @@ import {
   aiGenerateCall4,
   aiGenerateGeneric,
   loadFamilyReports,
+  loadFamilyReportsByIds,
   aiGenerateG15,
   cleanFinalReport,
   qualityGate,
@@ -41,13 +42,19 @@ export async function generateReportWorkflow(reportId: string) {
   const { birthData, planCode, accessToken, customerEmail } = record
 
   // ── G15 家族藍圖：特殊流程（不排盤，直接讀取已有報告）──
-  if (planCode === 'G15' && birthData.plan_type === 'family_email') {
+  if (planCode === 'G15' && (birthData.plan_type === 'family_email' || birthData.plan_type === 'family_reports')) {
     try {
-      const memberEmails = (birthData.member_emails || []) as string[]
       const memberNames = (birthData.member_names || []) as string[]
 
-      // 載入所有成員的已完成人生藍圖
-      const familyReports = await loadFamilyReports(memberEmails, memberNames)
+      // 載入所有成員的已完成人生藍圖（新版用 report ID，舊版用 email）
+      let familyReports
+      if (birthData.plan_type === 'family_reports' && birthData.report_ids) {
+        const reportIds = (birthData.report_ids || []) as string[]
+        familyReports = await loadFamilyReportsByIds(reportIds, memberNames)
+      } else {
+        const memberEmails = (birthData.member_emails || []) as string[]
+        familyReports = await loadFamilyReports(memberEmails, memberNames)
+      }
 
       // AI 生成家族互動分析
       const systemPrompt = PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C']

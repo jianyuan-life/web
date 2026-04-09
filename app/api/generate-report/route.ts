@@ -626,9 +626,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '缺少出生資料' }, { status: 400 })
     }
 
-    // G15 家族藍圖（email 模式）必須走 Workflow，舊版 route 不支援
-    if (planCode === 'G15' && birthData.plan_type === 'family_email') {
-      console.log('G15 family_email 模式應走 Workflow，此路由不支援')
+    // G15 家族藍圖必須走 Workflow，舊版 route 不支援
+    if (planCode === 'G15' && (birthData.plan_type === 'family_email' || birthData.plan_type === 'family_reports')) {
+      console.log('G15 家族藍圖應走 Workflow，此路由不支援')
       await markReportFailed(reportId, 'G15 家族藍圖需透過 Workflow 生成，請重試')
       return NextResponse.json({ error: 'G15 需透過 Workflow 生成' }, { status: 400 })
     }

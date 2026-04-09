@@ -64,76 +64,150 @@ function CheckoutForm() {
             onSubmit={ctx.handleCheckout}
           />
         ) : ctx.isG15Plan ? (
-          /* G15 家族藍圖：email 驗證表單 */
+          /* G15 家族藍圖：導入已完成的人生藍圖報告 */
           <form onSubmit={ctx.handleCheckout} className="space-y-4">
             <div className="glass rounded-xl p-4 mb-2">
               <p className="text-sm text-text-muted leading-relaxed">
-                請輸入每位家庭成員購買「人生藍圖」時使用的 Email。系統會自動讀取已完成的報告資料，
-                進行家族互動分析。每位成員需先購買人生藍圖（$89）。
+                從已完成的「人生藍圖」報告中選擇家庭成員，系統會讀取各成員的命理資料進行家族互動分析。
+                <br />
+                <span className="text-gold">至少選擇 2 位，最多 8 位。</span>
               </p>
             </div>
 
-            <div className="space-y-3">
-              {ctx.g15Emails.map((entry, index) => (
-                <div key={index} className="glass rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gold">
-                      家庭成員 {index + 1}
-                    </span>
-                    {index >= 2 && (
-                      <button
-                        type="button"
-                        onClick={() => ctx.removeG15Email(index)}
-                        className="text-red-400 text-xs hover:text-red-300 transition-colors"
-                      >
-                        移除
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="email"
-                      placeholder="example@email.com"
-                      value={entry.email}
-                      onChange={(e) => ctx.updateG15Email(index, e.target.value)}
-                      className="flex-1 bg-dark-lighter border border-gold/20 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-text-muted/40 focus:outline-none focus:border-gold/60 transition-colors"
-                    />
-                  </div>
-                  {/* 驗證結果 */}
-                  {entry.verified && (
-                    <div className="mt-2 flex items-center gap-1.5 text-green-400 text-xs">
-                      <span>&#10003;</span>
-                      <span>已驗證 — {entry.name || '已找到報告'}</span>
+            {/* 已選取的成員 */}
+            {ctx.g15Selected.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gold">已選成員（{ctx.g15Selected.length}）</p>
+                {ctx.g15Selected.map((member) => (
+                  <div key={member.reportId} className="glass rounded-xl p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-400 text-sm">&#10003;</span>
+                      <span className="text-white text-sm font-medium">{member.name}</span>
+                      {member.createdAt && (
+                        <span className="text-text-muted/50 text-xs">
+                          {new Date(member.createdAt).toLocaleDateString('zh-TW')}
+                        </span>
+                      )}
                     </div>
-                  )}
-                  {entry.errorMsg && (
-                    <div className="mt-2 text-red-400 text-xs">
-                      {entry.errorMsg}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                    <button
+                      type="button"
+                      onClick={() => ctx.removeG15Report(member.reportId)}
+                      className="text-red-400 text-xs hover:text-red-300 transition-colors"
+                    >
+                      移除
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
-            {ctx.g15Emails.length < 8 && (
-              <button
-                type="button"
-                onClick={ctx.addG15Email}
-                className="w-full py-3 border border-gold/30 rounded-xl text-gold text-sm hover:bg-gold/10 transition-all"
-              >
-                + 加入第 {ctx.g15Emails.length + 1} 位家庭成員
-              </button>
+            {/* 我的報告列表 */}
+            {ctx.g15MyLoading ? (
+              <div className="text-center text-text-muted text-sm py-4">載入您的報告中...</div>
+            ) : ctx.g15MyReports.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-text-muted">您帳號下的人生藍圖</p>
+                {ctx.g15MyReports
+                  .filter(r => !ctx.g15Selected.some(s => s.reportId === r.id))
+                  .map((report) => (
+                  <div key={report.id} className="glass rounded-xl p-3 flex items-center justify-between hover:border-gold/40 border border-transparent transition-colors">
+                    <div>
+                      <span className="text-white text-sm">{report.name}</span>
+                      {report.createdAt && (
+                        <span className="text-text-muted/50 text-xs ml-2">
+                          {new Date(report.createdAt).toLocaleDateString('zh-TW')}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => ctx.addG15Report(report)}
+                      disabled={ctx.g15Selected.length >= 8}
+                      className="text-gold text-xs hover:text-gold/80 transition-colors disabled:opacity-30"
+                    >
+                      + 加入
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : !ctx.g15MyLoading ? (
+              <div className="glass rounded-xl p-4 text-center">
+                <p className="text-text-muted text-sm">您的帳號下還沒有已完成的人生藍圖報告</p>
+                <a href="/pricing" className="text-gold text-xs hover:underline mt-1 inline-block">
+                  前往購買人生藍圖
+                </a>
+              </div>
+            ) : null}
+
+            {/* 搜尋其他家人的報告 */}
+            {ctx.g15Selected.length < 8 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-text-muted">搜尋其他家人的報告</p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="輸入姓名搜尋..."
+                    value={ctx.g15SearchQuery}
+                    onChange={(e) => ctx.setG15SearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        ctx.searchG15Reports(ctx.g15SearchQuery)
+                      }
+                    }}
+                    className="flex-1 bg-dark-lighter border border-gold/20 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-text-muted/40 focus:outline-none focus:border-gold/60 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => ctx.searchG15Reports(ctx.g15SearchQuery)}
+                    disabled={ctx.g15SearchLoading || !ctx.g15SearchQuery.trim()}
+                    className="px-4 py-2.5 bg-gold/20 text-gold rounded-lg text-sm hover:bg-gold/30 transition-colors disabled:opacity-40"
+                  >
+                    {ctx.g15SearchLoading ? '搜尋中...' : '搜尋'}
+                  </button>
+                </div>
+
+                {/* 搜尋結果 */}
+                {ctx.g15SearchResults.length > 0 && (
+                  <div className="space-y-1.5">
+                    {ctx.g15SearchResults.map((report) => (
+                      <div key={report.id} className="glass rounded-lg p-3 flex items-center justify-between hover:border-gold/40 border border-transparent transition-colors">
+                        <div>
+                          <span className="text-white text-sm">{report.name}</span>
+                          {report.emailHint && (
+                            <span className="text-text-muted/40 text-xs ml-2">{report.emailHint}</span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => ctx.addG15Report(report)}
+                          disabled={ctx.g15Selected.length >= 8}
+                          className="text-gold text-xs hover:text-gold/80 transition-colors disabled:opacity-30"
+                        >
+                          + 加入
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {ctx.g15SearchQuery && !ctx.g15SearchLoading && ctx.g15SearchResults.length === 0 && (
+                  <p className="text-text-muted/50 text-xs text-center py-2">找不到符合的報告，請確認姓名是否正確</p>
+                )}
+              </div>
             )}
 
             {ctx.error && <p className="text-red-400 text-sm text-center">{ctx.error}</p>}
 
             <button
               type="submit"
-              disabled={ctx.loading || ctx.g15VerifyLoading}
+              disabled={ctx.loading || ctx.g15Selected.length < 2}
               className="w-full py-3.5 bg-gold text-dark font-bold rounded-xl text-lg btn-glow disabled:opacity-50 mt-4"
             >
-              {ctx.g15VerifyLoading ? '驗證成員資料中...' : ctx.loading ? '跳轉付款中...' : `確認付款 — $${ctx.finalPrice}`}
+              {ctx.loading ? '跳轉付款中...' : `確認付款 — $${ctx.finalPrice}`}
             </button>
+            {ctx.g15Selected.length < 2 && (
+              <p className="text-xs text-gold/60 text-center">請至少選擇 2 位家庭成員</p>
+            )}
             <p className="text-xs text-text-muted/60 text-center">
               付款由 Stripe 安全處理。報告平均需 30 分鐘以上。
             </p>

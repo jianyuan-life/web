@@ -32,12 +32,27 @@ export const FAMILY_EXTRA_PRICE: Record<string, number> = {
   R: 19,
 }
 
-// G15 家族藍圖：用 email 查找已完成的人生藍圖報告
+// G15 家族藍圖：從已完成的人生藍圖報告中選取成員
+export interface G15SelectedReport {
+  reportId: string         // paid_reports.id
+  name: string             // 客戶姓名
+  createdAt?: string       // 報告建立時間
+}
+
+// 搜尋結果項目
+export interface G15SearchResult {
+  id: string
+  name: string
+  emailHint?: string       // 隱私遮蔽的 email 提示
+  createdAt?: string
+}
+
+// 保留舊介面供相容（如有其他引用）
 export interface FamilyEmailEntry {
   email: string
-  verified: boolean        // 是否已驗證有 completed 的 C 方案
-  name?: string            // 驗證後填入的客戶名字
-  errorMsg?: string        // 驗證失敗的錯誤訊息
+  verified: boolean
+  name?: string
+  errorMsg?: string
 }
 
 export function newFamilyEmail(): FamilyEmailEntry {
@@ -47,7 +62,7 @@ export function newFamilyEmail(): FamilyEmailEntry {
 export const PLAN_DESCRIPTIONS: Record<string, string> = {
   C: '填寫您的出生資料，我們將為您進行十五套命理系統深度分析',
   D: '請選擇分析主題並填寫出生資料',
-  G15: '請輸入每位家庭成員的 Email（每位成員需先購買「人生藍圖」報告）',
+  G15: '從已完成的人生藍圖報告中選擇家庭成員，進行家族互動分析',
   R: '請填寫雙方（或多方）的出生資料',
   E1: '請填寫您的出生資料與事件背景。系統將精確排算事件前後各時段的奇門局，套入您的命格驗證吉位，交出針對此事最精準的 Top 5 出行方案。計算需 40 分鐘以上。',
   E2: '請填寫您的出生資料。系統將從今日起，逐一排算未來 30 天共 360 個時辰的奇門局，套入您的命格找出個人吉位，篩選出 Top 5 最適合出行的時機與方向。計算需 40 分鐘以上，完成後可在儀表板查看。',

@@ -9,6 +9,7 @@ import {
   PLANS, FAMILY_EXTRA_PRICE, D_TOPICS, TIME_BLOCKS,
   newMember, type FamilyMember,
   newFamilyEmail, type FamilyEmailEntry,
+  type G15SelectedReport, type G15SearchResult,
 } from '@/components/checkout/types'
 
 export function useCheckoutForm() {
@@ -53,7 +54,15 @@ export function useCheckoutForm() {
   const [rMembers, setRMembers] = useState<FamilyMember[]>([newMember(), newMember()])
   const [rRelationDesc, setRRelationDesc] = useState('')
 
-  // 方案 G15（新版：用 email 查找已完成的人生藍圖）
+  // 方案 G15（導入已完成的人生藍圖報告）
+  const [g15Selected, setG15Selected] = useState<G15SelectedReport[]>([])
+  const [g15MyReports, setG15MyReports] = useState<G15SearchResult[]>([])
+  const [g15SearchQuery, setG15SearchQuery] = useState('')
+  const [g15SearchResults, setG15SearchResults] = useState<G15SearchResult[]>([])
+  const [g15SearchLoading, setG15SearchLoading] = useState(false)
+  const [g15MyLoading, setG15MyLoading] = useState(false)
+
+  // 舊版保留（相容）
   const [g15Emails, setG15Emails] = useState<FamilyEmailEntry[]>([newFamilyEmail(), newFamilyEmail()])
   const [g15VerifyLoading, setG15VerifyLoading] = useState(false)
 
@@ -136,6 +145,10 @@ export function useCheckoutForm() {
         if (data.user.email) {
           setAuthEmail(data.user.email)
           try { sessionStorage.setItem('jianyuan_email', data.user.email) } catch {}
+          // G15：自動載入該用戶的已完成人生藍圖報告
+          if (planCode === 'G15') {
+            loadMyReports(data.user.email)
+          }
         }
         setAuthChecked(true)
       }
@@ -153,7 +166,58 @@ export function useCheckoutForm() {
     if (index >= 2) setFamilyMembers(prev => prev.filter((_, i) => i !== index))
   }
 
-  // G15 email 操作
+  // G15 導入模式：自動載入當前用戶的已完成人生藍圖
+  const loadMyReports = async (userEmail: string) => {
+    if (!userEmail) return
+    setG15MyLoading(true)
+    try {
+      const res = await fetch(`/api/checkout/search-reports?email=${encodeURIComponent(userEmail)}`)
+      const data = await res.json()
+      if (res.ok && data.reports) {
+        setG15MyReports(data.reports)
+      }
+    } catch { /* 靜默失敗 */ }
+    finally { setG15MyLoading(false) }
+  }
+
+  // G15 搜尋其他人的報告（用姓名）
+  const searchG15Reports = async (query: string) => {
+    if (!query.trim()) {
+      setG15SearchResults([])
+      return
+    }
+    setG15SearchLoading(true)
+    try {
+      const res = await fetch(`/api/checkout/search-reports?q=${encodeURIComponent(query.trim())}`)
+      const data = await res.json()
+      if (res.ok && data.reports) {
+        // 過濾掉已選取的報告
+        const selectedIds = new Set(g15Selected.map(s => s.reportId))
+        setG15SearchResults(data.reports.filter((r: G15SearchResult) => !selectedIds.has(r.id)))
+      }
+    } catch { /* 靜默失敗 */ }
+    finally { setG15SearchLoading(false) }
+  }
+
+  // G15 選取報告
+  const addG15Report = (report: G15SearchResult) => {
+    if (g15Selected.length >= 8) return
+    if (g15Selected.some(s => s.reportId === report.id)) return
+    setG15Selected(prev => [...prev, {
+      reportId: report.id,
+      name: report.name,
+      createdAt: report.createdAt,
+    }])
+    // 從搜尋結果移除已選的
+    setG15SearchResults(prev => prev.filter(r => r.id !== report.id))
+  }
+
+  // G15 移除已選報告
+  const removeG15Report = (reportId: string) => {
+    setG15Selected(prev => prev.filter(s => s.reportId !== reportId))
+  }
+
+  // G15 舊版 email 操作（保留相容）
   const updateG15Email = (index: number, email: string) => {
     setG15Emails(prev => prev.map((e, i) => i === index ? { ...e, email, verified: false, name: undefined, errorMsg: undefined } : e))
   }
@@ -163,41 +227,7 @@ export function useCheckoutForm() {
   const removeG15Email = (index: number) => {
     if (index >= 2) setG15Emails(prev => prev.filter((_, i) => i !== index))
   }
-  const verifyG15Emails = async (): Promise<boolean> => {
-    setG15VerifyLoading(true)
-    try {
-      const res = await fetch('/api/checkout/verify-family', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emails: g15Emails.map(e => e.email.trim().toLowerCase()) }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.error || '驗證失敗')
-        return false
-      }
-      // data.results: { email, valid, name?, error? }[]
-      const updated = g15Emails.map((entry, i) => {
-        const result = data.results?.[i]
-        if (result?.valid) {
-          return { ...entry, verified: true, name: result.name, errorMsg: undefined }
-        } else {
-          return { ...entry, verified: false, errorMsg: result?.error || '找不到已完成的人生藍圖報告' }
-        }
-      })
-      setG15Emails(updated)
-      const allValid = updated.every(e => e.verified)
-      if (!allValid) {
-        setError('部分家庭成員尚未購買人生藍圖報告，請確認後再試')
-      }
-      return allValid
-    } catch {
-      setError('驗證失敗，請稍後再試')
-      return false
-    } finally {
-      setG15VerifyLoading(false)
-    }
-  }
+  const verifyG15Emails = async (): Promise<boolean> => { return true }
 
   // R 方案成員操作
   const updateRMember = (index: number, updated: FamilyMember) => {
@@ -215,16 +245,11 @@ export function useCheckoutForm() {
     e.preventDefault()
 
     if (planCode === 'G15') {
-      // G15 新版：驗證 email
-      for (let i = 0; i < g15Emails.length; i++) {
-        if (!g15Emails[i].email.trim()) {
-          alert(`請輸入第 ${i + 1} 位家庭成員的 Email`)
-          return
-        }
+      // G15：檢查已選取的報告數量
+      if (g15Selected.length < 2) {
+        alert('請至少選擇 2 位家庭成員的人生藍圖報告')
+        return
       }
-      // 驗證所有 email 都有已完成的人生藍圖
-      const allVerified = await verifyG15Emails()
-      if (!allVerified) return
     } else if (planCode === 'G3') {
       for (let i = 0; i < familyMembers.length; i++) {
         if (!familyMembers[i].name.trim()) {
@@ -271,11 +296,11 @@ export function useCheckoutForm() {
       let birthData: Record<string, any> = {}
 
       if (planCode === 'G15') {
-        // G15 新版：只傳 email，後端從已有報告取出生資料
+        // G15：傳送已選取的報告 ID，後端直接讀取報告資料
         birthData = {
-          plan_type: 'family_email',
-          member_emails: g15Emails.map(e => e.email.trim().toLowerCase()),
-          member_names: g15Emails.map(e => e.name || ''),
+          plan_type: 'family_reports',
+          report_ids: g15Selected.map(s => s.reportId),
+          member_names: g15Selected.map(s => s.name),
         }
       } else if (planCode === 'G3') {
         birthData = {
@@ -405,7 +430,11 @@ export function useCheckoutForm() {
     dTopic, setDTopic, dOtherDesc, setDOtherDesc,
     // R 方案
     rMembers, updateRMember, addRMember, removeRMember, rRelationDesc, setRRelationDesc,
-    // G15 方案（新版 email）
+    // G15 方案（導入模式）
+    g15Selected, g15MyReports, g15MyLoading,
+    g15SearchQuery, setG15SearchQuery, g15SearchResults, g15SearchLoading,
+    searchG15Reports, addG15Report, removeG15Report,
+    // G15 舊版 email（保留相容）
     g15Emails, updateG15Email, addG15Email, removeG15Email, g15VerifyLoading,
     // G15/G3 方案（舊版 family members）
     familyMembers, updateFamilyMember, addFamilyMember, removeFamilyMember,

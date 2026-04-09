@@ -659,6 +659,44 @@ export async function loadFamilyReports(
 }
 loadFamilyReports.maxRetries = 2
 
+// ── G15 家族藍圖（新版）：用 report ID 直接載入成員報告 ──
+export async function loadFamilyReportsByIds(
+  reportIds: string[], memberNames: string[],
+): Promise<FamilyMemberReport[]> {
+  "use step";
+  await emitProgress({ step: '載入資料', progress: 10, message: '正在載入家庭成員的人生藍圖報告...' })
+
+  const supabase = getSupabase()
+  const results: FamilyMemberReport[] = []
+
+  for (let i = 0; i < reportIds.length; i++) {
+    const { data, error } = await supabase
+      .from('paid_reports')
+      .select('client_name, report_result, birth_data, customer_email')
+      .eq('id', reportIds[i])
+      .eq('plan_code', 'C')
+      .eq('status', 'completed')
+      .single()
+
+    if (error || !data) {
+      throw new FatalError(`找不到報告 ID: ${reportIds[i]} 的已完成人生藍圖`)
+    }
+
+    results.push({
+      email: data.customer_email || '',
+      name: data.client_name || memberNames[i] || '',
+      reportContent: typeof data.report_result === 'string'
+        ? data.report_result
+        : JSON.stringify(data.report_result || ''),
+      birthData: data.birth_data as BirthData,
+    })
+  }
+
+  console.log(`載入 ${results.length} 份家庭成員報告（by ID）`)
+  return results
+}
+loadFamilyReportsByIds.maxRetries = 2
+
 // ── G15 家族藍圖：AI 生成家族互動分析 ──
 export async function aiGenerateG15(
   familyReports: FamilyMemberReport[], planCode: string, systemPrompt: string,
@@ -723,7 +761,7 @@ export async function generatePDF(
     body: JSON.stringify({
       report_id: reportId,
       plan_code: planCode,
-      client_name: birthData.plan_type === 'family_email'
+      client_name: birthData.plan_type === 'family_email' || birthData.plan_type === 'family_reports'
         ? ((birthData.member_names as string[] | undefined)?.filter(Boolean).join('、') || 'Unknown')
         : birthData.plan_type === 'family'
         ? ((birthData.members as Array<{ name?: string }> | undefined)?.map(m => m.name).filter(Boolean).join('、') || 'Unknown')
@@ -1010,7 +1048,7 @@ export async function sendReportEmail(
     subtitle: isCN ? 'JIANYUAN · 东西方命理整合平台' : 'JIANYUAN · 東西方命理整合平台',
     notice: isCN ? '✦ 报告完成通知' : '✦ 報告完成通知',
     title: (() => {
-      const displayName = birthData.plan_type === 'family_email'
+      const displayName = birthData.plan_type === 'family_email' || birthData.plan_type === 'family_reports'
         ? ((birthData.member_names as string[] | undefined)?.filter(Boolean).join('、') || '')
         : birthData.plan_type === 'family'
         ? ((birthData.members as Array<{ name?: string }> | undefined)?.map(m => m.name).filter(Boolean).join('、') || '')
@@ -1032,7 +1070,7 @@ export async function sendReportEmail(
     footer: isCN ? '如有任何问题，请联系' : '如有任何問題，請聯繫',
     copyright: isCN ? '© 2026 鉴源命理平台 · jianyuan.life' : '© 2026 鑒源命理平台 · jianyuan.life',
     subject: (() => {
-      const subjectName = birthData.plan_type === 'family_email'
+      const subjectName = birthData.plan_type === 'family_email' || birthData.plan_type === 'family_reports'
         ? ((birthData.member_names as string[] | undefined)?.filter(Boolean).join('、') || '')
         : birthData.plan_type === 'family'
         ? ((birthData.members as Array<{ name?: string }> | undefined)?.map(m => m.name).filter(Boolean).join('、') || '')
