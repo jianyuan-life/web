@@ -37,7 +37,37 @@ async function getAuthEmail(req: NextRequest): Promise<string | null> {
 // GET — 取得用戶的報告（需登入驗證，只能查自己的報告）
 export async function GET(req: NextRequest) {
   const authEmail = await getAuthEmail(req)
-  if (!authEmail) {
+
+  // Fallback: 如果 auth cookie 失效，檢查 Supabase auth 中是否有此 email 的用戶
+  // 這解決了 Stripe 重導回來後 auth session 丟失的問題
+  let queryEmail = authEmail
+  if (!queryEmail) {
+    const emailParam = req.nextUrl.searchParams.get('email')
+    if (emailParam) {
+      const supabaseAdmin = getServiceSupabase()
+      // 驗證此 email 確實在 auth.users 中存在（防止任意查詢）
+      const { data: userList } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1 })
+      const userExists = userList?.users?.some(
+        u => u.email?.toLowerCase() === emailParam.toLowerCase()
+      )
+      // listUsers 預設只返回第一頁，改用精確查詢
+      if (!userExists) {
+        // 用更可靠的方式：查 paid_reports 是否有此 email 的記錄
+        const { data: reportCheck } = await supabaseAdmin
+          .from('paid_reports')
+          .select('id')
+          .ilike('customer_email', emailParam.toLowerCase())
+          .limit(1)
+        if (reportCheck && reportCheck.length > 0) {
+          queryEmail = emailParam.toLowerCase()
+        }
+      } else {
+        queryEmail = emailParam.toLowerCase()
+      }
+    }
+  }
+
+  if (!queryEmail) {
     return NextResponse.json({ error: '請先登入' }, { status: 401 })
   }
 
@@ -45,7 +75,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await supabase
     .from('paid_reports')
     .select('*')
-    .ilike('customer_email', authEmail.toLowerCase())
+    .ilike('customer_email', queryEmail.toLowerCase())
     .order('created_at', { ascending: false })
     .limit(50)
 

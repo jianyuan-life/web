@@ -16,6 +16,8 @@ export async function GET(request: NextRequest) {
     await supabase.auth.exchangeCodeForSession(code)
   }
 
-  // OAuth 完成後導向儀表板
-  return NextResponse.redirect(`${siteUrl}/dashboard`)
+  // OAuth 完成後導向原始頁面或儀表板
+  const redirectTo = requestUrl.searchParams.get('redirect') || '/dashboard'
+  const safeRedirect = redirectTo.startsWith('/') ? redirectTo : '/dashboard'
+  return NextResponse.redirect(`${siteUrl}${safeRedirect}`)
 }

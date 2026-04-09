@@ -46,18 +46,87 @@ function DashboardContent() {
   const [retryingId, setRetryingId] = useState<string | null>(null)
   const [pollStartTime] = useState(() => Date.now())
   const [userEmail, setUserEmail] = useState<string>('')
+  const [authToken, setAuthToken] = useState<string>('')
+  const [authFailed, setAuthFailed] = useState(false)
   // 追蹤剛完成的報告 ID（用於顯示完成提示動畫）
   const [justCompletedIds, setJustCompletedIds] = useState<Set<string>>(new Set())
 
-  // 取得用戶 email（多種方式確保取到）
+  // 建立帶 auth 的 fetch headers
+  const getAuthHeaders = (): HeadersInit => {
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`
+    }
+    return headers
+  }
+
+  // 帶 auth 的報告查詢
+  const fetchReports = async (): Promise<Report[]> => {
+    // 每次 fetch 前嘗試取得最新 token（Supabase 可能已自動 refresh）
+    let token = authToken
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (sessionData.session?.access_token) {
+        token = sessionData.session.access_token
+        setAuthToken(token)
+      }
+    } catch { /* 靜默 */ }
+
+    const headers: HeadersInit = {}
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    const res = await fetch(`/api/reports?email=${encodeURIComponent(userEmail)}`, {
+      headers,
+      credentials: 'include', // 確保 cookie 也一起送
+    })
+
+    if (res.status === 401) {
+      // Auth 失敗：嘗試重新取得 session
+      const { data: retrySession } = await supabase.auth.getSession()
+      if (retrySession.session?.access_token) {
+        setAuthToken(retrySession.session.access_token)
+        // 用新 token 重試一次
+        const retryRes = await fetch(`/api/reports?email=${encodeURIComponent(userEmail)}`, {
+          headers: { 'Authorization': `Bearer ${retrySession.session.access_token}` },
+          credentials: 'include',
+        })
+        if (retryRes.ok) {
+          const data = await retryRes.json()
+          setAuthFailed(false)
+          return data.reports || []
+        }
+      }
+      setAuthFailed(true)
+      return []
+    }
+
+    if (res.ok) {
+      const data = await res.json()
+      setAuthFailed(false)
+      return data.reports || []
+    }
+
+    return []
+  }
+
+  // 取得用戶 email + auth token（多種方式確保取到）
   useEffect(() => {
+    let retryCount = 0
+    const maxRetries = 5 // Stripe 重導回來後最多等 15 秒讓 auth 初始化
+
     async function getEmail() {
       // 方法1: getSession（比 getUser 更可靠，不需要伺服器驗證）
       const { data: sessionData } = await supabase.auth.getSession()
       if (sessionData.session?.user?.email) {
         const email = sessionData.session.user.email
         setUserEmail(email)
-        try { sessionStorage.setItem('jianyuan_email', email) } catch {}
+        setAuthToken(sessionData.session.access_token || '')
+        try {
+          sessionStorage.setItem('jianyuan_email', email)
+          localStorage.setItem('jianyuan_email', email) // 持久化，Stripe 重導後不丟失
+        } catch {}
         return
       }
       // 方法2: getUser（需要伺服器端驗證 token）
@@ -65,28 +134,42 @@ function DashboardContent() {
       if (userData.user?.email) {
         const email = userData.user.email
         setUserEmail(email)
-        try { sessionStorage.setItem('jianyuan_email', email) } catch {}
+        try {
+          sessionStorage.setItem('jianyuan_email', email)
+          localStorage.setItem('jianyuan_email', email)
+        } catch {}
         return
       }
-      // 方法3: 從 sessionStorage 恢復（Stripe 重導向後 auth 可能尚未初始化）
+      // 方法3: 從 sessionStorage / localStorage 恢復
       try {
-        const cached = sessionStorage.getItem('jianyuan_email')
+        const cached = sessionStorage.getItem('jianyuan_email') || localStorage.getItem('jianyuan_email')
         if (cached) {
           setUserEmail(cached)
           return
         }
       } catch {}
+      // 付款成功重導回來但 auth 還沒初始化 → 等待重試
+      if (paymentSuccess && retryCount < maxRetries) {
+        retryCount++
+        setTimeout(getEmail, 3000)
+        return
+      }
       // 所有方法均失敗，且不是付款成功重導向 → 跳轉登入頁
       if (!paymentSuccess) {
         window.location.href = '/auth/login'
       }
     }
     getEmail()
-    // 監聽 auth 變化
+    // 監聽 auth 變化（Stripe 重導回來後 auth 可能延遲恢復）
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user?.email) {
         setUserEmail(session.user.email)
-        try { sessionStorage.setItem('jianyuan_email', session.user.email) } catch {}
+        setAuthToken(session.access_token || '')
+        setAuthFailed(false)
+        try {
+          sessionStorage.setItem('jianyuan_email', session.user.email)
+          localStorage.setItem('jianyuan_email', session.user.email)
+        } catch {}
       }
     })
     return () => subscription.unsubscribe()
@@ -95,17 +178,16 @@ function DashboardContent() {
 
   const handleDelete = async (id: string) => {
     setDeletingId(id)
-    // 先樂觀更新 UI + 記錄已刪除 ID（防止輪詢把它塞回來）
     setDeletedIds(prev => new Set(prev).add(id))
     setReports(prev => prev.filter(r => r.id !== id))
     try {
       await fetch('/api/reports', {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ id, email: userEmail }),
       })
     } catch {
-      // 刪除失敗：從記錄中移除，讓報告重新出現
       setDeletedIds(prev => { const s = new Set(prev); s.delete(id); return s })
     } finally {
       setDeletingId(null)
@@ -119,11 +201,11 @@ function DashboardContent() {
     try {
       const res = await fetch('/api/reports', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ id, email: userEmail }),
       })
       if (res.ok) {
-        // 樂觀更新：把狀態改為 pending
         setReports(prev => prev.map(r => r.id === id ? { ...r, status: 'pending', error_message: null } : r))
       } else {
         const data = await res.json()
@@ -145,31 +227,28 @@ function DashboardContent() {
 
   useEffect(() => {
     if (!userEmail) return
-    fetch(`/api/reports?email=${encodeURIComponent(userEmail)}`)
-      .then(r => r.json())
-      .then(data => {
-        setReports(data.reports || [])
+    fetchReports()
+      .then(rpts => {
+        setReports(rpts)
         setLoading(false)
       })
       .catch(() => setLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userEmail])
 
   // 付款成功後輪詢等待報告生成（5秒間隔，60分鐘上限）
   useEffect(() => {
     if (!paymentSuccess || !userEmail) return
     const interval = setInterval(() => {
-      // 超過 60 分鐘停止輪詢
       if (Date.now() - pollStartTime > 60 * 60 * 1000) {
         clearInterval(interval)
         return
       }
-      fetch(`/api/reports?email=${encodeURIComponent(userEmail)}`)
-        .then(r => r.json())
-        .then(data => {
-          const newReports = (data.reports || []).filter(
+      fetchReports()
+        .then(allReports => {
+          const newReports = allReports.filter(
             (r: Report) => !deletedIds.has(r.id)
           )
-          // 偵測從 pending 變成 completed 的報告
           const previousPendingIds = new Set(reports.filter(r => r.status === 'pending').map(r => r.id))
           const newlyCompleted = newReports.filter(
             (r: Report) => r.status === 'completed' && previousPendingIds.has(r.id)
@@ -180,7 +259,6 @@ function DashboardContent() {
               newlyCompleted.forEach((r: Report) => next.add(r.id))
               return next
             })
-            // 5 秒後清除完成提示
             setTimeout(() => {
               setJustCompletedIds(prev => {
                 const next = new Set(prev)
@@ -190,13 +268,14 @@ function DashboardContent() {
             }, 5000)
           }
           setReports(newReports)
-          // 沒有 pending 報告就停止輪詢（completed 或 failed 都停）
           if (!newReports.some((r: Report) => r.status === 'pending')) {
             clearInterval(interval)
           }
         })
+        .catch(() => {/* 靜默 */})
     }, 5000)
     return () => clearInterval(interval)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentSuccess, deletedIds, pollStartTime, userEmail])
 
   // 無論是否剛付款，只要有 pending 報告就持續輪詢（15秒間隔，60分鐘上限）
@@ -206,18 +285,15 @@ function DashboardContent() {
     if (!hasPending) return
 
     const interval = setInterval(() => {
-      // 超過 60 分鐘停止輪詢
       if (Date.now() - pollStartTime > 60 * 60 * 1000) {
         clearInterval(interval)
         return
       }
-      fetch(`/api/reports?email=${encodeURIComponent(userEmail)}`)
-        .then(r => r.json())
-        .then(data => {
-          const newReports = (data.reports || []).filter(
+      fetchReports()
+        .then(allReports => {
+          const newReports = allReports.filter(
             (r: Report) => !deletedIds.has(r.id)
           )
-          // 偵測從 pending 變成 completed 的報告，顯示完成動畫
           const previousPendingIds = new Set(reports.filter(r => r.status === 'pending').map(r => r.id))
           const newlyCompleted = newReports.filter(
             (r: Report) => r.status === 'completed' && previousPendingIds.has(r.id)
@@ -241,10 +317,11 @@ function DashboardContent() {
             clearInterval(interval)
           }
         })
-        .catch(() => {/* 靜默失敗 */})
+        .catch(() => {/* 靜默 */})
     }, 15000)
 
     return () => clearInterval(interval)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reports, deletedIds, loading, pollStartTime, userEmail])
 
   const avgScore = (report: Report) => {
@@ -304,6 +381,21 @@ function DashboardContent() {
           <div className="glass rounded-2xl p-16 text-center">
             <div className="w-8 h-8 border-2 border-gold/50 border-t-gold rounded-full animate-spin mx-auto mb-4" />
             <p className="text-text-muted">載入中...</p>
+          </div>
+        ) : authFailed && paymentSuccess ? (
+          <div className="glass rounded-2xl p-10 text-center">
+            <div className="text-4xl mb-4">&#128274;</div>
+            <h3 className="text-lg font-semibold text-cream mb-2">登入狀態已過期</h3>
+            <p className="text-sm text-text-muted mb-2">
+              付款已成功！但從 Stripe 返回時登入狀態中斷。
+            </p>
+            <p className="text-sm text-text-muted mb-6">
+              請重新登入即可查看您的報告，報告正在生成中不受影響。
+            </p>
+            <a href="/auth/login?redirect=/dashboard"
+              className="px-6 py-2.5 bg-gold text-dark font-semibold rounded-lg btn-glow inline-block">
+              重新登入查看報告
+            </a>
           </div>
         ) : reports.length > 0 ? (
           <div className="space-y-4">
