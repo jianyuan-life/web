@@ -36,8 +36,11 @@ interface ReportData {
     gender: string
     locale?: string
     plan_type?: string
+    plan?: string
     member_names?: string[]
     member_emails?: string[]
+    members?: Array<{ name?: string; gender?: string }>
+    relation_description?: string
   }
   report_result: {
     ai_content: string
@@ -80,7 +83,7 @@ function parseStructuredContent(markdown: string): ContentSection[] {
     let type: ContentSection['type'] = 'general'
     if (/好的地方|好的方面|天賦優勢|你的優勢|你的強項|這個家的祝福|相容性/.test(title)) type = 'positive'
     else if (/需要注意|需要留意|注意的地方|家庭和諧的挑戰|需注意|關係張力/.test(title)) type = 'caution'
-    else if (/改善方案|改善建議|行動指南|加持你的運勢|讓家更好|建議詳解|集體建議/.test(title)) type = 'improvement'
+    else if (/改善方案|改善建議|行動指南|加持你的運勢|讓家更好|建議詳解|集體建議|刻意練習/.test(title)) type = 'improvement'
 
     sections.push({ type, title, content })
   }
@@ -132,7 +135,7 @@ const SUB_BOX_STYLES: Record<string, { bg: string; border: string; titleColor: s
 function classifySubSection(title: string): 'positive' | 'caution' | 'improvement' | 'general' {
   if (/好的地方|好的方面|優勢|優點|強項|祝福|相容性/.test(title)) return 'positive'
   if (/需要注意|需注意|注意的地方|注意|風險|挑戰|弱點|關係張力/.test(title)) return 'caution'
-  if (/改善方案|改善建議|改善|建議|提升|行動|指南/.test(title)) return 'improvement'
+  if (/改善方案|改善建議|改善|建議|提升|行動|指南|刻意練習/.test(title)) return 'improvement'
   return 'general'
 }
 
@@ -286,6 +289,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           <h1 className="text-xl font-bold text-cream mb-2">
             {['E1','E2'].includes(report.plan_code) ? '奇門遁甲出門訣排算中'
               : report.plan_code === 'G15' ? '家族藍圖分析進行中'
+              : report.plan_code === 'R' ? '關係合盤分析進行中'
               : '命理分析進行中'}
           </h1>
           <p className="text-text-muted text-sm mb-2">
@@ -293,11 +297,14 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               ? '系統正以 25 層古籍評分體系逐時辰排算奇門局，套入個人年命宮驗證吉位'
               : report.plan_code === 'G15'
               ? '正在為您的家庭成員進行多人命格交叉分析，整合家族互動關係'
+              : report.plan_code === 'R'
+              ? '系統正為雙方分別排盤，並用七大命理系統進行合盤分析'
               : '系統正同步調用東西方十五大命理系統，逐一進行排盤運算與深度解析'}
           </p>
           <p className="text-text-muted/60 text-xs mb-1">
             {['E1','E2'].includes(report.plan_code) ? '出門訣排算通常需要 40–50 分鐘'
               : report.plan_code === 'G15' ? '家族分析通常需要 30–45 分鐘'
+              : report.plan_code === 'R' ? '合盤分析通常需要 30–45 分鐘'
               : '完整分析通常需要 40–60 分鐘'}
           </p>
           <p className="text-text-muted/60 text-xs mb-6">完成後將自動寄送 Email 通知您，無需持續等候</p>
@@ -315,6 +322,21 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
     : 0
   const isChumenji = ['E1', 'E2'].includes(report.plan_code)
   const isFamily = report.plan_code === 'G15'
+  const isRelationship = report.plan_code === 'R'
+
+  // R 方案：從報告內容提取相容度總分
+  let compatibilityScore: number | null = null
+  let compatibilityVerdict = ''
+  if (isRelationship && aiContent) {
+    const scoreMatch = aiContent.match(/相容度總分\s*[:：]?\s*(\d+)\s*[/／]\s*100/)
+    if (scoreMatch) {
+      compatibilityScore = parseInt(scoreMatch[1])
+      if (compatibilityScore >= 90) compatibilityVerdict = '天作之合'
+      else if (compatibilityScore >= 70) compatibilityVerdict = '互補互助'
+      else if (compatibilityScore >= 50) compatibilityVerdict = '需要經營'
+      else compatibilityVerdict = '挑戰很大'
+    }
+  }
 
   // 報告內容完整性檢查 — 數據零容忍
   const isContentEmpty = !aiContent || aiContent.trim().length < 100
@@ -383,10 +405,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
     }
   }
 
-  // G15 家族藍圖：顯示全部章節，不做摘要篩選
+  // G15 家族藍圖 / R 合否：顯示全部章節，不做摘要篩選
   // 如果篩選出的摘要太少（< 3），退回顯示全部（可能是非 C 方案）
-  const sections = isChumenji ? [] : isFamily ? cleanedSections : (summarySections.length >= 3 ? summarySections : cleanedSections)
-  const isShowingSummary = !isChumenji && !isFamily && summarySections.length >= 3 && cleanedSections.length > summarySections.length
+  const sections = isChumenji ? [] : (isFamily || isRelationship) ? cleanedSections : (summarySections.length >= 3 ? summarySections : cleanedSections)
+  const isShowingSummary = !isChumenji && !isFamily && !isRelationship && summarySections.length >= 3 && cleanedSections.length > summarySections.length
 
   // 排序系統評分（高到低）
   const sortedScores = [...analysesSummary].sort((a, b) => b.score - a.score)
@@ -439,7 +461,66 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             {new Date(report.created_at).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })}
           </div>
 
-          {avgScore > 0 && !isChumenji && !isFamily && (
+          {/* R 方案專屬：相容度總分大數字 */}
+          {isRelationship && compatibilityScore !== null && (
+            <div className="mt-8">
+              <div className="inline-flex flex-col items-center">
+                <div className="text-text-muted/40 text-xs tracking-[3px] mb-3 uppercase">相容度評分</div>
+                <div className="relative">
+                  <div
+                    className="text-8xl font-black tracking-tight"
+                    style={{
+                      background: compatibilityScore >= 90
+                        ? 'linear-gradient(135deg, #22c55e, #6ab04c)'
+                        : compatibilityScore >= 70
+                        ? 'linear-gradient(135deg, #c9a84c, #e8c87a)'
+                        : compatibilityScore >= 50
+                        ? 'linear-gradient(135deg, #f59e0b, #d97706)'
+                        : 'linear-gradient(135deg, #ef4444, #dc2626)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                    }}
+                  >
+                    {compatibilityScore}
+                  </div>
+                  <div className="absolute -right-8 top-2 text-text-muted/30 text-lg font-light">/100</div>
+                </div>
+                <div
+                  className="mt-2 px-5 py-1.5 rounded-full text-sm font-bold tracking-wider"
+                  style={{
+                    background: compatibilityScore >= 90
+                      ? 'rgba(34,197,94,0.15)'
+                      : compatibilityScore >= 70
+                      ? 'rgba(197,150,58,0.15)'
+                      : compatibilityScore >= 50
+                      ? 'rgba(245,158,11,0.15)'
+                      : 'rgba(239,68,68,0.15)',
+                    color: compatibilityScore >= 90
+                      ? '#22c55e'
+                      : compatibilityScore >= 70
+                      ? '#c9a84c'
+                      : compatibilityScore >= 50
+                      ? '#f59e0b'
+                      : '#ef4444',
+                    border: `1px solid ${
+                      compatibilityScore >= 90
+                        ? 'rgba(34,197,94,0.3)'
+                        : compatibilityScore >= 70
+                        ? 'rgba(197,150,58,0.3)'
+                        : compatibilityScore >= 50
+                        ? 'rgba(245,158,11,0.3)'
+                        : 'rgba(239,68,68,0.3)'
+                    }`,
+                  }}
+                >
+                  {compatibilityVerdict}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {avgScore > 0 && !isChumenji && !isFamily && !isRelationship && (
             <div className="mt-8 inline-flex items-center gap-4">
               <div className="text-6xl font-extrabold text-gradient-gold">{avgScore}</div>
               <div className="text-left">
@@ -495,7 +576,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         )}
 
         {/* ──── 各系統評分橫條圖（出門訣方案不顯示）──── */}
-        {sortedScores.length > 0 && !isChumenji && !isFamily && (
+        {sortedScores.length > 0 && !isChumenji && !isFamily && !isRelationship && (
           <div className="glass rounded-xl p-7 mb-8">
             <div className="text-gold/70 text-xs tracking-[2px] mb-5">各系統評分</div>
             <div className="space-y-4">

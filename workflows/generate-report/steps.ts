@@ -1316,7 +1316,7 @@ export async function sendReportEmail(
 }
 sendReportEmail.maxRetries = 2
 
-// ── Step 6: 標記失敗 ──
+// ── Step 6: 標記失敗 + 發送告警 Email ──
 export async function markReportFailed(reportId: string, errorMessage: string) {
   "use step";
   const supabase = getSupabase()
@@ -1325,6 +1325,28 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
     error_message: errorMessage,
   }).eq('id', reportId)
   console.error(`報告 ${reportId} 標記為失敗: ${errorMessage}`)
+
+  // 發送告警 Email 通知管理員
+  try {
+    const resend = new Resend(process.env.RESEND_API_KEY || '')
+    await resend.emails.send({
+      from: '鑒源系統告警 <reports@jianyuan.life>',
+      to: 'support@jianyuan.life',
+      subject: `⚠️ 報告生成失敗：${reportId.slice(0, 8)}`,
+      html: `
+        <h2>報告生成失敗告警</h2>
+        <p><strong>報告 ID：</strong>${reportId}</p>
+        <p><strong>錯誤訊息：</strong>${errorMessage}</p>
+        <p><strong>時間：</strong>${new Date().toISOString()}</p>
+        <hr />
+        <p>請前往 <a href="https://jianyuan.life/admin">管理後台</a> 查看並處理。</p>
+      `,
+    })
+    console.log(`📧 告警 Email 已發送（報告 ${reportId}）`)
+  } catch (emailErr) {
+    // 告警 Email 失敗不影響主流程
+    console.error('告警 Email 發送失敗:', emailErr)
+  }
 }
 
 // ── Step: 關閉進度串流 ──

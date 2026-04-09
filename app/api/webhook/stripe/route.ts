@@ -145,13 +145,64 @@ export async function POST(req: NextRequest) {
           birth_data: birthData,
         }).eq('id', reportId)
 
+        // 觸發 Workflow（帶超時確認 + Fallback 機制）
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
-        fetch(`${siteUrl}/api/workflows/generate-report`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reportId }),
-        }).catch(err => console.error('Workflow 觸發失敗:', err))
-        // 不 await，讓 webhook 秒級返回
+        let workflowTriggered = false
+
+        try {
+          const controller = new AbortController()
+          const timeout = setTimeout(() => controller.abort(), 5000) // 5 秒超時
+
+          const workflowRes = await fetch(`${siteUrl}/api/workflows/generate-report`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reportId }),
+            signal: controller.signal,
+          })
+          clearTimeout(timeout)
+
+          if (workflowRes.ok) {
+            workflowTriggered = true
+            console.log('✅ Workflow 觸發成功')
+          } else {
+            console.error('❌ Workflow 觸發失敗:', await workflowRes.text())
+          }
+        } catch (workflowErr) {
+          console.error('❌ Workflow 觸發異常:', workflowErr)
+        }
+
+        // Fallback: 直接呼叫 generate-report
+        if (!workflowTriggered) {
+          console.log('⚠️ Workflow 失敗，啟動 Fallback...')
+          try {
+            const fallbackController = new AbortController()
+            const fallbackTimeout = setTimeout(() => fallbackController.abort(), 8000) // 8 秒超時
+
+            const fallbackRes = await fetch(`${siteUrl}/api/generate-report`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ reportId }),
+              signal: fallbackController.signal,
+            })
+            clearTimeout(fallbackTimeout)
+
+            if (fallbackRes.ok) {
+              console.log('✅ Fallback 觸發成功')
+            } else {
+              // 兩者都失敗，記錄到 Supabase
+              const errText = await fallbackRes.text().catch(() => 'unknown')
+              console.error('❌ Fallback 也失敗:', errText)
+              await supabase.from('paid_reports').update({
+                error_message: `Webhook: Workflow 和 Fallback 都失敗 (${errText})`,
+              }).eq('id', reportId)
+            }
+          } catch (fallbackErr) {
+            console.error('❌ Fallback 觸發異常:', fallbackErr)
+            await supabase.from('paid_reports').update({
+              error_message: `Webhook 觸發全部失敗: ${fallbackErr}`,
+            }).eq('id', reportId)
+          }
+        }
       } catch (err) {
         console.error('報告觸發失敗:', err)
       }
