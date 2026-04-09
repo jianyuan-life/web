@@ -6,6 +6,7 @@ import {
   buildCall1Prompt, buildCall2Prompt, buildCall3Prompt, buildCall4Prompt,
   buildUserPrompt, SYSTEM_GROUPS,
 } from '@/prompts/c_plan_v2'
+import { validateReportAgainstData } from '@/workflows/generate-report/steps'
 
 // ============================================================
 // 付費報告生成 API — 排盤 + AI 深度分析 + 自動寄信
@@ -985,6 +986,13 @@ ${analyses.length}套系統排盤完整數據：
     if (!reportContent) {
       await markReportFailed(reportId, 'AI 未回覆：AI 回傳空內容')
       return NextResponse.json({ error: 'AI 未回覆' }, { status: 500 })
+    }
+
+    // Step 3.2: Post-generation QA — 比對 AI 報告與排盤數據，自動修正幻覺
+    try {
+      reportContent = validateReportAgainstData(reportContent, calcResult, birthData)
+    } catch (e) {
+      console.error('Post-generation QA 執行失敗（不阻塞）:', e)
     }
 
     // Step 3.5: 解析出門訣 Top5 吉時 JSON（E1/E2 方案）

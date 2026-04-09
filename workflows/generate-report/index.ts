@@ -16,6 +16,7 @@ import {
   aiGenerateG15,
   aiGenerateR,
   cleanFinalReport,
+  validateReportAgainstData,
   qualityGate,
   aiReviewReport,
   generatePDF,
@@ -24,6 +25,7 @@ import {
   markReportFailed,
   closeProgressStream,
   PLAN_SYSTEM_PROMPT,
+  type BirthData,
 } from './steps'
 
 export async function generateReportWorkflow(reportId: string) {
@@ -156,12 +158,29 @@ export async function generateReportWorkflow(reportId: string) {
       // AI 生成合盤分析
       const systemPrompt = PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C']
       const result = await aiGenerateR(memberResults, birthData, systemPrompt)
-      const reportContent = result.content
+      let reportContent = result.content
 
       if (!reportContent) {
         await markReportFailed(reportId, 'AI 未回覆：AI 回傳空內容')
         await closeProgressStream()
         return { success: false, error: 'AI 未回覆' }
+      }
+
+      // Post-generation QA — 逐一比對每位成員的排盤數據
+      try {
+        for (let i = 0; i < memberResults.length; i++) {
+          const memberBD = members[i] ? {
+            name: members[i].name || '',
+            year: members[i].year || 0,
+            month: members[i].month || 0,
+            day: members[i].day || 0,
+            hour: members[i].hour || 0,
+            gender: members[i].gender || 'M',
+          } as BirthData : null
+          reportContent = validateReportAgainstData(reportContent, memberResults[i], memberBD)
+        }
+      } catch (e) {
+        console.error('R 方案 Post-generation QA 執行失敗（不阻塞）:', e)
       }
 
       // 品質閘門
@@ -297,6 +316,14 @@ export async function generateReportWorkflow(reportId: string) {
     await markReportFailed(reportId, 'AI 未回覆：AI 回傳空內容')
     await closeProgressStream()
     return { success: false, error: 'AI 未回覆' }
+  }
+
+  // Step 2.5: Post-generation QA — 比對 AI 報告與排盤數據，自動修正幻覺
+  try {
+    reportContent = validateReportAgainstData(reportContent, calcResult, birthData)
+  } catch (e) {
+    // QA 失敗不阻塞報告生成
+    console.error('Post-generation QA 執行失敗（不阻塞）:', e)
   }
 
   // Step 3: 自動品質閘門（不通過就重新生成，最多重試 1 次）

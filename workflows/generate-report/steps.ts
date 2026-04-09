@@ -154,6 +154,293 @@ function cleanAIResponse(text: string): string {
   return cleaned.trim()
 }
 
+// ============================================================
+// Post-generation QA：比對 AI 報告內容與排盤原始數據
+// 發現幻覺（AI 寫錯排盤數據）時自動修正或記錄警告
+// ============================================================
+
+interface QACorrection {
+  field: string       // 被檢查的欄位名稱
+  expected: string    // 排盤數據的正確值
+  found: string       // AI 報告中的錯誤值
+  corrected: boolean  // 是否已自動修正
+}
+
+/**
+ * 從 calcResult 的 analyses 陣列中，按系統名稱關鍵字找到對應的分析項目，
+ * 再從 summary / details / good_points 中提取指定 pattern 的值。
+ */
+function extractFromAnalyses(
+  analyses: AnalysisItem[],
+  systemKeyword: string,
+  extractPattern: RegExp,
+): string | null {
+  const analysis = analyses.find(a =>
+    a.system?.includes(systemKeyword)
+  )
+  if (!analysis) return null
+
+  // 優先從 summary 提取
+  if (analysis.summary) {
+    const match = analysis.summary.match(extractPattern)
+    if (match?.[1]) return match[1].trim()
+  }
+
+  // 其次從 details 提取
+  if (analysis.details) {
+    const detailStr = typeof analysis.details === 'string'
+      ? analysis.details
+      : JSON.stringify(analysis.details)
+    const match = detailStr.match(extractPattern)
+    if (match?.[1]) return match[1].trim()
+  }
+
+  // 再從 good_points / bad_points / info_boxes 提取
+  const textParts = [
+    ...(analysis.good_points || []),
+    ...(analysis.bad_points || []),
+    ...(analysis.warnings || []),
+    ...(analysis.info_boxes?.flatMap(b => b.items || []) || []),
+  ]
+  for (const text of textParts) {
+    const match = text.match(extractPattern)
+    if (match?.[1]) return match[1].trim()
+  }
+
+  return null
+}
+
+/**
+ * 在報告中搜尋「標記詞 + 星座/天干地支/數字」的組合，
+ * 如果找到的值與正確值不一致，則自動修正。
+ */
+function checkAndReplace(
+  content: string,
+  label: string,
+  correctValue: string,
+  searchPatterns: RegExp[],
+  corrections: QACorrection[],
+): string {
+  if (!correctValue) return content
+
+  let result = content
+  for (const pattern of searchPatterns) {
+    const matches = result.matchAll(new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : pattern.flags + 'g'))
+    for (const match of matches) {
+      const foundValue = match[1]?.trim()
+      if (!foundValue) continue
+
+      // 比較時移除空白和標點
+      const normalize = (s: string) => s.replace(/[\s,，。：:]/g, '')
+      if (normalize(foundValue) !== normalize(correctValue)) {
+        // 確認這是真正的錯誤（不只是截斷或部分匹配）
+        if (normalize(correctValue).includes(normalize(foundValue)) || normalize(foundValue).includes(normalize(correctValue))) {
+          // 部分匹配（例如「甲木」vs「甲木日主」），不算錯誤，只記錄
+          console.log(`[QA] ${label}: 部分匹配 — 排盤「${correctValue}」↔ 報告「${foundValue}」，跳過`)
+          continue
+        }
+
+        corrections.push({
+          field: label,
+          expected: correctValue,
+          found: foundValue,
+          corrected: true,
+        })
+        console.warn(`[QA] 🔧 修正 ${label}: 「${foundValue}」→「${correctValue}」`)
+        // 精確替換：只替換被匹配到的那段文字中的錯誤值
+        result = result.replace(match[0], match[0].replace(foundValue, correctValue))
+      }
+    }
+  }
+  return result
+}
+
+/**
+ * Post-generation QA 主函式：
+ * 比對 AI 報告內容與排盤原始數據，自動修正明顯的幻覺錯誤。
+ *
+ * 修正策略「保守」：只修確定錯的，不確定的只記錄不改。
+ */
+export function validateReportAgainstData(
+  reportContent: string,
+  calcResult: CalcResult | null | undefined,
+  birthData: BirthData | null | undefined,
+): string {
+  if (!reportContent) return reportContent
+  if (!calcResult && !birthData) return reportContent
+
+  const corrections: QACorrection[] = []
+  let content = reportContent
+
+  const cd = calcResult?.client_data || {}
+  const analyses = calcResult?.analyses || []
+
+  // ────────────────────────────────────────────
+  // 1. 八字四柱檢查
+  // ────────────────────────────────────────────
+  if (cd.bazi) {
+    // bazi 格式通常是「甲子 乙丑 丙寅 丁卯」（四柱用空格分隔）
+    const pillars = cd.bazi.split(/\s+/)
+    const pillarNames = ['年柱', '月柱', '日柱', '時柱']
+
+    for (let i = 0; i < Math.min(pillars.length, 4); i++) {
+      if (!pillars[i] || pillars[i].length < 2) continue
+      const pillarName = pillarNames[i]
+      const correctPillar = pillars[i]
+
+      // 在報告中搜尋「年柱：XX」「年柱為XX」等格式
+      content = checkAndReplace(
+        content,
+        pillarName,
+        correctPillar,
+        [
+          new RegExp(`${pillarName}[：:為是]\\s*([^\\s，,。\\n]{2,4})`, 'g'),
+        ],
+        corrections,
+      )
+    }
+
+    // 完整八字檢查：如果報告寫了完整四柱，但跟排盤不一致
+    const fullBaziPatterns = [
+      /八字[：:為是]\s*([^\n，,。]{6,20})/g,
+      /四柱[：:為是]\s*([^\n，,。]{6,20})/g,
+    ]
+    content = checkAndReplace(content, '完整八字', cd.bazi, fullBaziPatterns, corrections)
+  }
+
+  // ────────────────────────────────────────────
+  // 2. 流年干支檢查（2026 丙午）
+  // ────────────────────────────────────────────
+  const currentYear = new Date().getFullYear()
+  // 天干地支紀年表（60年循環）
+  const TIANGAN = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']
+  const DIZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
+  const tgIndex = (currentYear - 4) % 10
+  const dzIndex = (currentYear - 4) % 12
+  const correctLiunian = `${TIANGAN[tgIndex]}${DIZHI[dzIndex]}`
+
+  // 搜尋「2026年」或「今年」後面跟著的天干地支
+  const liunianPatterns = [
+    new RegExp(`${currentYear}[年]?[：:，,]?\\s*([^\\s年，,。\\n]{2})年`, 'g'),
+    new RegExp(`流年[：:為是]?\\s*([^\\s，,。\\n]{2})`, 'g'),
+    new RegExp(`今年[是為]?\\s*([^\\s，,。\\n]{2})年`, 'g'),
+  ]
+  content = checkAndReplace(content, `${currentYear}流年`, correctLiunian, liunianPatterns, corrections)
+
+  // ────────────────────────────────────────────
+  // 3. 西洋占星：太陽/月亮/上升星座
+  // ────────────────────────────────────────────
+  const zodiacSigns = [
+    '牡羊座', '金牛座', '雙子座', '巨蟹座', '獅子座', '處女座',
+    '天秤座', '天蠍座', '射手座', '摩羯座', '水瓶座', '雙魚座',
+    // 別名
+    '白羊座',
+  ]
+  const zodiacPattern = `(${zodiacSigns.join('|')})`
+
+  // 從 analyses 中提取西洋占星數據
+  const sunSign = extractFromAnalyses(analyses, '西洋占星', new RegExp(`太陽[星座：:在]*\\s*${zodiacPattern}`))
+    || extractFromAnalyses(analyses, '占星', new RegExp(`太陽[星座：:在]*\\s*${zodiacPattern}`))
+  const moonSign = extractFromAnalyses(analyses, '西洋占星', new RegExp(`月亮[星座：:在]*\\s*${zodiacPattern}`))
+    || extractFromAnalyses(analyses, '占星', new RegExp(`月亮[星座：:在]*\\s*${zodiacPattern}`))
+  const risingSign = extractFromAnalyses(analyses, '西洋占星', new RegExp(`上升[星座：:在]*\\s*${zodiacPattern}`))
+    || extractFromAnalyses(analyses, '占星', new RegExp(`上升[星座：:在]*\\s*${zodiacPattern}`))
+
+  // 也從 client_data 嘗試提取（如果 Python API 有直接放）
+  const sunSignFinal = sunSign || (cd as Record<string, unknown>).sun_sign as string || null
+  const moonSignFinal = moonSign || (cd as Record<string, unknown>).moon_sign as string || null
+  const risingSignFinal = risingSign || (cd as Record<string, unknown>).rising_sign as string || null
+
+  if (sunSignFinal) {
+    content = checkAndReplace(content, '太陽星座', sunSignFinal, [
+      new RegExp(`太陽[星座：:在]*\\s*${zodiacPattern}`, 'g'),
+    ], corrections)
+  }
+  if (moonSignFinal) {
+    content = checkAndReplace(content, '月亮星座', moonSignFinal, [
+      new RegExp(`月亮[星座：:在]*\\s*${zodiacPattern}`, 'g'),
+    ], corrections)
+  }
+  if (risingSignFinal) {
+    content = checkAndReplace(content, '上升星座', risingSignFinal, [
+      new RegExp(`上升[星座：:在]*\\s*${zodiacPattern}`, 'g'),
+    ], corrections)
+  }
+
+  // ────────────────────────────────────────────
+  // 4. 生命靈數
+  // ────────────────────────────────────────────
+  const lifeNumber = extractFromAnalyses(analyses, '數字', /(?:生命靈數|靈數|主命數)[：:為是]\s*(\d+)/)
+    || extractFromAnalyses(analyses, '靈數', /(?:生命靈數|靈數|主命數)[：:為是]\s*(\d+)/)
+    || (cd as Record<string, unknown>).life_number as string || null
+
+  if (lifeNumber) {
+    content = checkAndReplace(content, '生命靈數', String(lifeNumber), [
+      /生命靈數[：:為是]\s*(\d+)/g,
+      /靈數[：:為是]\s*(\d+)/g,
+      /主命數[：:為是]\s*(\d+)/g,
+    ], corrections)
+  }
+
+  // ────────────────────────────────────────────
+  // 5. 紫微命宮主星
+  // ────────────────────────────────────────────
+  const mingGong = cd.ming_gong
+    || extractFromAnalyses(analyses, '紫微', /命宮[：:主星]*\s*([^\n，,。]{2,10})/)
+    || null
+
+  if (mingGong) {
+    content = checkAndReplace(content, '紫微命宮主星', mingGong, [
+      /命宮主星[：:為是]\s*([^\n，,。]{2,10})/g,
+      /命宮[：:]\s*([^\n，,。]{2,10})/g,
+    ], corrections)
+  }
+
+  // ────────────────────────────────────────────
+  // 6. 用神
+  // ────────────────────────────────────────────
+  if (cd.yongshen) {
+    content = checkAndReplace(content, '用神', cd.yongshen, [
+      /用神[：:為是]\s*([^\n，,。]{1,6})/g,
+    ], corrections)
+  }
+
+  // ────────────────────────────────────────────
+  // 7. 納音
+  // ────────────────────────────────────────────
+  if (cd.nayin) {
+    content = checkAndReplace(content, '納音', cd.nayin, [
+      /納音[：:為是]\s*([^\n，,。]{2,8})/g,
+    ], corrections)
+  }
+
+  // ────────────────────────────────────────────
+  // 8. 出生年份 → 生肖檢查
+  // ────────────────────────────────────────────
+  if (birthData?.year) {
+    const SHENGXIAO = ['鼠', '牛', '虎', '兔', '龍', '蛇', '馬', '羊', '猴', '雞', '狗', '豬']
+    const correctShengxiao = SHENGXIAO[(birthData.year - 4) % 12]
+    content = checkAndReplace(content, '生肖', correctShengxiao, [
+      /生肖[：:為是屬]\s*([^\n，,。]{1,2})/g,
+      /屬\s*([鼠牛虎兔龍蛇馬羊猴雞狗豬])/g,
+    ], corrections)
+  }
+
+  // ────────────────────────────────────────────
+  // QA 結果彙總
+  // ────────────────────────────────────────────
+  if (corrections.length > 0) {
+    console.warn(`[QA] ⚠️ Post-generation QA 發現 ${corrections.length} 項數據不一致：`)
+    for (const c of corrections) {
+      console.warn(`  - ${c.field}: 期望「${c.expected}」，AI 寫「${c.found}」${c.corrected ? '（已自動修正）' : '（未修正，僅記錄）'}`)
+    }
+  } else {
+    console.log('[QA] ✅ Post-generation QA 通過：AI 報告與排盤數據一致')
+  }
+
+  return content
+}
+
 // ── 合併後最終清理（處理跨 call 的問題）──
 export function cleanFinalReport(text: string, clientName?: string): string {
   let cleaned = text
