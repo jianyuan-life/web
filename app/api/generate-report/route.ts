@@ -734,7 +734,22 @@ export async function POST(req: NextRequest) {
 
     // ── 構建非 C 方案的通用 user prompt ──
     function buildGenericUserPrompt(): string {
-      let userPrompt = `${birthData.name}，${birthData.gender==='M'?'男':'女'}，${birthData.year}年${birthData.month}月${birthData.day}日${birthData.hour}時
+      // 從西洋占星提取關鍵星座數據（防止 AI 幻覺）
+      const westernA = analyses.find((a: { system: string }) => a.system === '西洋占星')
+      const numA = analyses.find((a: { system: string }) => a.system === '數字能量學')
+      let keyDataBlock = ''
+      if (westernA?.sub_summary || numA?.sub_summary) {
+        keyDataBlock = `\n════════════════════════════════════════
+【關鍵數據 — 摘要表必須與此完全一致】
+流年：2026年是丙午年（不是乙巳年）
+${westernA?.sub_summary ? `西洋占星摘要：${westernA.sub_summary}` : ''}
+${numA?.sub_summary ? `數字能量學摘要：${numA.sub_summary}` : ''}
+⚠️ 命格摘要表的每一欄必須直接從排盤數據複製，禁止自行推算或記憶。
+⚠️ 七政四餘的廟旺按十二宮（子丑寅卯...）判定，不要混用西洋星座名稱。
+════════════════════════════════════════\n`
+      }
+
+      let userPrompt = `${keyDataBlock}${birthData.name}，${birthData.gender==='M'?'男':'女'}，${birthData.year}年${birthData.month}月${birthData.day}日${birthData.hour}時
 八字：${cd.bazi || ''} | 用神：${cd.yongshen || ''} | 五行：${JSON.stringify(cd.five_elements || {})}
 農曆：${cd.lunar_date || ''} | 納音：${cd.nayin || ''} | 命宮：${cd.ming_gong || ''}
 ${analyses.length}套系統排盤完整數據：
@@ -805,10 +820,13 @@ ${analyses.length}套系統排盤完整數據：
 
       userPrompt += `\n請根據以上所有排盤數據，撰寫完整的分析報告。
 重要提醒：
-1. 現在是2026年丙午年。
+1. 現在是2026年丙午年（天干丙火、地支午火）。任何提到2026年流年的地方必須寫「丙午」，絕對不是乙巳年。
 2. 你的每一個分析論點都必須引用上方排盤數據中的具體結果，不得編造。
 3. 排盤數據中「好的地方」和「需要注意」的每一條都必須在報告中被展開分析，不可遺漏。
-4. 如果某個系統數據不完整，跳過該系統，不要瞎編。`
+4. 如果某個系統數據不完整，跳過該系統，不要瞎編。
+5. 命格摘要表的每一欄（太陽星座、月亮星座、上升星座、生命靈數等）必須直接從排盤數據複製，禁止自行推算。
+6. 七政四餘的廟旺是按十二宮（子丑寅卯辰巳午未申酉戌亥）判定，不要混用西洋星座名稱。
+7. 生命靈數以排盤數據中的計算結果為準，不要自己重新算。`
 
       return userPrompt
     }
@@ -827,7 +845,7 @@ ${analyses.length}套系統排盤完整數據：
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
           ],
-          max_tokens: 8000,
+          max_tokens: 20000,
           temperature: 0.7,
         }),
         signal: controller.signal,
@@ -862,10 +880,10 @@ ${analyses.length}套系統排盤完整數據：
       if (CLAUDE_API_KEY) {
         try {
           const [raw1, raw2, raw3, raw4] = await Promise.all([
-            callClaudeStreaming(buildCall1Prompt(ageGroup, clientNeed, birthData.locale), userPrompt1, 16384),
-            callClaudeStreaming(buildCall2Prompt(ageGroup, birthData.locale), userPrompt2, 12288),
-            callClaudeStreaming(buildCall3Prompt(ageGroup, birthData.locale), userPrompt3, 8192),
-            callClaudeStreaming(buildCall4Prompt(ageGroup, birthData.name, birthData.locale), userPrompt4, 16384),
+            callClaudeStreaming(buildCall1Prompt(ageGroup, clientNeed, birthData.locale), userPrompt1, 24576),
+            callClaudeStreaming(buildCall2Prompt(ageGroup, birthData.locale), userPrompt2, 20480),
+            callClaudeStreaming(buildCall3Prompt(ageGroup, birthData.locale), userPrompt3, 16384),
+            callClaudeStreaming(buildCall4Prompt(ageGroup, birthData.name, birthData.locale), userPrompt4, 32768),
           ])
 
           // 清理 AI 前言 + 品牌名修正

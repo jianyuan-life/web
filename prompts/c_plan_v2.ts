@@ -915,7 +915,76 @@ export function buildUserPrompt(
   birthData: Record<string, any>,
 ): string {
   const cd = clientData
-  let prompt = `## 客戶資料
+
+  // ── 從排盤數據提取關鍵摘要資訊（防止 AI 幻覺）──
+  const westernData = analyses.find((a: Record<string, any>) => a.system === '西洋占星')
+  const numerologyData = analyses.find((a: Record<string, any>) => a.system === '數字能量學')
+
+  // 從西洋占星 detail 中提取太陽/月亮/上升
+  let sunSign = '', moonSign = '', ascSign = ''
+  if (westernData?.detail) {
+    const d = typeof westernData.detail === 'string' ? westernData.detail : JSON.stringify(westernData.detail)
+    const sunMatch = d.match(/太陽[星座：]*\s*([^\s,，。]+(?:\s*[\d.]+°)?)/)
+    const moonMatch = d.match(/月亮[星座：]*\s*([^\s,，。]+(?:\s*[\d.]+°)?)/)
+    const ascMatch = d.match(/上升[星座：]*\s*([^\s,，。]+(?:\s*[\d.]+°)?)/)
+    if (sunMatch) sunSign = sunMatch[1]
+    if (moonMatch) moonSign = moonMatch[1]
+    if (ascMatch) ascSign = ascMatch[1]
+  }
+  // 也嘗試從 sub_summary 提取
+  if (westernData?.sub_summary) {
+    const s = westernData.sub_summary
+    if (!sunSign) { const m = s.match(/太陽[：:]*\s*([^\s,，。|]+(?:\s*[\d.]+°)?)/); if (m) sunSign = m[1] }
+    if (!moonSign) { const m = s.match(/月亮[：:]*\s*([^\s,，。|]+(?:\s*[\d.]+°)?)/); if (m) moonSign = m[1] }
+    if (!ascSign) { const m = s.match(/上升[：:]*\s*([^\s,，。|]+(?:\s*[\d.]+°)?)/); if (m) ascSign = m[1] }
+  }
+  // 也嘗試從 tables 提取
+  if (westernData?.tables?.length) {
+    for (const t of westernData.tables) {
+      if (t.rows) {
+        for (const row of t.rows) {
+          const rowStr = row.join(' ')
+          if (!sunSign && /太陽/.test(rowStr)) { const m = rowStr.match(/太陽[^]*?([白羊金牛雙子巨蟹獅子處女天秤天蠍射手摩羯水瓶雙魚]{2}座?\s*[\d.]*°?)/); if (m) sunSign = m[1] }
+          if (!moonSign && /月亮/.test(rowStr)) { const m = rowStr.match(/月亮[^]*?([白羊金牛雙子巨蟹獅子處女天秤天蠍射手摩羯水瓶雙魚]{2}座?\s*[\d.]*°?)/); if (m) moonSign = m[1] }
+          if (!ascSign && /上升/.test(rowStr)) { const m = rowStr.match(/上升[^]*?([白羊金牛雙子巨蟹獅子處女天秤天蠍射手摩羯水瓶雙魚]{2}座?\s*[\d.]*°?)/); if (m) ascSign = m[1] }
+        }
+      }
+    }
+  }
+
+  // 從數字能量學提取生命靈數
+  let lifePathNumber = ''
+  let lifePathCalc = ''
+  if (numerologyData?.detail) {
+    const nd = typeof numerologyData.detail === 'string' ? numerologyData.detail : JSON.stringify(numerologyData.detail)
+    const lpMatch = nd.match(/生命靈數[：:]*\s*(\d+)/)
+    if (lpMatch) lifePathNumber = lpMatch[1]
+    const calcMatch = nd.match(/計算[過程：:]*\s*([^\n]+)/)
+    if (calcMatch) lifePathCalc = calcMatch[1]
+  }
+  if (!lifePathNumber && numerologyData?.sub_summary) {
+    const m = numerologyData.sub_summary.match(/生命靈數[：:]*\s*(\d+)/)
+    if (m) lifePathNumber = m[1]
+  }
+
+  let prompt = `════════════════════════════════════════
+【關鍵數據 — 摘要表必須與此完全一致，禁止自行推算或記憶】
+════════════════════════════════════════
+流年：2026年是丙午年（不是乙巳年，不是丁未年，就是丙午年）
+${sunSign ? `太陽星座：${sunSign}` : ''}
+${moonSign ? `月亮星座：${moonSign}` : ''}
+${ascSign ? `上升星座：${ascSign}` : ''}
+${lifePathNumber ? `生命靈數：${lifePathNumber}${lifePathCalc ? `（計算過程：${lifePathCalc}）` : ''}` : ''}
+八字：${cd.bazi || ''}
+用神：${cd.yongshen || ''}
+════════════════════════════════════════
+⚠️ 命格摘要表中的每一欄必須直接從上方排盤數據複製，禁止自行推算或從記憶中填寫。
+⚠️ 2026年是丙午年。任何提到2026年流年的地方必須寫丙午，不是乙巳。
+⚠️ 七政四餘的廟旺是按十二宮（子丑寅卯辰巳午未申酉戌亥）判定，不要混用西洋星座名稱（白羊/金牛/雙子等）。西洋星座和中國十二宮是不同系統，禁止交叉使用。
+⚠️ 生命靈數的計算結果以排盤數據為準，不要自己重新計算。如果排盤數據說是5，報告就寫5。
+════════════════════════════════════════
+
+## 客戶資料
 姓名：${birthData.name}
 性別：${birthData.gender === 'M' ? '男' : '女'}
 出生：${birthData.year}年${birthData.month}月${birthData.day}日 ${birthData.hour}時
@@ -995,7 +1064,14 @@ export function buildUserPrompt(
     }
   }
 
-  prompt += `\n---\n請根據以上排盤數據撰寫分析。現在是2026年丙午年。每個論點必須引用排盤數據中的具體結果。鑒源固定提供15套系統分析，每套都有數據，禁止在報告中說「跳過」「數據不足」「待分析」「不適用」——直接根據現有數據寫完整分析。`
+  prompt += `\n---\n請根據以上排盤數據撰寫分析。
+【最高優先級規則】
+1. 現在是2026年丙午年（天干丙火、地支午火）。任何提到2026年流年的地方必須寫「丙午」，絕對不是乙巳年。
+2. 每個論點必須引用排盤數據中的具體結果，不得編造。
+3. 命格摘要表的每一欄（太陽/月亮/上升星座、生命靈數等）必須直接從排盤數據複製，禁止自行推算或從記憶中填寫。
+4. 七政四餘的廟旺按十二宮（子丑寅卯辰巳午未申酉戌亥）判定，不要混用西洋星座名稱。西洋星座和中國十二宮是完全不同的系統。
+5. 生命靈數以排盤數據中的計算結果為準，不要自己重新計算。
+6. 鑒源固定提供15套系統分析，每套都有數據，禁止在報告中說「跳過」「數據不足」「待分析」「不適用」——直接根據現有數據寫完整分析。`
 
   return prompt
 }
