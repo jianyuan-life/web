@@ -701,6 +701,60 @@ export async function loadFamilyReportsByIds(
 }
 loadFamilyReportsByIds.maxRetries = 2
 
+// ── G15 家族藍圖：從報告中提取互動關鍵數據（不餵原文，避免 AI 重複個人分析）──
+function extractKeyDataForFamily(reportContent: string, bd: BirthData): string {
+  const lines: string[] = []
+
+  // 基本出生資料（從 birthData 直接取，最可靠）
+  if (bd.year && bd.month && bd.day) {
+    lines.push(`出生：${bd.year}年${bd.month}月${bd.day}日${bd.hour || '未知'}時`)
+  }
+
+  // 從報告中用 regex 提取各系統關鍵數據（每個系統取第一段摘要）
+  const systemPatterns: Array<{ name: string; pattern: RegExp }> = [
+    { name: '八字', pattern: /(?:八字|四柱)[：:]\s*(.+?)(?:\n|$)/i },
+    { name: '用神', pattern: /用神[：:]\s*(.+?)(?:\n|$)/i },
+    { name: '五行', pattern: /五行[：:]\s*(.+?)(?:\n|$)/i },
+    { name: '日主', pattern: /日主[為是]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '日柱', pattern: /日柱[：:為是]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '紫微命宮', pattern: /命宮[：:主星]*\s*(.+?)(?:\n|[，,。])/i },
+    { name: '夫妻宮', pattern: /夫妻宮[：:主星]*\s*(.+?)(?:\n|[，,。])/i },
+    { name: '子女宮', pattern: /子女宮[：:主星]*\s*(.+?)(?:\n|[，,。])/i },
+    { name: '生肖', pattern: /生肖[：:為是]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '人類圖類型', pattern: /(?:人類圖|類型)[：:]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '人類圖權威', pattern: /(?:內在權威|權威)[：:]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '西洋太陽', pattern: /太陽[星座：:]*\s*(.+?)(?:\n|[，,。])/i },
+    { name: '西洋月亮', pattern: /月亮[星座：:]*\s*(.+?)(?:\n|[，,。])/i },
+    { name: '生命靈數', pattern: /(?:生命靈數|靈數)[：:為是]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '納音', pattern: /納音[：:]\s*(.+?)(?:\n|[，,。])/i },
+  ]
+
+  for (const sp of systemPatterns) {
+    const match = reportContent.match(sp.pattern)
+    if (match?.[1]) {
+      // 只取前 80 字，避免過長
+      lines.push(`${sp.name}：${match[1].trim().slice(0, 80)}`)
+    }
+  }
+
+  // 如果 regex 提取結果太少（< 5 項），補充從報告各系統章節取前 2 行
+  if (lines.length < 5) {
+    const sectionPattern = /【(.+?)】[^\n]*\n([^\n]*\n?[^\n]*)/g
+    let sectionMatch
+    let extraCount = 0
+    while ((sectionMatch = sectionPattern.exec(reportContent)) !== null && extraCount < 8) {
+      const sectionName = sectionMatch[1].trim()
+      const sectionContent = sectionMatch[2].trim().slice(0, 150)
+      if (sectionContent && !lines.some(l => l.includes(sectionName))) {
+        lines.push(`${sectionName}：${sectionContent}`)
+        extraCount++
+      }
+    }
+  }
+
+  return lines.length > 0 ? lines.join('\n') : reportContent.slice(0, 1000)
+}
+
 // ── G15 家族藍圖：AI 生成家族互動分析 ──
 export async function aiGenerateG15(
   familyReports: FamilyMemberReport[], planCode: string, systemPrompt: string,
@@ -708,7 +762,7 @@ export async function aiGenerateG15(
   "use step";
   await emitProgress({ step: 'AI分析', progress: 30, message: '正在分析家族成員互動關係...' })
 
-  // 為每位成員摘取報告重點（避免超出 token 上限）
+  // 從報告中提取關鍵互動數據，不餵原始報告全文（避免 AI 重複個人分析）
   let userPrompt = `家族藍圖分析 — 共 ${familyReports.length} 位成員\n\n`
 
   for (let i = 0; i < familyReports.length; i++) {
@@ -717,16 +771,17 @@ export async function aiGenerateG15(
     userPrompt += `=== 成員${i + 1}：${member.name} ===\n`
     userPrompt += `性別：${bd.gender === 'M' ? '男' : '女'}，出生：${bd.year}年${bd.month}月${bd.day}日${bd.hour}時\n`
 
-    // 摘取報告前 4000 字作為分析素材（每人的完整人生藍圖太長）
-    const reportExcerpt = member.reportContent.slice(0, 4000)
-    userPrompt += `人生藍圖報告摘要：\n${reportExcerpt}\n\n`
+    // 從報告中提取各系統關鍵數據摘要（每人約 200-300 字）
+    const keyData = extractKeyDataForFamily(member.reportContent, bd)
+    userPrompt += `命理關鍵數據：\n${keyData}\n\n`
   }
 
-  userPrompt += `\n請根據以上所有成員的命理資料與人生藍圖報告，撰寫完整的家族互動分析報告。
+  userPrompt += `\n請根據以上所有成員的命理關鍵數據，撰寫完整的家族互動分析報告。
 重要提醒：
-1. 每個分析論點都必須引用成員報告中的具體命理結果。
-2. 著重分析成員之間的互動關係、能量互補或衝突。
-3. 不要重複各成員個人報告已有的內容，聚焦在「家族整體」的視角。`
+1. 你收到的是每位成員的關鍵命理數據摘要，不是完整報告。不要試圖重寫個人命格分析。
+2. 所有分析必須是成員之間的互動比較，不是個人特質描述。例如：「A的日主甲木與B的日主庚金形成甲庚沖」，而不是「A是甲木，性格正直」。
+3. 著重分析成員之間的能量互補或衝突、相處模式、溝通建議。
+4. 每個論點都必須引用具體的命理數據來支撐（如日柱、命宮主星、生肖關係等）。`
 
   const localizedPrompt = localizePrompt(systemPrompt, familyReports[0]?.birthData?.locale)
 
