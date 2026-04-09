@@ -191,12 +191,12 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      return NextResponse.json({ url: `${siteUrl}/dashboard?payment=success&free=1` })
+      return NextResponse.json({ url: `${siteUrl}/dashboard?payment=success&free=1&session_id=${encodeURIComponent(fakeSessionId)}` })
     }
 
     const params = new URLSearchParams()
     params.set('mode', 'payment')
-    params.set('success_url', `${siteUrl}/dashboard?payment=success`)
+    params.set('success_url', `${siteUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`)
     params.set('cancel_url', `${siteUrl}/pricing`)
     params.set('line_items[0][price_data][currency]', 'usd')
     params.set('line_items[0][price_data][product_data][name]', `鑒源命理 - ${plan.name}`)

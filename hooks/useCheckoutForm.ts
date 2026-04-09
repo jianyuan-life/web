@@ -144,7 +144,10 @@ export function useCheckoutForm() {
         // 快取 email，供 dashboard 在 Stripe 重導向後使用
         if (data.user.email) {
           setAuthEmail(data.user.email)
-          try { sessionStorage.setItem('jianyuan_email', data.user.email) } catch {}
+          try {
+            sessionStorage.setItem('jianyuan_email', data.user.email)
+            localStorage.setItem('jianyuan_email', data.user.email)
+          } catch {}
           // G15：自動載入該用戶的已完成人生藍圖報告
           if (planCode === 'G15') {
             loadMyReports()

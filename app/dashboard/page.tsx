@@ -37,6 +37,7 @@ const PLAN_SYSTEMS: Record<string, number> = {
 function DashboardContent() {
   const params = useSearchParams()
   const paymentSuccess = params.get('payment') === 'success'
+  const stripeSessionId = params.get('session_id') || '' // Stripe checkout session ID（auth fallback 用）
 
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
@@ -77,9 +78,15 @@ function DashboardContent() {
       headers['Authorization'] = `Bearer ${token}`
     }
 
-    const res = await fetch(`/api/reports?email=${encodeURIComponent(userEmail)}`, {
+    // 建構查詢 URL：auth token 為主，Stripe session_id 為安全 fallback
+    let url = '/api/reports'
+    if (stripeSessionId) {
+      url += `?session_id=${encodeURIComponent(stripeSessionId)}`
+    }
+
+    const res = await fetch(url, {
       headers,
-      credentials: 'include', // 確保 cookie 也一起送
+      credentials: 'include',
     })
 
     if (res.status === 401) {
@@ -87,8 +94,7 @@ function DashboardContent() {
       const { data: retrySession } = await supabase.auth.getSession()
       if (retrySession.session?.access_token) {
         setAuthToken(retrySession.session.access_token)
-        // 用新 token 重試一次
-        const retryRes = await fetch(`/api/reports?email=${encodeURIComponent(userEmail)}`, {
+        const retryRes = await fetch(url, {
           headers: { 'Authorization': `Bearer ${retrySession.session.access_token}` },
           credentials: 'include',
         })

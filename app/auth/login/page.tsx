@@ -1,9 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 import { supabase } from '@/lib/supabase'
 
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('redirect') || '/dashboard'
+  const safeRedirect = redirectTo.startsWith('/') ? redirectTo : '/dashboard'
+
   const [form, setForm] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -22,14 +28,16 @@ export default function LoginPage() {
       setError(error.message === 'Invalid login credentials' ? '帳號或密碼錯誤' : error.message)
       setLoading(false)
     } else {
-      window.location.href = '/dashboard'
+      // 登入成功後存 email 到 localStorage（防止 Stripe 重導後丟失）
+      try { localStorage.setItem('jianyuan_email', form.email) } catch {}
+      window.location.href = safeRedirect
     }
   }
 
   const handleGoogleLogin = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(safeRedirect)}` },
     })
   }
 
@@ -87,5 +95,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="py-20 text-center text-text-muted">載入中...</div>}>
+      <LoginForm />
+    </Suspense>
   )
 }
