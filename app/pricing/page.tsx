@@ -161,7 +161,7 @@ export default function PricingPage() {
             <span className="text-xs tracking-[0.2em]">方案比較</span>
           </div>
           <p className="text-center text-text-muted text-sm mb-8">一目了然，找到最適合你的方案</p>
-          <div className="glass rounded-xl overflow-hidden overflow-x-auto">
+          <div className="glass rounded-xl overflow-hidden overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gold/10">

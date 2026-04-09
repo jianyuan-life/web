@@ -162,7 +162,7 @@ function DashboardContent() {
       }
       // 所有方法均失敗，且不是付款成功重導向 → 跳轉登入頁
       if (!paymentSuccess) {
-        window.location.href = '/auth/login'
+        window.location.href = '/auth/login?redirect=/dashboard'
       }
     }
     getEmail()

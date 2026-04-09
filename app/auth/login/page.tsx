@@ -25,7 +25,14 @@ function LoginForm() {
     })
 
     if (error) {
-      setError(error.message === 'Invalid login credentials' ? '帳號或密碼錯誤' : error.message)
+      // Supabase 英文錯誤訊息中文化
+      const msgMap: Record<string, string> = {
+        'Invalid login credentials': '帳號或密碼錯誤',
+        'User already registered': '此 Email 已註冊',
+        'Password should be at least': '密碼至少需要 8 個字元',
+      }
+      const zhMsg = Object.entries(msgMap).find(([key]) => error.message.includes(key))?.[1] || error.message
+      setError(zhMsg)
       setLoading(false)
     } else {
       // 登入成功後存 email 到 localStorage（防止 Stripe 重導後丟失）

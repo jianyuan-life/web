@@ -66,7 +66,13 @@ export default function ReportProgress({ createdAt, planCode }: { createdAt: str
 
   useEffect(() => {
     const update = () => {
-      const elapsed = Date.now() - new Date(createdAt).getTime()
+      const createdTime = new Date(createdAt).getTime()
+      // 防護：createdAt 無效時不計算進度
+      if (isNaN(createdTime) || totalMs <= 0) {
+        setPct(0)
+        return
+      }
+      const elapsed = Date.now() - createdTime
       const rawPct = Math.min(Math.round((elapsed / totalMs) * 100), 97) // 最多到97%，完成才100%
       setPct(rawPct)
       setCompleted(Math.min(Math.floor((rawPct / 100) * cfg.systems), cfg.systems - 1))
@@ -79,7 +85,8 @@ export default function ReportProgress({ createdAt, planCode }: { createdAt: str
   const phases = getPhases(planCode)
   const phaseIdx = getPhaseIndex(pct)
   const phase = phases[phaseIdx]
-  const elapsedMin = Math.round((Date.now() - new Date(createdAt).getTime()) / 60000)
+  const createdTime = new Date(createdAt).getTime()
+  const elapsedMin = isNaN(createdTime) ? 0 : Math.round((Date.now() - createdTime) / 60000)
   const remainMin = Math.max(cfg.totalMinutes - elapsedMin, 1)
 
   return (

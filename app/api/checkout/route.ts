@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
       await supabase.from('checkout_drafts').update({ used_at: new Date().toISOString() }).eq('id', draftRes.data.id)
 
       // 直接插入訂單並觸發報告生成
-      const fakeSessionId = `free_${Date.now()}`
+      const fakeSessionId = `free_${crypto.randomUUID()}`
       await supabase.from('orders').insert({
         stripe_session_id: fakeSessionId,
         plan_code: planCode,

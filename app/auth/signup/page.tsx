@@ -31,7 +31,13 @@ export default function SignupPage() {
     })
 
     if (error) {
-      setError(error.message)
+      // Supabase 英文錯誤訊息中文化
+      const msgMap: Record<string, string> = {
+        'User already registered': '此 Email 已註冊',
+        'Password should be at least 8 characters': '密碼至少需要 8 個字元',
+      }
+      const zhMsg = Object.entries(msgMap).find(([key]) => error.message.includes(key))?.[1] || error.message
+      setError(zhMsg)
       setLoading(false)
     } else {
       setSuccess(true)
@@ -72,9 +78,10 @@ export default function SignupPage() {
           </div>
           <div>
             <label className="block text-xs text-text-muted mb-1">密碼</label>
-            <input type="password" required placeholder="至少6個字元" minLength={6}
+            <input type="password" required placeholder="至少 8 個字元" minLength={8}
               value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
               className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none" />
+            <p className="text-[10px] text-text-muted/60 mt-1">密碼至少 8 個字元</p>
           </div>
 
           {error && <p className="text-red-400 text-sm text-center">{error}</p>}
