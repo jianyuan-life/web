@@ -141,7 +141,7 @@ export default function UsersPage() {
                       <div className="space-y-1.5">
                         {user.reports.map(r => (
                           <div key={r.id} className="flex items-center gap-3 text-xs">
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${r.status === 'completed' ? 'bg-green-400' : r.status === 'pending' ? 'bg-yellow-400' : 'bg-red-400'}`} />
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${r.status === 'completed' ? 'bg-green-400' : r.status === 'generating' ? 'bg-blue-400' : r.status === 'pending' ? 'bg-yellow-400' : 'bg-red-400'}`} />
                             <span className="text-amber-400">{PLAN_NAMES[r.plan_code] || r.plan_code}</span>
                             <span className="text-gray-500">—</span>
                             <span className="text-white">{r.client_name}</span>

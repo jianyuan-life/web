@@ -11,6 +11,7 @@ const PLAN_NAMES: Record<string, string> = {
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   completed: { label: '已完成', color: 'text-green-400 bg-green-400/10' },
   pending: { label: '處理中', color: 'text-yellow-400 bg-yellow-400/10' },
+  generating: { label: '生成中', color: 'text-blue-400 bg-blue-400/10' },
   failed: { label: '失敗', color: 'text-red-400 bg-red-400/10' },
 }
 
@@ -80,10 +81,10 @@ export default function OrdersPage() {
 
   // 重試失敗報告
   const retryOrder = async (id: string) => {
-    const res = await fetch('/api/reports', {
+    const res = await fetch('/api/admin/orders', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({ id, key: adminKey }),
     })
     if (res.ok) {
       setOrders(prev => prev.map(o => o.id === id ? { ...o, status: 'pending', error_message: undefined } : o))
@@ -132,7 +133,7 @@ export default function OrdersPage() {
           onChange={e => { setSearch(e.target.value); setPage(1) }}
           className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder:text-gray-500 focus:border-amber-500 focus:outline-none" />
         <div className="flex gap-1">
-          {['all', 'completed', 'pending', 'failed'].map(s => (
+          {['all', 'completed', 'generating', 'pending', 'failed'].map(s => (
             <button key={s} onClick={() => { setStatusFilter(s); setPage(1) }}
               className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${statusFilter === s ? 'bg-amber-600 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
               {s === 'all' ? '全部' : STATUS_LABELS[s]?.label || s}
@@ -172,9 +173,11 @@ export default function OrdersPage() {
                   </td>
                   <td className="px-4 py-3 text-gray-400 text-xs">{new Date(order.created_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })}</td>
                   <td className="px-4 py-3">
-                    {order.status === 'failed' && (
+                    {(order.status === 'failed' || order.status === 'generating' || order.status === 'pending') && (
                       <button onClick={e => { e.stopPropagation(); retryOrder(order.id) }}
-                        className="text-xs text-amber-400 hover:text-amber-300">重試</button>
+                        className="text-xs text-amber-400 hover:text-amber-300">
+                        {order.status === 'failed' ? '重試' : '強制重試'}
+                      </button>
                     )}
                   </td>
                 </tr>

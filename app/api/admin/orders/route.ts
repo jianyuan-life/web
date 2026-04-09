@@ -43,3 +43,70 @@ export async function GET(req: NextRequest) {
     })),
   })
 }
+
+// PATCH — 管理員強制重試報告（任何狀態都可以）
+export async function PATCH(req: NextRequest) {
+  const { id, key } = await req.json()
+  if (key !== ADMIN_KEY) {
+    return NextResponse.json({ error: '無權限' }, { status: 403 })
+  }
+  if (!id) return NextResponse.json({ error: '缺少報告 ID' }, { status: 400 })
+
+  const supabase = getSupabase()
+
+  // 查詢報告
+  const { data: report, error: fetchErr } = await supabase
+    .from('paid_reports')
+    .select('id, status, retry_count')
+    .eq('id', id)
+    .single()
+
+  if (fetchErr || !report) {
+    return NextResponse.json({ error: '找不到報告' }, { status: 404 })
+  }
+
+  // 已完成的不需要重試
+  if (report.status === 'completed') {
+    return NextResponse.json({ error: '報告已完成，無需重試' }, { status: 400 })
+  }
+
+  // 重置狀態為 pending，讓 workflow 重新搶佔
+  await supabase.from('paid_reports').update({
+    status: 'pending',
+    error_message: null,
+    retry_count: (report.retry_count ?? 0) + 1,
+  }).eq('id', id)
+
+  // 觸發 Workflow
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
+  let workflowTriggered = false
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
+    const wfRes = await fetch(`${siteUrl}/api/workflows/generate-report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reportId: id }),
+      signal: controller.signal,
+    })
+    clearTimeout(timeout)
+    if (wfRes.ok) workflowTriggered = true
+  } catch { /* 靜默 */ }
+
+  // Fallback
+  if (!workflowTriggered) {
+    try {
+      const fbController = new AbortController()
+      const fbTimeout = setTimeout(() => fbController.abort(), 8000)
+      await fetch(`${siteUrl}/api/generate-report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportId: id }),
+        signal: fbController.signal,
+      })
+      clearTimeout(fbTimeout)
+    } catch { /* 靜默 */ }
+  }
+
+  return NextResponse.json({ success: true, message: '已重新觸發報告生成' })
+}

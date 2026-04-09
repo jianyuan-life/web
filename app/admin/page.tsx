@@ -210,7 +210,7 @@ export default function AdminOverview() {
             <div className="space-y-3">
               {recentActivity.map(order => (
                 <div key={order.id} className="flex items-center gap-3 text-sm">
-                  <div className={`w-2 h-2 rounded-full shrink-0 ${order.status === 'completed' ? 'bg-green-400' : order.status === 'pending' ? 'bg-yellow-400' : 'bg-red-400'}`} />
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${order.status === 'completed' ? 'bg-green-400' : order.status === 'generating' ? 'bg-blue-400' : order.status === 'pending' ? 'bg-yellow-400' : 'bg-red-400'}`} />
                   <div className="flex-1 min-w-0">
                     <span className="text-white">{order.client_name}</span>
                     <span className="text-gray-500 mx-1.5">購買</span>

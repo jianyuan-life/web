@@ -34,11 +34,11 @@ export default function ReportsPage() {
 
   useEffect(() => { fetchReports() }, [fetchReports])
 
-  const filtered = tab === 'all' ? reports : reports.filter(r => r.status === tab)
+  const filtered = tab === 'all' ? reports : tab === 'pending' ? reports.filter(r => r.status === 'pending' || r.status === 'generating') : reports.filter(r => r.status === tab)
 
   const counts = {
     all: reports.length,
-    pending: reports.filter(r => r.status === 'pending').length,
+    pending: reports.filter(r => r.status === 'pending' || r.status === 'generating').length,
     completed: reports.filter(r => r.status === 'completed').length,
     failed: reports.filter(r => r.status === 'failed').length,
   }
@@ -49,10 +49,10 @@ export default function ReportsPage() {
     if (failedIds.length === 0) { alert('沒有可重試的報告'); return }
     if (!confirm(`確認重試 ${failedIds.length} 筆失敗報告？`)) return
     for (const id of failedIds) {
-      await fetch('/api/reports', {
+      await fetch('/api/admin/orders', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id, key: adminKey }),
       })
     }
     fetchReports()
@@ -60,10 +60,10 @@ export default function ReportsPage() {
 
   // 單筆重試（用 admin 直接更新 Supabase）
   const retryOne = async (id: string) => {
-    const res = await fetch('/api/reports', {
+    const res = await fetch('/api/admin/orders', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({ id, key: adminKey }),
     })
     if (res.ok) {
       setReports(prev => prev.map(r => r.id === id ? { ...r, status: 'pending', error_message: undefined } : r))
@@ -114,6 +114,7 @@ export default function ReportsPage() {
             <div className="flex items-center gap-4">
               <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                 report.status === 'completed' ? 'bg-green-400' :
+                report.status === 'generating' ? 'bg-blue-400 animate-pulse' :
                 report.status === 'pending' ? 'bg-yellow-400 animate-pulse' : 'bg-red-400'
               }`} />
               <div className="flex-1 min-w-0">
@@ -132,7 +133,14 @@ export default function ReportsPage() {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {report.status === 'pending' && (
-                  <span className="text-xs text-yellow-400">生成中...</span>
+                  <span className="text-xs text-yellow-400">等待中...</span>
+                )}
+                {report.status === 'generating' && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-blue-400">AI 生成中...</span>
+                    <button onClick={() => retryOne(report.id)}
+                      className="px-2 py-1 bg-amber-500/20 rounded text-xs text-amber-400 hover:bg-amber-500/30" title="強制重新觸發生成">強制重試</button>
+                  </div>
                 )}
                 {report.status === 'failed' && (
                   <>
