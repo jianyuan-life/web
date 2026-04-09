@@ -14,6 +14,7 @@ import {
   loadFamilyReports,
   loadFamilyReportsByIds,
   aiGenerateG15,
+  aiGenerateR,
   cleanFinalReport,
   qualityGate,
   aiReviewReport,
@@ -122,6 +123,102 @@ export async function generateReportWorkflow(reportId: string) {
       await markReportFailed(reportId, `G15 家族藍圖生成失敗: ${errMsg.slice(0, 500)}`)
       await closeProgressStream()
       return { success: false, error: 'G15 生成失敗' }
+    }
+  }
+
+  // ── R 方案「合否？」：為每位成員分別排盤，合併後 AI 合盤分析 ──
+  if (planCode === 'R' && birthData.plan === 'R' && Array.isArray(birthData.members)) {
+    try {
+      const members = birthData.members as Array<{
+        name?: string; gender?: string; year?: number; month?: number; day?: number;
+        hour?: number; minute?: number; cityLat?: number; cityLng?: number
+      }>
+      console.log(`R 方案：為 ${members.length} 位成員分別排盤...`)
+
+      // 為每位成員分別呼叫排盤 API
+      const memberResults = []
+      for (const member of members) {
+        const memberBirthData = {
+          name: member.name || '',
+          year: member.year || 0,
+          month: member.month || 0,
+          day: member.day || 0,
+          hour: member.hour || 0,
+          minute: member.minute || 0,
+          gender: member.gender || 'M',
+          cityLat: member.cityLat,
+          cityLng: member.cityLng,
+        }
+        const result = await callPythonCalculate(memberBirthData)
+        memberResults.push(result)
+      }
+
+      // AI 生成合盤分析
+      const systemPrompt = PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C']
+      const result = await aiGenerateR(memberResults, birthData, systemPrompt)
+      const reportContent = result.content
+
+      if (!reportContent) {
+        await markReportFailed(reportId, 'AI 未回覆：AI 回傳空內容')
+        await closeProgressStream()
+        return { success: false, error: 'AI 未回覆' }
+      }
+
+      // 品質閘門
+      try {
+        const qResult = await qualityGate(reportContent, 'R', memberResults.length)
+        if (!qResult.passed) {
+          console.warn(`R 品質閘門警告: ${qResult.warnings.join('; ')}`)
+        }
+      } catch (e) {
+        console.error('R 品質閘門執行失敗:', e)
+      }
+
+      // AI 審核
+      try {
+        const review = await aiReviewReport(reportContent, 'R')
+        if (review.score < 70) {
+          console.warn(`R AI 審核分數偏低: ${review.score}`)
+        }
+      } catch (e) {
+        console.error('R AI 審核失敗（不阻塞）:', e)
+      }
+
+      // R 方案用 × 連接成員名字
+      const memberNames = members.map(m => m.name).filter(Boolean).join(' × ')
+      const rBirthData = { ...birthData, name: memberNames }
+
+      // 生成 PDF
+      let pdfUrl: string | null = null
+      try {
+        pdfUrl = await generatePDF(reportId, planCode, rBirthData, reportContent, [])
+      } catch (e) {
+        console.error('R PDF 生成失敗（不影響報告）:', e)
+      }
+
+      // 儲存到 Supabase
+      await saveReportToSupabase(reportId, reportContent, result.model, [], pdfUrl, null)
+
+      // 寄送 Email
+      try {
+        await sendReportEmail(reportId, customerEmail, accessToken, rBirthData, planCode, reportContent, members.length)
+      } catch (e) {
+        console.error('R Email 寄送失敗（報告已完成）:', e)
+      }
+
+      await closeProgressStream()
+      return {
+        success: true,
+        reportId,
+        contentLength: reportContent.length,
+        systemsCount: members.length,
+        aiModel: result.model,
+      }
+    } catch (e) {
+      const errMsg = e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e) || '未知錯誤'
+      await markReportFailed(reportId, `R 方案合否生成失敗: ${errMsg.slice(0, 500)}`)
+      await closeProgressStream()
+      return { success: false, error: 'R 生成失敗' }
     }
   }
 

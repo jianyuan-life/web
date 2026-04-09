@@ -795,6 +795,89 @@ export async function aiGenerateG15(
 }
 aiGenerateG15.maxRetries = 2
 
+// ── R 方案「合否？」：為每位成員分別排盤，合併後 AI 生成合盤分析 ──
+export async function aiGenerateR(
+  memberResults: CalcResult[], birthData: BirthData, systemPrompt: string,
+) {
+  "use step";
+  await emitProgress({ step: 'AI分析', progress: 40, message: '正在分析雙方命格合盤...' })
+
+  const members = (birthData.members || []) as Array<{
+    name?: string; gender?: string; year?: number; month?: number; day?: number; hour?: number
+  }>
+  const relationDescription = (birthData.relation_description || birthData.relation || '') as string
+
+  let userPrompt = `合否？關係合盤分析 — 共 ${members.length} 位成員\n\n`
+
+  // 如果有關係描述，先放在最前面
+  if (relationDescription) {
+    userPrompt += `【關係描述】${relationDescription}\n\n`
+  }
+
+  // 逐一列出每位成員的排盤數據
+  for (let i = 0; i < members.length; i++) {
+    const member = members[i]
+    const calc = memberResults[i]
+    if (!calc) continue
+
+    userPrompt += `=== 成員${i + 1}：${member.name || ''} ===\n`
+    userPrompt += `性別：${member.gender === 'M' ? '男' : '女'}，出生：${member.year}年${member.month}月${member.day}日${member.hour}時\n`
+
+    const cd = calc.client_data || {}
+    userPrompt += `八字：${cd.bazi || ''} | 用神：${cd.yongshen || ''} | 五行：${JSON.stringify(cd.five_elements || {})}\n`
+    userPrompt += `農曆：${cd.lunar_date || ''} | 納音：${cd.nayin || ''} | 命宮：${cd.ming_gong || ''}\n`
+
+    const analyses = calc.analyses || []
+    userPrompt += `${analyses.length} 套系統排盤數據：\n`
+    for (const a of analyses.slice(0, 15)) {
+      userPrompt += `\n【${a.system}】評分：${a.score}分`
+      if (a.summary) userPrompt += `\n摘要：${a.summary}`
+      if (a.good_points?.length) {
+        userPrompt += `\n好的地方：`
+        for (const g of a.good_points) userPrompt += `\n- ${g}`
+      }
+      if (a.bad_points?.length) {
+        userPrompt += `\n需要注意：`
+        for (const b of a.bad_points) userPrompt += `\n- ${b}`
+      }
+      if (a.tables?.length) {
+        for (const t of a.tables) {
+          userPrompt += `\n表格「${t.title}」：\n`
+          if (t.headers) userPrompt += `| ${t.headers.join(' | ')} |\n`
+          if (t.rows) {
+            for (const row of t.rows) userPrompt += `| ${row.join(' | ')} |\n`
+          }
+        }
+      }
+      if (a.details) {
+        const detail = typeof a.details === 'string' ? a.details : JSON.stringify(a.details)
+        userPrompt += `\n詳細排盤：\n${detail}\n`
+      }
+      userPrompt += '\n'
+    }
+    userPrompt += '\n'
+  }
+
+  userPrompt += `\n請根據以上所有成員的排盤數據，撰寫完整的關係合盤分析報告。
+重要提醒：
+1. 所有分析必須基於排盤數據中的具體結果，不得編造。
+2. 每個分析論點都必須引用至少一個系統的具體合盤結果。
+3. 相容度總分必須是 0-100 的整數，根據七大系統加權計算得出。
+4. 現在是2026年丙午年。
+5. 好的地方和需要注意的地方都必須涉及雙方互動，不是個人特質描述。`
+
+  const localizedPrompt = localizePrompt(systemPrompt, birthData.locale)
+
+  if (!CLAUDE_API_KEY) {
+    throw new FatalError('R 方案合否：缺少 CLAUDE_API_KEY，付費報告必須使用 Claude Opus。')
+  }
+  const content = await claudeStreamingCall(localizedPrompt, userPrompt, 32768)
+  const cleaned = cleanAIResponse(content)
+  console.log(`R 方案合否 AI 完成: ${cleaned.length} 字`)
+  return { content: cleaned, model: 'claude-opus-4-6' }
+}
+aiGenerateR.maxRetries = 2
+
 // ── Step 3: 生成 PDF ──
 export async function generatePDF(
   reportId: string, planCode: string, birthData: BirthData,
@@ -943,7 +1026,37 @@ export async function qualityGate(
     }
   }
 
-  // 2d. G15 家族藍圖必要章節檢查
+  // 2d. R 方案「合否？」必要章節檢查
+  if (planCode === 'R') {
+    const rRequired = [
+      { pattern: /相容度總評/, name: '相容度總評' },
+      { pattern: /好的地方/, name: '好的地方' },
+      { pattern: /需要注意/, name: '需要注意的地方' },
+      { pattern: /改善建議/, name: '改善建議' },
+      { pattern: /刻意練習/, name: '刻意練習' },
+    ]
+    for (const sec of rRequired) {
+      if (!sec.pattern.test(reportContent)) {
+        warnings.push(`合否缺少必要章節: ${sec.name}`)
+      }
+    }
+    // 相容度分數檢查
+    const scoreMatch = reportContent.match(/相容度總分\s*[:：]?\s*(\d+)\s*[/／]?\s*100/)
+    if (!scoreMatch) {
+      warnings.push('合否缺少相容度總分（格式：XX/100）')
+    } else {
+      const score = parseInt(scoreMatch[1])
+      if (score < 0 || score > 100) {
+        warnings.push(`合否相容度分數異常: ${score}（應在 0-100 之間）`)
+      }
+    }
+    // 內容長度檢查
+    if (reportContent.length < 8000) {
+      warnings.push(`合否內容偏短: ${reportContent.length} 字（期望 > 8,000 字）`)
+    }
+  }
+
+  // 2e. G15 家族藍圖必要章節檢查
   if (planCode === 'G15') {
     const g15Required = [
       { pattern: /家族能量|能量圖譜/, name: '家族能量圖譜' },
@@ -998,7 +1111,7 @@ export async function qualityGate(
 // ── Step 3.5: AI 審核員（用客戶視角審查報告品質）──
 export async function aiReviewReport(reportContent: string, planCode: string): Promise<{ score: number; issues: string[] }> {
   "use step";
-  if (!['C', 'E1', 'E2', 'G15'].includes(planCode)) return { score: 85, issues: [] } // D/R 方案跳過 AI 審核
+  if (!['C', 'R', 'E1', 'E2', 'G15'].includes(planCode)) return { score: 85, issues: [] } // D 方案跳過 AI 審核
 
   await emitProgress({ step: 'AI審核', progress: 72, message: '正在進行品質審核...' })
 

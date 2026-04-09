@@ -125,6 +125,8 @@ export async function POST(req: NextRequest) {
       const { data: reportData } = await supabase.from('paid_reports').insert({
         client_name: birthData?.plan_type === 'family_email' || birthData?.plan_type === 'family_reports'
           ? (birthData?.member_names?.filter(Boolean).join('、') || 'Unknown')
+          : birthData?.plan === 'R'
+          ? (birthData?.members?.map((m: { name?: string }) => m.name).filter(Boolean).join(' × ') || 'Unknown')
           : birthData?.plan_type === 'family'
           ? (birthData?.members?.map((m: { name?: string }) => m.name).filter(Boolean).join('、') || 'Unknown')
           : (birthData?.name || 'Unknown'),
