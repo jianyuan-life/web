@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 // 管理後台 API — 簡單密碼保護
-const ADMIN_KEY = process.env.ADMIN_KEY
-if (!ADMIN_KEY) {
-  console.error('ADMIN_KEY 環境變數未設定！Admin API 無法使用')
+// 注意：延遲到請求時才讀取，避免建置時 env var 不存在報錯
+function getAdminKey() {
+  return process.env.ADMIN_KEY || ''
 }
 
 function getSupabase() {
@@ -16,7 +16,8 @@ function getSupabase() {
 
 export async function GET(req: NextRequest) {
   const key = req.nextUrl.searchParams.get('key')
-  if (key !== ADMIN_KEY) {
+  const adminKey = getAdminKey()
+  if (!adminKey || key !== adminKey) {
     return NextResponse.json({ error: '無權限' }, { status: 403 })
   }
 

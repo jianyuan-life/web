@@ -88,12 +88,14 @@ export async function GET(req: NextRequest) {
     }
 
     // 模糊搜尋：用姓名搜尋（ilike）
+    // 安全限制：只搜尋當前登入用戶 email 下的報告，防止探測其他用戶資料
     if (query && query.length >= 1) {
       const { data, error } = await supabase
         .from('paid_reports')
-        .select('id, client_name, customer_email, plan_code, status, created_at')
+        .select('id, client_name, plan_code, status, created_at')
         .eq('plan_code', 'C')
         .eq('status', 'completed')
+        .ilike('customer_email', authEmail)
         .ilike('client_name', `%${query.replace(/[%_]/g, '\\$&')}%`)
         .order('created_at', { ascending: false })
         .limit(10)
@@ -107,10 +109,6 @@ export async function GET(req: NextRequest) {
         reports: (data || []).map(r => ({
           id: r.id,
           name: r.client_name || '未知',
-          // 隱私：只顯示 email 前3字元 + ***
-          emailHint: r.customer_email
-            ? r.customer_email.substring(0, 3) + '***'
-            : '',
           createdAt: r.created_at,
         })),
       })

@@ -998,7 +998,7 @@ ${analyses.length}套系統排盤完整數據：
 
     const planNames: Record<string, string> = {
       C: '人生藍圖', D: '心之所惑', G15: '家族藍圖',
-      R: '合否？', E1: '事件出門訣', E2: '月盤出門訣', Y: '年度運勢',
+      R: '合否？', E1: '事件出門訣', E2: '月盤出門訣',
     }
     const planName = planNames[planCode] || '命理分析報告'
 

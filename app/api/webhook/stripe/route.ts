@@ -66,10 +66,13 @@ export async function POST(req: NextRequest) {
       } else if (draft) {
         birthData = draft.birth_data
         // 標記已使用，避免重複取用
-        await supabase
+        const { error: usedAtErr } = await supabase
           .from('checkout_drafts')
           .update({ used_at: new Date().toISOString() })
           .eq('id', draftId)
+        if (usedAtErr) {
+          console.error('checkout_drafts used_at 更新失敗:', usedAtErr)
+        }
       }
     } else if (birthDataStr) {
       // 向後兼容：舊的 Stripe metadata 直接存 JSON 字串格式

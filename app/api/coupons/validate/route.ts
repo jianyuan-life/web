@@ -16,15 +16,18 @@ export async function GET(req: NextRequest) {
 
   if (!code) return NextResponse.json({ valid: false, message: '請輸入優惠碼' })
 
+  // 基本輸入驗證：限制長度，防止惡意輸入
+  if (code.length > 50) return NextResponse.json({ valid: false, message: '優惠碼格式無效' })
+
   const supabase = getSupabase()
   const { data: coupon, error } = await supabase
     .from('coupons')
     .select('*')
     .eq('code', code)
+    .eq('is_active', true)
     .single()
 
-  if (error || !coupon) return NextResponse.json({ valid: false, message: '優惠碼不存在' })
-  if (!coupon.is_active) return NextResponse.json({ valid: false, message: '優惠碼已停用' })
+  if (error || !coupon) return NextResponse.json({ valid: false, message: '優惠碼不存在或已停用' })
   if (coupon.valid_until && new Date(coupon.valid_until) < new Date()) {
     return NextResponse.json({ valid: false, message: '優惠碼已過期' })
   }

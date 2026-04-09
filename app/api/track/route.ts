@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-)
+// 延遲初始化：避免建置時 env var 不存在報錯，且使用 service role key 確保 RLS 不阻擋寫入
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+  )
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,7 +32,7 @@ export async function POST(req: NextRequest) {
                     req.headers.get('x-vercel-ip-country') || ''
     const city = req.headers.get('x-vercel-ip-city') || ''
 
-    await supabase.from('visitor_events').insert({
+    await getSupabase().from('visitor_events').insert({
       session_id,
       ip_address: ip,
       country,

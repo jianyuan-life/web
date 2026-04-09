@@ -86,7 +86,6 @@ export async function POST(req: NextRequest) {
 
         if (notExpired && notExhausted && planAllowed) {
           verifiedCouponCode = coupon.code
-          const baseUsd = baseAmount / 100
           if (coupon.discount_type === 'percentage') {
             finalAmount = Math.round(baseAmount * (1 - coupon.discount_value / 100))
           } else if (coupon.discount_type === 'fixed') {
@@ -106,6 +105,9 @@ export async function POST(req: NextRequest) {
       }).select('id').single()
 
       if (!draftRes.data) return NextResponse.json({ error: '暫存資料失敗' }, { status: 500 })
+
+      // 標記 draft 已使用
+      await supabase.from('checkout_drafts').update({ used_at: new Date().toISOString() }).eq('id', draftRes.data.id)
 
       // 直接插入訂單並觸發報告生成
       const fakeSessionId = `free_${Date.now()}`

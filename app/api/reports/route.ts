@@ -120,11 +120,48 @@ export async function PATCH(req: NextRequest) {
 
   // 觸發 Workflow 報告生成（不用舊版 Fly.io 端點）
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
-  fetch(`${siteUrl}/api/workflows/generate-report`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reportId: report.id }),
-  }).catch(err => console.error('重試 Workflow 觸發失敗:', err))
+  let workflowTriggered = false
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
+    const wfRes = await fetch(`${siteUrl}/api/workflows/generate-report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reportId: report.id }),
+      signal: controller.signal,
+    })
+    clearTimeout(timeout)
+    if (wfRes.ok) workflowTriggered = true
+    else console.error('重試 Workflow 觸發失敗:', await wfRes.text())
+  } catch (err) {
+    console.error('重試 Workflow 觸發異常:', err)
+  }
+
+  // Workflow 失敗時回退到 generate-report
+  if (!workflowTriggered) {
+    try {
+      const fbController = new AbortController()
+      const fbTimeout = setTimeout(() => fbController.abort(), 8000)
+      const fbRes = await fetch(`${siteUrl}/api/generate-report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportId: report.id }),
+        signal: fbController.signal,
+      })
+      clearTimeout(fbTimeout)
+      if (!fbRes.ok) {
+        console.error('重試 Fallback 也失敗:', await fbRes.text())
+        await supabase.from('paid_reports').update({
+          error_message: '重試觸發：Workflow 和 Fallback 都失敗',
+        }).eq('id', id)
+      }
+    } catch (fbErr) {
+      console.error('重試 Fallback 觸發異常:', fbErr)
+      await supabase.from('paid_reports').update({
+        error_message: `重試觸發全部失敗: ${fbErr}`,
+      }).eq('id', id)
+    }
+  }
 
   return NextResponse.json({ success: true, message: '報告已重新排入生成佇列' })
 }
