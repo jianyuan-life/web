@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v4.5.7（2026-04-09 G15 導入模式 + E2 出門訣聚焦 + R 方案重建 + G15 四大核心章節 + OG 分享圖）
+**網站版本：** v4.5.14（2026-04-09 G15 導入模式 + E2 出門訣聚焦 + R 方案重建 + G15 四大核心章節 + OG 分享圖 + 待辦清單整理）
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
@@ -253,19 +253,22 @@ Resend 寄 Email（含報告連結）← 需域名驗證完成
 - 定價/結帳頁說明：30天×12時辰=360個奇門局，套入命格驗證吉位
 - 時間說明：報告30分鐘/人，出門訣40分鐘以上
 
+### ✅ 已確認完成（2026-04-09 驗證）
+- ~~**儀表板自動刷新**~~ — 已完成（dashboard/page.tsx setInterval 輪詢，5秒/15秒間隔）
+- ~~**Google Analytics**~~ — 已完成（layout.tsx GA gtag 整合，待設定 GA_MEASUREMENT_ID）
+- ~~**模型升級評估**~~ — 已完成（已升級為 Claude Opus 4.6）
+
 ### 🟡 功能完善（下次做）
 3. **方案專屬結帳表單** — D 問題描述欄、R 第二人資料、G15 多人資料、E1 事件日期（checkout/page.tsx）
 4. **birthCity lat/lng 傳 Python API** — 真太陽時校正，坐標已抓到但還沒傳（checkout → generate-report → Fly.io）
 5. **Stripe metadata 500字元限制** — 出生資料太長會截斷，改為先存 Supabase 再用 record_id 傳給 Stripe
-6. **儀表板自動刷新** — 報告完成後自動顯示報告連結（目前需手動 F5）
+6. **Email 通知附報告亮點** — Resend 寄信時附上報告重點摘要
 
 ### 🟢 未來優化（下次做）
 7. **退款按鈕** — Admin 後台加 Stripe Refund API（app/admin/page.tsx + /api/admin/refund/route.ts）
-8. **Google Analytics** — 追蹤用戶行為漏斗（layout.tsx 加 GA script）
-9. **PDF 附件加入 Email** — Resend 寄信時把 PDF base64 附上
-10. **模型升級評估** — 評估 Claude API 是否比 DeepSeek V3 更適合生成報告
-11. **優惠碼 Stripe 折扣整合** — 目前優惠碼已存 Supabase，但 Stripe checkout 還沒套用折扣金額
-12. **PDF 模板藝術部門重設計** — 白底+鑑源品牌色+圖表多元化（待藝術部門接手）
+8. **PDF 附件加入 Email** — Resend 寄信時把 PDF base64 附上
+9. **優惠碼 Stripe 折扣整合** — 目前優惠碼已存 Supabase，但 Stripe checkout 還沒套用折扣金額
+10. **PDF 模板藝術部門重設計** — 白底+鑑源品牌色+圖表多元化（待藝術部門接手）
 
 ## v1.3 更新紀錄（2026-04-03）
 
