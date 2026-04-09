@@ -46,7 +46,7 @@ export default function TermsPage() {
         <p>本條款受香港特別行政區法律管轄。任何爭議應先通過友好協商解決，協商不成的提交香港國際仲裁中心仲裁。</p>
 
         <h2 className="text-xl font-semibold text-white">7. 聯繫方式</h2>
-        <p>如有任何問題，請聯繫：<a href="mailto:support@fortune-reports.com" className="text-gold">support@fortune-reports.com</a></p>
+        <p>如有任何問題，請聯繫：<a href="mailto:support@jianyuan.life" className="text-gold">support@jianyuan.life</a></p>
       </div>
     </div>
   )

@@ -55,7 +55,7 @@ export default function PrivacyPage() {
         <p>我們使用必要的 Cookie 來維持登入狀態。分析 Cookie 為可選，需要您的明確同意。</p>
 
         <h2 className="text-xl font-semibold text-white">7. 聯繫我們</h2>
-        <p>隱私相關問題請聯繫：<a href="mailto:support@fortune-reports.com" className="text-gold">support@fortune-reports.com</a></p>
+        <p>隱私相關問題請聯繫：<a href="mailto:support@jianyuan.life" className="text-gold">support@jianyuan.life</a></p>
       </div>
     </div>
   )
