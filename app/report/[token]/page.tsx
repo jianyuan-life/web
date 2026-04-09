@@ -292,7 +292,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   const report = data as ReportData
 
   // 報告生成中
-  if (report.status === 'pending') {
+  if (report.status === 'pending' || report.status === 'generating') {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(180deg, #0a0e1a 0%, #0f1628 40%, #0a0e1a 100%)' }}>
         <div className="glass rounded-2xl p-12 text-center max-w-md">
