@@ -8,15 +8,28 @@ function getSupabase() {
   )
 }
 
-// 從 cookie 驗證 Supabase Auth 登入狀態
+// 從 Authorization header 或 cookie 驗證 Supabase Auth 登入狀態
 async function getAuthEmail(req: NextRequest): Promise<string | null> {
   try {
-    const cookies = req.headers.get('cookie') || ''
-    const accessTokenMatch = cookies.match(/sb-[^=]+-auth-token[^=]*=([^;]+)/)
-    if (!accessTokenMatch) return null
-    const tokenData = JSON.parse(decodeURIComponent(accessTokenMatch[1]))
-    const token = Array.isArray(tokenData) ? tokenData[0] : tokenData?.access_token || tokenData
-    if (typeof token !== 'string' || token.length < 20) return null
+    let token: string | null = null
+
+    // 優先從 Authorization header 讀取
+    const authHeader = req.headers.get('authorization')
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7)
+    }
+
+    // Fallback：從 cookie 讀取
+    if (!token) {
+      const cookies = req.headers.get('cookie') || ''
+      const match = cookies.match(/sb-[^=]+-auth-token[^=]*=([^;]+)/)
+      if (match) {
+        const tokenData = JSON.parse(decodeURIComponent(match[1]))
+        token = Array.isArray(tokenData) ? tokenData[0] : tokenData?.access_token || tokenData
+      }
+    }
+
+    if (!token || typeof token !== 'string' || token.length < 20) return null
     const supabase = getSupabase()
     const { data } = await supabase.auth.getUser(token)
     return data?.user?.email || null
@@ -37,8 +50,11 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url)
-    const email = searchParams.get('email')?.trim().toLowerCase()
+    const emailParam = searchParams.get('email')?.trim().toLowerCase()
     const query = searchParams.get('q')?.trim()
+
+    // 如果沒帶 email 也沒帶 q，但有登入 → 自動用登入 email 查詢「我的報告」
+    const email = emailParam || (!query ? authEmail : null)
 
     if (!email && !query) {
       return NextResponse.json({ error: '請提供 email 或搜尋關鍵字' }, { status: 400 })

@@ -147,7 +147,7 @@ export function useCheckoutForm() {
           try { sessionStorage.setItem('jianyuan_email', data.user.email) } catch {}
           // G15：自動載入該用戶的已完成人生藍圖報告
           if (planCode === 'G15') {
-            loadMyReports(data.user.email)
+            loadMyReports()
           }
         }
         setAuthChecked(true)
@@ -167,11 +167,16 @@ export function useCheckoutForm() {
   }
 
   // G15 導入模式：自動載入當前用戶的已完成人生藍圖
-  const loadMyReports = async (userEmail: string) => {
-    if (!userEmail) return
+  const loadMyReports = async () => {
     setG15MyLoading(true)
     try {
-      const res = await fetch(`/api/checkout/search-reports?email=${encodeURIComponent(userEmail)}`)
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers: Record<string, string> = {}
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      // 不帶 email 參數，API 會自動用登入 email 查詢
+      const res = await fetch('/api/checkout/search-reports', { headers })
       const data = await res.json()
       if (res.ok && data.reports) {
         setG15MyReports(data.reports)
@@ -188,7 +193,12 @@ export function useCheckoutForm() {
     }
     setG15SearchLoading(true)
     try {
-      const res = await fetch(`/api/checkout/search-reports?q=${encodeURIComponent(query.trim())}`)
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers: Record<string, string> = {}
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      const res = await fetch(`/api/checkout/search-reports?q=${encodeURIComponent(query.trim())}`, { headers })
       const data = await res.json()
       if (res.ok && data.reports) {
         // 過濾掉已選取的報告
