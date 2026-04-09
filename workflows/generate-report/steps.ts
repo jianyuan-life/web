@@ -704,8 +704,8 @@ async function claudeStreamingCall(systemPrompt: string, userPrompt: string, max
   } catch (e) {
     if (e instanceof Error && e.name === 'AbortError') {
       // 串流讀取中超時：回傳已收到的部分內容（如果夠長就用）
-      // 閾值 15000 字：一個完整的 call 通常 20000+ 字，低於 15000 字代表被嚴重截斷
-      if (result.length > 15000) {
+      // 閾值 8000 字：低於此數代表截斷太嚴重，強制重試
+      if (result.length > 8000) {
         console.warn(`Claude 串流超時但已收到 ${result.length} 字，使用部分結果`)
         clearTimeout(timeout)
         return result

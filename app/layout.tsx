@@ -138,7 +138,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
             <div className="mt-12 pt-8 border-t border-gold/5 text-center text-xs text-text-muted/60">
               <p>本服務融合傳統命理學與現代科技，分析結果僅供參考，不構成任何醫療、投資或法律建議。</p>
-              <p className="mt-2">&copy; {new Date().getFullYear()} 鑒源 JianYuan. All rights reserved. &middot; v4.5.22</p>
+              <p className="mt-2">&copy; {new Date().getFullYear()} 鑒源 JianYuan. All rights reserved. &middot; v4.5.23</p>
             </div>
           </div>
         </footer>
