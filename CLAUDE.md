@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v4.3.0（2026-04-09 奇門出門訣頂尖升級 + 報告品質修復 + 姓名學重建）
+**網站版本：** v4.5.0（2026-04-09 G15 家族藍圖導入模式改版 + PDF 粗體/橫線修復 + Vercel 自動部署修復）
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
@@ -151,6 +151,25 @@ Resend 寄 Email（含報告連結）← 需域名驗證完成
 - **Domain 驗證：** 在 resend.com Domains 頁面確認變綠
 
 ## 待完成（優先順序）
+
+### ✅ v4.5.0（2026-04-09）
+
+**G15 家族藍圖改版：**
+- email 驗證模式改為導入模式（跳過排盤，讀取已有人生藍圖報告）
+
+**PDF 品質修復：**
+- 報告頁 `**粗體**` 渲染修復（renderInlineMarkdown 已正確轉換為 `<strong>`）
+- 多餘 `---` 橫線已在 renderInlineMarkdown 中移除（`.replace(/^---+$/gm, '')`）
+- PDF 端粗體/橫線修復需部署 Fly.io Python 腳本（pdf_routes.py）
+
+**Vercel 自動部署修復：**
+- `vercel git connect` 確認 GitHub repo jianyuan-life/web 已連接
+- 自動部署正常運作
+
+**手機報告體驗檢查：**
+- viewport meta tag 由 Next.js 自動處理
+- 報告頁使用 `max-w-3xl mx-auto px-6` 響應式佈局
+- 目錄使用 `grid-cols-1 sm:grid-cols-2` 響應式排版
 
 ### 🔴 上線前必做
 1. **Stripe 切換 Live 模式**（sk_test_ → sk_live_）

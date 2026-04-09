@@ -755,6 +755,14 @@ export async function generatePDF(
   }
   const planName = planNames[planCode] || '命理分析報告'
 
+  // PDF 專用預處理：清除殘留橫線（各種變體）
+  const pdfContent = reportContent
+    .replace(/^---+$/gm, '')           // 標準 markdown 橫線
+    .replace(/^___+$/gm, '')           // 底線型橫線
+    .replace(/^\*\*\*+$/gm, '')        // 星號型橫線
+    .replace(/^[\s]*[-─—═]+[\s]*$/gm, '') // 全形橫線/裝飾線
+    .replace(/\n{3,}/g, '\n\n')        // 清理後的連續空行
+
   const pdfRes = await fetch(`${PYTHON_API}/api/generate-pdf`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -767,7 +775,7 @@ export async function generatePDF(
         ? ((birthData.members as Array<{ name?: string }> | undefined)?.map(m => m.name).filter(Boolean).join('、') || 'Unknown')
         : (birthData.name || 'Unknown'),
       plan_name: planName,
-      ai_content: reportContent,
+      ai_content: pdfContent,
       locale: birthData.locale || 'zh-TW',
       analyses_summary: analyses,
     }),

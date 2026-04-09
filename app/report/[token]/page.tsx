@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
 import ReportClientButtons from './ReportClientButtons'
 
 // ============================================================
@@ -218,6 +219,44 @@ function formatTimingDate(dateStr: string): string {
   const date = new Date(Number(y), Number(m) - 1, Number(d))
   const weekdays = ['日', '一', '二', '三', '四', '五', '六']
   return `${y}年${Number(m)}月${Number(d)}日（${weekdays[date.getDay()]}）`
+}
+
+// 動態 OG metadata — 社群分享時顯示方案名稱與客戶名
+export async function generateMetadata({ params }: { params: Promise<{ token: string }> }): Promise<Metadata> {
+  const { token } = await params
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+  )
+
+  const { data } = await supabase
+    .from('paid_reports')
+    .select('client_name, plan_code')
+    .eq('access_token', token)
+    .single()
+
+  const planName = data ? (PLAN_NAMES[data.plan_code] || '命理分析') : '命理分析'
+  const clientName = data?.client_name || ''
+  const title = clientName ? `${clientName}的${planName}報告` : `${planName}報告`
+  const description = '鑒源命理 — 十五大命理系統整合分析，一份報告看清性格天賦、事業方向、感情運勢。'
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      siteName: '鑒源 JianYuan',
+      locale: 'zh_TW',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+    },
+  }
 }
 
 export default async function ReportPage({ params }: { params: Promise<{ token: string }> }) {

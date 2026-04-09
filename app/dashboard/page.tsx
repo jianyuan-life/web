@@ -216,6 +216,25 @@ function DashboardContent() {
           const newReports = (data.reports || []).filter(
             (r: Report) => !deletedIds.has(r.id)
           )
+          // 偵測從 pending 變成 completed 的報告，顯示完成動畫
+          const previousPendingIds = new Set(reports.filter(r => r.status === 'pending').map(r => r.id))
+          const newlyCompleted = newReports.filter(
+            (r: Report) => r.status === 'completed' && previousPendingIds.has(r.id)
+          )
+          if (newlyCompleted.length > 0) {
+            setJustCompletedIds(prev => {
+              const next = new Set(prev)
+              newlyCompleted.forEach((r: Report) => next.add(r.id))
+              return next
+            })
+            setTimeout(() => {
+              setJustCompletedIds(prev => {
+                const next = new Set(prev)
+                newlyCompleted.forEach((r: Report) => next.delete(r.id))
+                return next
+              })
+            }, 5000)
+          }
           setReports(newReports)
           if (!newReports.some((r: Report) => r.status === 'pending')) {
             clearInterval(interval)
