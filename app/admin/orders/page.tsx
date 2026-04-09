@@ -170,7 +170,7 @@ export default function OrdersPage() {
                       {STATUS_LABELS[order.status]?.label || order.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">{new Date(order.created_at).toLocaleDateString('zh-TW')}</td>
+                  <td className="px-4 py-3 text-gray-400 text-xs">{new Date(order.created_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })}</td>
                   <td className="px-4 py-3">
                     {order.status === 'failed' && (
                       <button onClick={e => { e.stopPropagation(); retryOrder(order.id) }}

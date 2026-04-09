@@ -215,7 +215,7 @@ export default function AdminOverview() {
                     <span className="text-gray-500 mx-1.5">購買</span>
                     <span className="text-amber-400">{PLAN_NAMES[order.plan_code] || order.plan_code}</span>
                   </div>
-                  <span className="text-xs text-gray-500 shrink-0">{new Date(order.created_at).toLocaleDateString('zh-TW')}</span>
+                  <span className="text-xs text-gray-500 shrink-0">{new Date(order.created_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })}</span>
                 </div>
               ))}
             </div>

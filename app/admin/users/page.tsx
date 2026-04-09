@@ -129,9 +129,9 @@ export default function UsersPage() {
                   <td className="px-4 py-3">
                     <span className={user.total_spent > 0 ? 'text-amber-400' : 'text-gray-500'}>${user.total_spent}</span>
                   </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">{new Date(user.created_at).toLocaleDateString('zh-TW')}</td>
+                  <td className="px-4 py-3 text-gray-400 text-xs">{new Date(user.created_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })}</td>
                   <td className="px-4 py-3 text-gray-400 text-xs">
-                    {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString('zh-TW') : '-'}
+                    {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}
                   </td>
                 </tr>
                 {expandedId === user.id && user.reports.length > 0 && (
@@ -146,7 +146,7 @@ export default function UsersPage() {
                             <span className="text-gray-500">—</span>
                             <span className="text-white">{r.client_name}</span>
                             <span className="text-gray-500 ml-auto">${r.amount_usd}</span>
-                            <span className="text-gray-500">{new Date(r.created_at).toLocaleDateString('zh-TW')}</span>
+                            <span className="text-gray-500">{new Date(r.created_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })}</span>
                           </div>
                         ))}
                       </div>
