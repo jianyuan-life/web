@@ -471,6 +471,10 @@ ${analyses.length}套系統排盤完整數據：
     userPrompt += '\n'
   }
 
+  // 報告生成日期：讓 AI 知道「今天」是哪天，避免推薦過去的日期
+  const generationDate = new Date().toISOString().split('T')[0]
+  userPrompt += `\n【報告生成日期】${generationDate}\nTop5 吉時只能推薦此日期之後（含當天）的日期，不可推薦已經過去的日期。\n`
+
   // 出門訣時間限制：客戶選的可配合時段
   if (birthData.available_time_slots && Array.isArray(birthData.available_time_slots) && birthData.available_time_slots.length > 0) {
     const slotsDesc = birthData.available_time_slots.map((s: { start?: string; end?: string }) => `${s.start || ''}~${s.end || ''}`).join('、')

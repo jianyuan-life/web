@@ -43,7 +43,7 @@ export default function CheckoutHeader({
       {/* 方案摘要 */}
       <div className="glass rounded-xl p-5 mb-8 flex justify-between items-center">
         <div>
-          <div className="text-xs text-gold font-mono">方案 {planCode}</div>
+          <div className="text-xs text-gold font-mono">{planName}</div>
           <div className="text-lg font-bold text-white">{planName}</div>
           <div className="text-xs text-text-muted">
             {isG15Plan
