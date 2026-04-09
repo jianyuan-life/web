@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 // 管理後台 API — 簡單密碼保護
-const ADMIN_KEY = process.env.ADMIN_KEY || 'jianyuan2026'
+const ADMIN_KEY = process.env.ADMIN_KEY
+if (!ADMIN_KEY) {
+  console.error('ADMIN_KEY 環境變數未設定！Admin API 無法使用')
+}
 
 function getSupabase() {
   return createClient(

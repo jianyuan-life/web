@@ -261,15 +261,31 @@ export async function loadReportRecord(reportId: string) {
     throw new FatalError(`找不到報告記錄: ${reportId}`)
   }
 
+  // 防重複生成：如果報告已完成或正在生成中，直接跳過
+  if (data.status === 'completed') {
+    throw new FatalError(`報告 ${reportId} 已完成，跳過重複生成`)
+  }
+  if (data.status === 'generating') {
+    throw new FatalError(`報告 ${reportId} 正在生成中，跳過重複觸發`)
+  }
+
   if (!data.birth_data) {
     throw new FatalError(`報告 ${reportId} 缺少出生資料`)
   }
 
-  // 更新狀態為 processing
-  await supabase.from('paid_reports').update({
-    status: 'pending',
+  // 用原子操作搶佔：只有從 pending/failed 轉為 generating 才繼續
+  // 這可以防止 Webhook + Fallback + Cron 同時觸發時的競態條件
+  const { data: updated, error: updateErr } = await supabase.from('paid_reports').update({
+    status: 'generating',
     error_message: null,
-  }).eq('id', reportId)
+  })
+    .eq('id', reportId)
+    .in('status', ['pending', 'failed'])
+    .select('id')
+
+  if (updateErr || !updated?.length) {
+    throw new FatalError(`報告 ${reportId} 狀態搶佔失敗（可能已被其他程序處理）`)
+  }
 
   return {
     birthData: data.birth_data as BirthData,
@@ -285,17 +301,32 @@ export async function callPythonCalculate(birthData: BirthData) {
   "use step";
   await emitProgress({ step: '排盤運算', progress: 10, message: '正在計算十五大命理系統排盤...' })
 
-  const res = await fetch(`${PYTHON_API}/api/calculate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name: birthData.name,
-      year: birthData.year, month: birthData.month, day: birthData.day,
-      hour: birthData.hour, minute: birthData.minute || 0,
-      gender: birthData.gender,
-      ...(birthData.cityLat && birthData.cityLng ? { lat: birthData.cityLat, lng: birthData.cityLng } : {}),
-    }),
-  })
+  // 60 秒超時：防止 Fly.io 無回應時無限等待
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 60000)
+
+  let res: Response
+  try {
+    res = await fetch(`${PYTHON_API}/api/calculate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: birthData.name,
+        year: birthData.year, month: birthData.month, day: birthData.day,
+        hour: birthData.hour, minute: birthData.minute || 0,
+        gender: birthData.gender,
+        ...(birthData.cityLat && birthData.cityLng ? { lat: birthData.cityLat, lng: birthData.cityLng } : {}),
+      }),
+      signal: controller.signal,
+    })
+  } catch (e) {
+    clearTimeout(timeout)
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new RetryableError('排盤 API 超時（60秒）', { retryAfter: '10s' })
+    }
+    throw e
+  }
+  clearTimeout(timeout)
 
   if (!res.ok) {
     const errText = await res.text()
@@ -309,81 +340,130 @@ export async function callPythonCalculate(birthData: BirthData) {
 }
 callPythonCalculate.maxRetries = 3
 
-// ── Claude 串流呼叫（內部輔助，非 step） ──
+// ── Claude 串流呼叫（內部輔助，非 step）——含 200s 超時 ──
 async function claudeStreamingCall(systemPrompt: string, userPrompt: string, maxTokens: number): Promise<string> {
-  const res = await fetch(CLAUDE_API, {
-    method: 'POST',
-    headers: {
-      'x-api-key': CLAUDE_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'claude-opus-4-6',
-      max_tokens: maxTokens,
-      stream: true,
-      messages: [{ role: 'user', content: userPrompt }],
-      system: systemPrompt,
-      temperature: 0.7,
-    }),
-  })
+  // 200 秒超時：串流需要較長時間，但不能無限等待
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 200000)
+
+  let res: Response
+  try {
+    res = await fetch(CLAUDE_API, {
+      method: 'POST',
+      headers: {
+        'x-api-key': CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-6',
+        max_tokens: maxTokens,
+        stream: true,
+        messages: [{ role: 'user', content: userPrompt }],
+        system: systemPrompt,
+        temperature: 0.7,
+      }),
+      signal: controller.signal,
+    })
+  } catch (e) {
+    clearTimeout(timeout)
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new RetryableError('Claude API 連線超時（200秒）', { retryAfter: '15s' })
+    }
+    throw e
+  }
 
   if (!res.ok) {
+    clearTimeout(timeout)
     const errText = await res.text()
     if (res.status === 429) {
       throw new RetryableError(`Claude API 429 限流`, { retryAfter: '30s' })
     }
     if (res.status >= 500) {
-      // Claude 伺服器錯誤，可重試
       throw new RetryableError(`Claude API ${res.status}: ${errText.slice(0, 300)}`, { retryAfter: '15s' })
     }
-    // 4xx 非 429（如 400/401/403）為不可重試錯誤
     throw new FatalError(`Claude API ${res.status}: ${errText.slice(0, 300)}`)
   }
 
   const reader = res.body?.getReader()
-  if (!reader) throw new Error('Claude API 無回應串流')
+  if (!reader) {
+    clearTimeout(timeout)
+    throw new Error('Claude API 無回應串流')
+  }
 
   const decoder = new TextDecoder()
   let result = ''
   let buffer = ''
 
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    const lines = buffer.split('\n')
-    buffer = lines.pop() || ''
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue
-      const data = line.slice(6).trim()
-      if (data === '[DONE]') continue
-      try {
-        const event = JSON.parse(data)
-        if (event.type === 'content_block_delta' && event.delta?.text) {
-          result += event.delta.text
-        }
-      } catch { /* 忽略 */ }
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        const data = line.slice(6).trim()
+        if (data === '[DONE]') continue
+        try {
+          const event = JSON.parse(data)
+          if (event.type === 'content_block_delta' && event.delta?.text) {
+            result += event.delta.text
+          }
+        } catch { /* 忽略 */ }
+      }
     }
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') {
+      // 串流讀取中超時：回傳已收到的部分內容（如果夠長就用）
+      if (result.length > 5000) {
+        console.warn(`Claude 串流超時但已收到 ${result.length} 字，使用部分結果`)
+        clearTimeout(timeout)
+        return result
+      }
+      clearTimeout(timeout)
+      throw new RetryableError(`Claude API 串流超時（200秒，已收到 ${result.length} 字）`, { retryAfter: '15s' })
+    }
+    clearTimeout(timeout)
+    throw e
   }
+
+  clearTimeout(timeout)
   return result
 }
 
-// ── DeepSeek 呼叫（內部輔助，非 step） ──
+// ── DeepSeek 呼叫（內部輔助，非 step）——含 180s 超時 ──
 async function deepseekCall(systemPrompt: string, userPrompt: string, maxTokens: number): Promise<string> {
-  const res = await fetch(DEEPSEEK_API, {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${DEEPSEEK_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'deepseek-chat',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      max_tokens: maxTokens,
-      temperature: 0.7,
-    }),
-  })
+  // 180 秒超時
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 180000)
+
+  let res: Response
+  try {
+    res = await fetch(DEEPSEEK_API, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${DEEPSEEK_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        max_tokens: maxTokens,
+        temperature: 0.7,
+      }),
+      signal: controller.signal,
+    })
+  } catch (e) {
+    clearTimeout(timeout)
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new RetryableError('DeepSeek API 超時（180秒）', { retryAfter: '15s' })
+    }
+    throw e
+  }
+  clearTimeout(timeout)
+
   if (!res.ok) {
     const errText = await res.text()
     if (res.status === 429) {

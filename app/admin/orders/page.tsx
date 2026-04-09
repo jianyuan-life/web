@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, Fragment } from 'react'
 import { useAdminAuth } from '../layout'
 
 const PLAN_NAMES: Record<string, string> = {
@@ -156,8 +156,8 @@ export default function OrdersPage() {
           </thead>
           <tbody>
             {paged.map(order => (
-              <>
-                <tr key={order.id} className="border-b border-white/5 hover:bg-white/[0.02] cursor-pointer"
+              <Fragment key={order.id}>
+                <tr className="border-b border-white/5 hover:bg-white/[0.02] cursor-pointer"
                   onClick={() => setExpandedId(expandedId === order.id ? null : order.id)}>
                   <td className="px-4 py-3">
                     <div className="text-white">{order.client_name}</div>
@@ -200,7 +200,7 @@ export default function OrdersPage() {
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             ))}
             {paged.length === 0 && (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-500">暫無訂單</td></tr>

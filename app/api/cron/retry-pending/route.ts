@@ -26,8 +26,8 @@ export async function GET(req: NextRequest) {
   const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
   const { data: stuckReports, error: queryErr } = await supabase
     .from('paid_reports')
-    .select('id, retry_count, created_at')
-    .eq('status', 'pending')
+    .select('id, retry_count, status, created_at')
+    .in('status', ['pending', 'generating'])
     .lt('created_at', fiveMinAgo)
     .order('created_at', { ascending: true })
     .limit(10)
@@ -57,8 +57,18 @@ export async function GET(req: NextRequest) {
       continue
     }
 
-    // 更新 retry_count
+    // generating 狀態超過 10 分鐘才重試（給正在執行的 workflow 足夠時間）
+    if (report.status === 'generating') {
+      const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString()
+      if (report.created_at > tenMinAgo) {
+        console.log(`⏳ 報告 ${report.id} 正在生成中（generating），尚未超時，跳過`)
+        continue
+      }
+    }
+
+    // 重置為 pending + 更新 retry_count（讓 workflow 的 loadReportRecord 能搶佔）
     await supabase.from('paid_reports').update({
+      status: 'pending',
       retry_count: currentRetry + 1,
     }).eq('id', report.id)
 

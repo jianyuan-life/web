@@ -96,9 +96,20 @@ function parseStructuredContent(markdown: string): ContentSection[] {
   return sections
 }
 
+// HTML 實體轉義（防止 XSS — AI 生成內容可能包含惡意 HTML）
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 // 將純文字 markdown 段落轉 HTML（不含 ### 處理）
 function renderInlineMarkdown(text: string): string {
-  let html = text
+  // 先轉義所有 HTML，再套用安全的 markdown 樣式
+  let html = escapeHtml(text)
     // 清理 Markdown 殘留和 prompt 結構標籤
     .replace(/^---+$/gm, '')
     .replace(/^\|[-:]+\|[-:| ]*$/gm, '') // 表格分隔線

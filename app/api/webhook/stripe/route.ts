@@ -38,12 +38,21 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ 付款成功！方案${planCode}, $${amount}`)
 
-    // 存入 Supabase（用公開 reports 表，不需要 user_id 的簡化版）
     const supabase = getSupabase()
 
-    let birthData = null
-    const reportResult = null
+    // 冪等性檢查：防止同一個 Stripe session 被處理兩次
+    const { data: existingReport } = await supabase
+      .from('paid_reports')
+      .select('id, status')
+      .eq('stripe_session_id', session.id)
+      .maybeSingle()
 
+    if (existingReport) {
+      console.log(`⚠️ Stripe session ${session.id} 已處理過（報告 ${existingReport.id}，狀態 ${existingReport.status}），跳過`)
+      return NextResponse.json({ received: true, duplicate: true })
+    }
+
+    let birthData = null
     if (draftId) {
       // 從 Supabase checkout_drafts 取回完整 birthData（無 500 字元限制）
       const { data: draft, error: draftErr } = await supabase

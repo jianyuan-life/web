@@ -33,7 +33,6 @@ export async function POST(req: NextRequest) {
     // 從 Supabase Auth 取得用戶真實 email（不依賴前端傳值）
     let verifiedEmail = ''
     try {
-      const authHeader = req.headers.get('authorization') || req.headers.get('cookie') || ''
       const supabaseAuth = getSupabase()
       // 嘗試用 cookie 中的 token 驗證用戶
       const cookies = req.headers.get('cookie') || ''
@@ -152,13 +151,44 @@ export async function POST(req: NextRequest) {
         })
       }
 
-      // 觸發 Workflow 生成報告
+      // 觸發 Workflow 生成報告（await + fallback，與 webhook 一致）
       if (reportId) {
-        fetch(`${siteUrl}/api/workflows/generate-report`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reportId }),
-        }).catch(err => console.error('免費方案 Workflow 觸發失敗:', err))
+        let workflowTriggered = false
+        try {
+          const wfController = new AbortController()
+          const wfTimeout = setTimeout(() => wfController.abort(), 5000)
+          const wfRes = await fetch(`${siteUrl}/api/workflows/generate-report`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reportId }),
+            signal: wfController.signal,
+          })
+          clearTimeout(wfTimeout)
+          if (wfRes.ok) workflowTriggered = true
+          else console.error('免費方案 Workflow 觸發失敗:', await wfRes.text())
+        } catch (wfErr) {
+          console.error('免費方案 Workflow 觸發異常:', wfErr)
+        }
+
+        // Fallback: 直接呼叫 generate-report
+        if (!workflowTriggered) {
+          try {
+            const fbController = new AbortController()
+            const fbTimeout = setTimeout(() => fbController.abort(), 8000)
+            await fetch(`${siteUrl}/api/generate-report`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ reportId }),
+              signal: fbController.signal,
+            })
+            clearTimeout(fbTimeout)
+          } catch (fbErr) {
+            console.error('免費方案 Fallback 也失敗:', fbErr)
+            await supabase.from('paid_reports').update({
+              error_message: `免費方案：Workflow 和 Fallback 都失敗`,
+            }).eq('id', reportId)
+          }
+        }
       }
 
       return NextResponse.json({ url: `${siteUrl}/dashboard?payment=success&free=1` })

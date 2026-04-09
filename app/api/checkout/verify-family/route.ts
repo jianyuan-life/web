@@ -8,9 +8,40 @@ function getSupabase() {
   )
 }
 
+// 從 cookie 驗證 Supabase Auth 登入狀態
+async function getAuthEmail(req: NextRequest): Promise<string | null> {
+  try {
+    let token: string | null = null
+    const authHeader = req.headers.get('authorization')
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7)
+    }
+    if (!token) {
+      const cookies = req.headers.get('cookie') || ''
+      const match = cookies.match(/sb-[^=]+-auth-token[^=]*=([^;]+)/)
+      if (match) {
+        const tokenData = JSON.parse(decodeURIComponent(match[1]))
+        token = Array.isArray(tokenData) ? tokenData[0] : tokenData?.access_token || tokenData
+      }
+    }
+    if (!token || typeof token !== 'string' || token.length < 20) return null
+    const supabase = getSupabase()
+    const { data } = await supabase.auth.getUser(token)
+    return data?.user?.email || null
+  } catch {
+    return null
+  }
+}
+
 // 驗證每個 email 是否有已完成的人生藍圖（C 方案）報告
 export async function POST(req: NextRequest) {
   try {
+    // 身份驗證：必須登入才能使用（防止任意探測 email）
+    const authEmail = await getAuthEmail(req)
+    if (!authEmail) {
+      return NextResponse.json({ error: '請先登入' }, { status: 401 })
+    }
+
     const { emails } = await req.json()
 
     if (!Array.isArray(emails) || emails.length < 2) {

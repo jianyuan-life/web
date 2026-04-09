@@ -29,9 +29,6 @@ const STAR_PROFILES: Record<string, { nature: string; personality: string; stren
   '破軍': { nature: '耗星', personality: '不按常理出牌，喜歡打破舊有框架。有很強的變革精神和創造力。', strengths: '創新力強、不拘泥傳統、勇於改變、有爆發力', challenges: '不夠穩定、容易推倒重來、人際關係波動', career: '適合創業、改革、科技研發、藝術創作', love: '感情起伏較大，需要學會穩定和經營' },
 }
 
-// 十二宮位名稱
-const PALACES = ['命宮', '兄弟宮', '夫妻宮', '子女宮', '財帛宮', '疾厄宮', '遷移宮', '交友宮', '事業宮', '田宅宮', '福德宮', '父母宮']
-
 // ── 四化星表（根據年干） ──
 const SIHUA: Record<string, string[]> = {
   '甲': ['廉貞化祿', '破軍化權', '武曲化科', '太陽化忌'],

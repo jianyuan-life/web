@@ -9,18 +9,43 @@ function getServiceSupabase() {
   )
 }
 
-// GET — 取得用戶的報告（前端傳 email）
+// 從 Authorization header 或 cookie 驗證 Supabase Auth 登入狀態
+async function getAuthEmail(req: NextRequest): Promise<string | null> {
+  try {
+    let token: string | null = null
+    const authHeader = req.headers.get('authorization')
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7)
+    }
+    if (!token) {
+      const cookies = req.headers.get('cookie') || ''
+      const match = cookies.match(/sb-[^=]+-auth-token[^=]*=([^;]+)/)
+      if (match) {
+        const tokenData = JSON.parse(decodeURIComponent(match[1]))
+        token = Array.isArray(tokenData) ? tokenData[0] : tokenData?.access_token || tokenData
+      }
+    }
+    if (!token || typeof token !== 'string' || token.length < 20) return null
+    const supabase = getServiceSupabase()
+    const { data } = await supabase.auth.getUser(token)
+    return data?.user?.email || null
+  } catch {
+    return null
+  }
+}
+
+// GET — 取得用戶的報告（需登入驗證，只能查自己的報告）
 export async function GET(req: NextRequest) {
-  const email = req.nextUrl.searchParams.get('email')
-  if (!email) {
-    return NextResponse.json({ error: '缺少 email' }, { status: 400 })
+  const authEmail = await getAuthEmail(req)
+  if (!authEmail) {
+    return NextResponse.json({ error: '請先登入' }, { status: 401 })
   }
 
   const supabase = getServiceSupabase()
   const { data, error } = await supabase
     .from('paid_reports')
     .select('*')
-    .ilike('customer_email', email.toLowerCase())
+    .ilike('customer_email', authEmail.toLowerCase())
     .order('created_at', { ascending: false })
     .limit(50)
 
@@ -31,10 +56,16 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ reports: data || [] })
 }
 
-// PATCH — 重試失敗的報告
+// PATCH — 重試失敗的報告（需登入驗證）
 export async function PATCH(req: NextRequest) {
-  const { id, email } = await req.json()
-  if (!id || !email) return NextResponse.json({ error: '缺少參數' }, { status: 400 })
+  const authEmail = await getAuthEmail(req)
+  if (!authEmail) {
+    return NextResponse.json({ error: '請先登入' }, { status: 401 })
+  }
+
+  const { id } = await req.json()
+  if (!id) return NextResponse.json({ error: '缺少參數' }, { status: 400 })
+  const email = authEmail
 
   const supabase = getServiceSupabase()
 
@@ -74,9 +105,15 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ success: true, message: '報告已重新排入生成佇列' })
 }
 
+// DELETE — 刪除報告（需登入驗證）
 export async function DELETE(req: NextRequest) {
-  const { id, email } = await req.json()
-  if (!id || !email) return NextResponse.json({ error: '缺少參數' }, { status: 400 })
+  const authEmail = await getAuthEmail(req)
+  if (!authEmail) {
+    return NextResponse.json({ error: '請先登入' }, { status: 401 })
+  }
+
+  const { id } = await req.json()
+  if (!id) return NextResponse.json({ error: '缺少參數' }, { status: 400 })
 
   const supabase = getServiceSupabase()
 
@@ -84,7 +121,7 @@ export async function DELETE(req: NextRequest) {
     .from('paid_reports')
     .delete()
     .eq('id', id)
-    .ilike('customer_email', email.toLowerCase())
+    .ilike('customer_email', authEmail.toLowerCase())
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

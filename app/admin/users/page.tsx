@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, Fragment } from 'react'
 import { useAdminAuth } from '../layout'
 
 const PLAN_NAMES: Record<string, string> = {
@@ -116,8 +116,8 @@ export default function UsersPage() {
           </thead>
           <tbody>
             {filtered.map(user => (
-              <>
-                <tr key={user.id} className="border-b border-white/5 hover:bg-white/[0.02] cursor-pointer"
+              <Fragment key={user.id}>
+                <tr className="border-b border-white/5 hover:bg-white/[0.02] cursor-pointer"
                   onClick={() => setExpandedId(expandedId === user.id ? null : user.id)}>
                   <td className="px-4 py-3">
                     <div className="text-white">{user.full_name || '(未填姓名)'}</div>
@@ -153,7 +153,7 @@ export default function UsersPage() {
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             ))}
             {filtered.length === 0 && (
               <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500">暫無用戶</td></tr>

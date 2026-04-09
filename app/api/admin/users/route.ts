@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const ADMIN_KEY = process.env.ADMIN_KEY || 'jianyuan2026'
+const ADMIN_KEY = process.env.ADMIN_KEY
 
 // 延遲初始化 Supabase（避免建置時 env var 不存在報錯）
 function getSupabase() {

@@ -52,27 +52,37 @@ async function callClaudeStreaming(
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
-  const res = await fetch(CLAUDE_API, {
-    method: 'POST',
-    headers: {
-      'x-api-key': CLAUDE_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'claude-opus-4-6',
-      max_tokens: maxTokens,
-      stream: true,
-      messages: [
-        { role: 'user', content: userPrompt },
-      ],
-      system: systemPrompt,
-      temperature: 0.7,
-    }),
-    signal: controller.signal,
-  })
+  let res: Response
+  try {
+    res = await fetch(CLAUDE_API, {
+      method: 'POST',
+      headers: {
+        'x-api-key': CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-6',
+        max_tokens: maxTokens,
+        stream: true,
+        messages: [
+          { role: 'user', content: userPrompt },
+        ],
+        system: systemPrompt,
+        temperature: 0.7,
+      }),
+      signal: controller.signal,
+    })
+  } catch (e) {
+    clearTimeout(timeout)
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new Error(`Claude API 連線超時（${timeoutMs / 1000}秒）`)
+    }
+    throw e
+  }
 
   if (!res.ok) {
+    clearTimeout(timeout)
     const errText = await res.text()
     console.error(`Claude API 回傳 HTTP ${res.status}，回應內容: ${errText.slice(0, 500)}`)
     throw new Error(`Claude API 錯誤 ${res.status}: ${errText}`)
@@ -80,43 +90,61 @@ async function callClaudeStreaming(
 
   // 解析 SSE 串流
   const reader = res.body?.getReader()
-  if (!reader) throw new Error('Claude API 無回應串流')
+  if (!reader) {
+    clearTimeout(timeout)
+    throw new Error('Claude API 無回應串流')
+  }
 
   const decoder = new TextDecoder()
   let result = ''
   let buffer = ''
 
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
 
-    buffer += decoder.decode(value, { stream: true })
-    const lines = buffer.split('\n')
-    buffer = lines.pop() || ''
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
 
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue
-      const data = line.slice(6).trim()
-      if (data === '[DONE]') continue
-      try {
-        const event = JSON.parse(data)
-        if (event.type === 'content_block_delta' && event.delta?.text) {
-          result += event.delta.text
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        const data = line.slice(6).trim()
+        if (data === '[DONE]') continue
+        try {
+          const event = JSON.parse(data)
+          if (event.type === 'content_block_delta' && event.delta?.text) {
+            result += event.delta.text
+          }
+        } catch {
+          // 忽略無法解析的行
         }
-      } catch {
-        // 忽略無法解析的行
       }
     }
+  } catch (e) {
+    clearTimeout(timeout)
+    if (e instanceof Error && e.name === 'AbortError') {
+      // 串流讀取中超時：如果已收到足夠內容就使用
+      if (result.length > 5000) {
+        console.warn(`Claude 串流超時但已收到 ${result.length} 字，使用部分結果`)
+        return result
+      }
+      throw new Error(`Claude API 串流超時（${timeoutMs / 1000}秒，已收到 ${result.length} 字）`)
+    }
+    throw e
   }
 
   clearTimeout(timeout)
   return result
 }
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-)
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+  )
+}
 
 // ── 心理陪伴語言框架（融入所有方案 prompt）──
 const PSYCHOLOGY_RULES = `
@@ -576,14 +604,14 @@ ${PSYCHOLOGY_RULES}
 async function markReportFailed(reportId: string, errorMessage: string) {
   try {
     // 取得當前重試次數
-    const { data } = await supabase
+    const { data } = await getSupabase()
       .from('paid_reports')
       .select('retry_count')
       .eq('id', reportId)
       .single()
     const currentRetry = data?.retry_count ?? 0
 
-    await supabase.from('paid_reports').update({
+    await getSupabase().from('paid_reports').update({
       status: 'failed',
       error_message: errorMessage,
       retry_count: currentRetry,
@@ -602,11 +630,21 @@ export async function POST(req: NextRequest) {
     reportId = rid
 
     // Step 0: 檢查重試次數（最多 3 次）+ 從 Supabase 補齊缺失資料
-    const { data: existingReport } = await supabase
+    const { data: existingReport } = await getSupabase()
       .from('paid_reports')
       .select('retry_count, status, birth_data, plan_code, access_token, customer_email')
       .eq('id', reportId)
       .single()
+
+    // 防重複生成：已完成或正在生成中的報告直接跳過
+    if (existingReport?.status === 'completed') {
+      console.log(`報告 ${reportId} 已完成，跳過 Fallback 重複生成`)
+      return NextResponse.json({ message: '報告已完成' })
+    }
+    if (existingReport?.status === 'generating') {
+      console.log(`報告 ${reportId} 正在生成中，跳過 Fallback 重複觸發`)
+      return NextResponse.json({ message: '報告正在生成中' })
+    }
 
     // 若 request body 沒帶完整資料，從 Supabase 記錄補齊（支援僅傳 reportId 重新觸發）
     if (!birthData && existingReport?.birth_data) {
@@ -635,20 +673,26 @@ export async function POST(req: NextRequest) {
 
     const retryCount = existingReport?.retry_count ?? 0
     if (retryCount >= 3) {
-      await supabase.from('paid_reports').update({
+      await getSupabase().from('paid_reports').update({
         status: 'failed',
         error_message: '已達最大重試次數（3次），請聯繫客服 support@jianyuan.life',
       }).eq('id', reportId)
       return NextResponse.json({ error: '已達最大重試次數' }, { status: 429 })
     }
 
-    // 更新狀態為 pending（重試時需要）+ 累加重試次數
-    if (existingReport?.status === 'failed') {
-      await supabase.from('paid_reports').update({
-        status: 'pending',
-        error_message: null,
-        retry_count: retryCount + 1,
-      }).eq('id', reportId)
+    // 用原子操作搶佔狀態為 generating，防止其他觸發源同時處理
+    const { data: claimed, error: claimErr } = await getSupabase().from('paid_reports').update({
+      status: 'generating',
+      error_message: null,
+      retry_count: existingReport?.status === 'failed' ? retryCount + 1 : retryCount,
+    })
+      .eq('id', reportId)
+      .in('status', ['pending', 'failed'])
+      .select('id')
+
+    if (claimErr || !claimed?.length) {
+      console.log(`報告 ${reportId} 狀態搶佔失敗，可能已被其他程序處理`)
+      return NextResponse.json({ message: '報告已被其他程序處理' })
     }
 
     // Step 1: 呼叫 Python API 排盤
@@ -985,7 +1029,8 @@ ${analyses.length}套系統排盤完整數據：
           if (pdfData.pdf_base64) {
             const pdfBytes = Buffer.from(pdfData.pdf_base64, 'base64')
             const storagePath = `${reportId}/report.pdf`
-            const { error: uploadErr } = await supabase.storage
+            const { error: uploadErr } = await getSupabase()
+      .storage
               .from('reports')
               .upload(storagePath, pdfBytes, {
                 contentType: 'application/pdf',
@@ -994,7 +1039,7 @@ ${analyses.length}套系統排盤完整數據：
             if (uploadErr) {
               console.error('Supabase Storage 上傳失敗:', uploadErr)
             } else {
-              const { data: urlData } = supabase.storage
+              const { data: urlData } = getSupabase().storage
                 .from('reports')
                 .getPublicUrl(storagePath)
               pdfUrl = urlData.publicUrl
@@ -1009,7 +1054,7 @@ ${analyses.length}套系統排盤完整數據：
       }
     }
 
-    const { error: dbError } = await supabase.from('paid_reports').update({
+    const { error: dbError } = await getSupabase().from('paid_reports').update({
       report_result: reportResult,
       pdf_url: pdfUrl,
       status: 'completed',
@@ -1115,7 +1160,7 @@ ${analyses.length}套系統排盤完整數據：
         })
 
         // 更新 email_sent_at
-        await supabase.from('paid_reports')
+        await getSupabase().from('paid_reports')
           .update({ email_sent_at: new Date().toISOString() })
           .eq('id', reportId)
 

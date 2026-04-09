@@ -163,8 +163,6 @@ export default function SinglePersonForm({
         </div>
       </div>
 
-      {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-
       <button
         type="submit" disabled={loading}
         className="w-full py-3.5 bg-gold text-dark font-bold rounded-xl text-lg btn-glow disabled:opacity-50 mt-4"

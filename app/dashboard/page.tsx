@@ -90,7 +90,8 @@ function DashboardContent() {
       }
     })
     return () => subscription.unsubscribe()
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentSuccess])
 
   const handleDelete = async (id: string) => {
     setDeletingId(id)
@@ -349,6 +350,8 @@ function DashboardContent() {
                                 const url = `${window.location.origin}/report/${r.access_token}`
                                 navigator.clipboard.writeText(url).then(() => {
                                   alert('報告連結已複製到剪貼簿')
+                                }).catch(() => {
+                                  window.prompt('複製此連結分享：', url)
                                 })
                               }}
                               className="px-3 py-1.5 glass rounded-lg text-xs text-text-muted hover:text-gold hover:bg-gold/10 transition-colors"

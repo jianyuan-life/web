@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
         .select('id, client_name, customer_email, plan_code, status, created_at')
         .eq('plan_code', 'C')
         .eq('status', 'completed')
-        .ilike('client_name', `%${query}%`)
+        .ilike('client_name', `%${query.replace(/[%_]/g, '\\$&')}%`)
         .order('created_at', { ascending: false })
         .limit(10)
 

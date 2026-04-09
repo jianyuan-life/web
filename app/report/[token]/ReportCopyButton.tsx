@@ -3,7 +3,7 @@
 export default function ReportCopyButton() {
   return (
     <button
-      onClick={() => navigator.clipboard.writeText(window.location.href).then(() => alert('報告連結已複製'))}
+      onClick={() => navigator.clipboard.writeText(window.location.href).then(() => alert('報告連結已複製')).catch(() => window.prompt('複製此連結：', window.location.href))}
       className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-80"
       style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-text-muted)' }}
     >

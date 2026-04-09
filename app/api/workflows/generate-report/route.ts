@@ -9,6 +9,20 @@ import { generateReportWorkflow } from '@/workflows/generate-report'
 
 export async function POST(req: NextRequest) {
   try {
+    // 安全驗證：只允許內部呼叫（Webhook/Cron/Fallback）
+    // 檢查來源是否為同網站或帶有正確的 CRON_SECRET
+    const origin = req.headers.get('origin') || ''
+    const referer = req.headers.get('referer') || ''
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
+    const authHeader = req.headers.get('authorization')
+    const isInternalCall = origin.startsWith(siteUrl) || referer.startsWith(siteUrl) || origin === '' // 伺服器端 fetch 無 origin
+    const hasCronSecret = authHeader === `Bearer ${process.env.CRON_SECRET}`
+
+    // 外部直接呼叫且無授權 → 拒絕
+    if (!isInternalCall && !hasCronSecret) {
+      return NextResponse.json({ error: '未授權' }, { status: 401 })
+    }
+
     const { reportId } = await req.json()
 
     if (!reportId) {
