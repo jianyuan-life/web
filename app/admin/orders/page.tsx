@@ -173,12 +173,10 @@ export default function OrdersPage() {
                   </td>
                   <td className="px-4 py-3 text-gray-400 text-xs">{new Date(order.created_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })}</td>
                   <td className="px-4 py-3">
-                    {(order.status === 'failed' || order.status === 'generating' || order.status === 'pending') && (
-                      <button onClick={e => { e.stopPropagation(); retryOrder(order.id) }}
-                        className="text-xs text-amber-400 hover:text-amber-300">
-                        {order.status === 'failed' ? '重試' : '強制重試'}
-                      </button>
-                    )}
+                    <button onClick={e => { e.stopPropagation(); retryOrder(order.id) }}
+                      className={`text-xs hover:opacity-80 ${order.status === 'completed' ? 'text-blue-400' : 'text-amber-400'}`}>
+                      {order.status === 'completed' ? '重新生成' : order.status === 'failed' ? '重試' : '強制重試'}
+                    </button>
                   </td>
                 </tr>
                 {expandedId === order.id && (

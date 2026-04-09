@@ -152,7 +152,11 @@ export default function ReportsPage() {
                   </>
                 )}
                 {report.status === 'completed' && (
-                  <span className="text-xs text-green-400">完成</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-green-400">完成</span>
+                    <button onClick={() => retryOne(report.id)}
+                      className="px-2 py-1 bg-blue-500/20 rounded text-xs text-blue-400 hover:bg-blue-500/30">重新生成</button>
+                  </div>
                 )}
               </div>
             </div>

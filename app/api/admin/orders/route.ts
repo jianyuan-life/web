@@ -65,15 +65,13 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: '找不到報告' }, { status: 404 })
   }
 
-  // 已完成的不需要重試
-  if (report.status === 'completed') {
-    return NextResponse.json({ error: '報告已完成，無需重試' }, { status: 400 })
-  }
-
   // 重置狀態為 pending，讓 workflow 重新搶佔
+  // 管理員可對任何狀態重新生成（包括 completed — 用於報告被截斷需要重跑的情況）
   await supabase.from('paid_reports').update({
     status: 'pending',
     error_message: null,
+    report_result: null,
+    pdf_url: null,
     retry_count: (report.retry_count ?? 0) + 1,
   }).eq('id', id)
 
