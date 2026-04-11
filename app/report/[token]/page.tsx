@@ -258,7 +258,9 @@ function parseStructuredContent(markdown: string): ContentSection[] {
     else if (/需要注意|需要留意|注意的地方|家庭和諧的挑戰|需注意|關係張力/.test(title)) type = 'caution'
     else if (/改善方案|改善建議|行動指南|加持你的運勢|讓家更好|建議詳解|集體建議|刻意練習/.test(title)) type = 'improvement'
 
-    sections.push({ type, title, content })
+    // 清除標題中的字數標注（如「（~3,500字）」「（~2,000字）」）— 客戶不需要看字數
+    const cleanTitle = title.replace(/[（(]\s*[~～]?\s*[\d,]+\s*字?\s*[）)]/g, '').trim()
+    sections.push({ type, title: cleanTitle, content })
   }
 
   // 如果沒有用 ## 分段，整份內容作為 general
