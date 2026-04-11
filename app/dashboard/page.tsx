@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { supabase } from '@/lib/supabase'
 import ReportProgress from '@/components/ReportProgress'
+import FamilyMembersManager from '@/components/FamilyMembersManager'
 
 const PLAN_NAMES: Record<string, string> = {
   C: '人生藍圖', D: '心之所惑',
@@ -559,6 +560,9 @@ function DashboardContent() {
             </a>
           </div>
         )}
+
+        {/* 我的家人 */}
+        <FamilyMembersManager />
       </div>
     </div>
   )

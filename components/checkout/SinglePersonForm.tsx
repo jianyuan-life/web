@@ -2,6 +2,7 @@
 
 import { type City, type LocationSearchResult, type Country } from '@/lib/cities'
 import HistoricalFigures from '@/components/HistoricalFigures'
+import FamilyMemberPicker from './FamilyMemberPicker'
 import BirthDataFields from './BirthDataFields'
 import TimeBlockPicker from './TimeBlockPicker'
 import CustomerNote from './CustomerNote'
@@ -61,6 +62,27 @@ export default function SinglePersonForm({
 }: SinglePersonFormProps) {
   return (
     <form onSubmit={onSubmit} className="glass rounded-2xl p-6 space-y-4">
+      {/* 從已儲存的家人選擇（登入時才顯示） */}
+      <FamilyMemberPicker onSelect={(m) => {
+        setForm(f => ({
+          ...f,
+          name: m.name,
+          year: String(m.year),
+          month: String(m.month),
+          day: String(m.day),
+          hour: String(m.hour),
+          minute: String(m.minute),
+          gender: m.gender as 'M' | 'F',
+          birthCity: m.birth_city,
+          cityLat: m.city_lat,
+          cityLng: m.city_lng,
+          cityTz: m.city_tz,
+          calendarType: (m.calendar_type as 'solar' | 'lunar') || 'solar',
+          lunarLeap: m.lunar_leap || false,
+        }))
+        setTimeMode(m.time_mode as 'unknown' | 'shichen' | 'exact')
+      }} />
+
       {/* 一鍵導入歷史人物 */}
       <HistoricalFigures onSelect={(fig) => {
         setForm(f => ({ ...f, name: fig.name, year: fig.year, month: fig.month, day: fig.day, hour: fig.hour, minute: fig.minute, gender: fig.gender as 'M' | 'F' }))

@@ -99,7 +99,7 @@ export function getRPlanStructurePrompt(): string {
 
 ---
 
-## 你們的答案（~1,000字）
+## 你們的答案
 
 這是整份報告最重要的一頁。客戶打開報告 10 秒內就要知道結論。
 
@@ -117,7 +117,7 @@ export function getRPlanStructurePrompt(): string {
 
 ---
 
-## 一、你們的化學反應（~3,500字）
+## 一、你們的化學反應
 
 > 一句話抓住這段關係的核心動力：「你們在一起，就像___遇上___——___。」
 
@@ -145,7 +145,7 @@ export function getRPlanStructurePrompt(): string {
 
 ---
 
-## 二、你們最好的地方（~2,500字）
+## 二、你們最好的地方
 
 > 一句話讓客戶驚喜：「你們最珍貴的地方是___——而你們可能還沒意識到。」
 
@@ -160,7 +160,7 @@ export function getRPlanStructurePrompt(): string {
 
 ---
 
-## 三、你們最該注意的地方（~2,500字）
+## 三、你們最該注意的地方
 
 > 一句話戳痛點：「你們最容易在___上翻船——而且已經在重複這個模式了。」
 
@@ -175,7 +175,7 @@ export function getRPlanStructurePrompt(): string {
 
 ---
 
-## 四、改善建議——你們的關係處方箋（~2,500字）
+## 四、改善建議——你們的關係處方箋
 
 > 「每段關係都有裂縫，但裂縫是光照進來的地方。以下是讓光照進來的具體方法。」
 
@@ -190,7 +190,7 @@ export function getRPlanStructurePrompt(): string {
 
 ---
 
-## 五、刻意練習（~2,000字）
+## 五、刻意練習
 
 > 「光看不練等於沒看。以下是你們的關係作業——像私人教練開的處方，做了才有效。」
 
@@ -207,7 +207,7 @@ export function getRPlanStructurePrompt(): string {
 
 ---
 
-## 六、你們的關係流年（2026-2028）（~2,000字）
+## 六、你們的關係流年（2026-2028）
 
 > 「接下來三年，你們的關係會經歷___。最關鍵的一年是___。」
 
@@ -229,7 +229,7 @@ export function getRPlanStructurePrompt(): string {
 
 ---
 
-## 寫給你們的話（~1,000字）
+## 寫給你們的話
 
 用 2-3 段話，像一封寫給兩人的私信。
 

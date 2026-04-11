@@ -529,29 +529,61 @@ export function cleanFinalReport(text: string, clientName?: string): string {
     if (infoCount > 1) console.log(`[cleanFinalReport] 刪除 ${infoCount - 1} 個重複客戶資料區塊`)
   }
 
-  // 2. 合併重複章節（如「刻意練習」出現兩次，保留內容較長的）
+  // 2. 合併重複章節（如「五、感情與人際」出現兩次，保留後者——品質重跑版本通常更好）
   const sections = cleaned.split(/(?=^## )/m)
   const sectionMap = new Map<string, { index: number; content: string; length: number }>()
   const duplicateIndices = new Set<number>()
 
+  // 標題正規化：移除編號、空白、括號內字數提示，只留核心關鍵字
+  function normalizeSectionTitle(raw: string): string {
+    return raw
+      .replace(/[（(][^）)]*[字词詞][）)]/g, '') // 移除「（~3,500字）」
+      .replace(/[（(]\s*~?\s*[\d,]+\s*[字词詞]?\s*[）)]/g, '') // 移除「(3500字)」
+      .replace(/^[\s\d.、：:一二三四五六七八九十百千]+/g, '') // 移除開頭編號
+      .replace(/[\s\d.、：:]+$/g, '') // 移除結尾編號
+      .trim()
+  }
+
+  // 兩個標題是否足夠相似（>80% 重疊）
+  function titlesAreSimilar(a: string, b: string): boolean {
+    if (a === b) return true
+    if (!a || !b) return false
+    // 取較短的為基準，檢查較長的是否包含它
+    const shorter = a.length <= b.length ? a : b
+    const longer = a.length > b.length ? a : b
+    if (longer.includes(shorter)) return true
+    // 逐字比較相似度
+    let matches = 0
+    const chars = shorter.split('')
+    for (const ch of chars) {
+      if (longer.includes(ch)) matches++
+    }
+    return matches / shorter.length > 0.8
+  }
+
   sections.forEach((sec, idx) => {
     const titleMatch = sec.match(/^## (.+?)[\n\r]/)
     if (!titleMatch) return
-    const title = titleMatch[1].replace(/[\s\d.、一二三四五六七八九十]+/g, '').trim()
-    if (!title) return
+    const normalizedTitle = normalizeSectionTitle(titleMatch[1])
+    if (!normalizedTitle) return
 
-    const existing = sectionMap.get(title)
-    if (existing) {
-      // 保留內容較長的
-      if (sec.length > existing.length) {
-        duplicateIndices.add(existing.index)
-        sectionMap.set(title, { index: idx, content: sec, length: sec.length })
-      } else {
-        duplicateIndices.add(idx)
+    // 檢查是否與已知標題相似
+    let matchedKey: string | null = null
+    for (const [key] of sectionMap) {
+      if (titlesAreSimilar(key, normalizedTitle)) {
+        matchedKey = key
+        break
       }
-      console.log(`[cleanFinalReport] 合併重複章節: "${title}"`)
+    }
+
+    if (matchedKey) {
+      const existing = sectionMap.get(matchedKey)!
+      // 保留後者（品質重跑的版本通常更完整）
+      duplicateIndices.add(existing.index)
+      sectionMap.set(matchedKey, { index: idx, content: sec, length: sec.length })
+      console.log(`[cleanFinalReport] 合併重複章節: "${matchedKey}"（保留後者）`)
     } else {
-      sectionMap.set(title, { index: idx, content: sec, length: sec.length })
+      sectionMap.set(normalizedTitle, { index: idx, content: sec, length: sec.length })
     }
   })
 
@@ -885,8 +917,13 @@ async function claudeStreamingCall(
   const finalResult = prefixContent ? prefixContent + result : result
 
   // 清除此 call 的部分存檔（串流已正常完成）
+  // 必須 await，避免清除失敗導致下次 retry 載入舊內容造成重複章節
   if (reportId && callLabel) {
-    savePartialContent(reportId, checkpointKey, '').catch(() => {})
+    try {
+      await savePartialContent(reportId, checkpointKey, '')
+    } catch {
+      console.warn(`清除串流存檔失敗（${checkpointKey}），不影響本次結果`)
+    }
   }
 
   return finalResult
@@ -1648,57 +1685,63 @@ export async function qualityGate(
   return { passed, warnings }
 }
 
-// ── Step 3.5: AI 審核員（用客戶視角審查報告品質）──
+// ── Step 3.5: AI 自我審核（全文審查，用客戶視角評分）──
 export async function aiReviewReport(reportContent: string, planCode: string): Promise<{ score: number; issues: string[] }> {
   "use step";
-  if (!['C', 'R', 'E1', 'E2', 'G15'].includes(planCode)) return { score: 85, issues: [] } // D 方案跳過 AI 審核
+  if (!['C', 'R', 'E1', 'E2', 'G15'].includes(planCode)) return { score: 85, issues: [] }
 
-  await emitProgress({ step: 'AI審核', progress: 72, message: '正在進行品質審核...' })
+  await emitProgress({ step: 'AI審核', progress: 72, message: '正在進行全文品質審核...' })
 
-  const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions'
-  const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || ''
-
+  // 用 Claude Opus 自己審核自己寫的報告（看完全文，不截斷）
   try {
-    const res = await fetch(DEEPSEEK_API, {
+    const apiKey = getNextClaudeKey()
+    if (!apiKey) return { score: 80, issues: ['無可用 API Key'] }
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DEEPSEEK_KEY}` },
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
       body: JSON.stringify({
-        model: 'deepseek-chat',
-        max_tokens: 1000,
+        model: 'claude-opus-4-6',
+        max_tokens: 2000,
         messages: [{
           role: 'user',
-          content: `你是一個花了 $89 買命理報告的客戶。請審查以下報告的前 3000 字，回答：
+          content: `你是一個花了 $89 買命理報告的客戶。你剛讀完整份報告。請從客戶角度評分。
 
-1. 30秒內能找到重點嗎？（是/否+原因）
-2. 有看不懂的術語嗎？（列出最多3個）
-3. 有亂碼/標籤/截斷嗎？（列出）
-4. 改善建議具體嗎？（是/否）
-5. 總分（1-100）
+評分標準（每項 20 分，總分 100）：
+1. **一針見血**（20分）：讀第一段就有「靠，這也太準了」的衝擊感嗎？每章開頭的結論夠犀利嗎？
+2. **重點清晰**（20分）：只看粗體就能抓到 80% 重點嗎？三段式總結（好的/注意/改善）齊全嗎？
+3. **具體可行**（20分）：改善建議夠具體嗎？有「做什麼、什麼時候做」嗎？不是泛泛的「注意健康」？
+4. **命理依據**（20分）：每個結論都有標明來自哪個系統嗎？多系統交叉驗證有做到嗎？
+5. **物超所值**（20分）：整體讀完覺得值 $89 嗎？會推薦給朋友嗎？
 
-只回 JSON 格式：{"score":85,"issues":["問題1","問題2"]}
-如果沒問題：{"score":90,"issues":[]}
+只回 JSON：{"score":85,"issues":["具體問題1","具體問題2"],"highlights":["做得好的1","做得好的2"]}
 
-報告內容（前3000字）：
-${reportContent.slice(0, 3000)}`
-        }]
+報告全文（${reportContent.length} 字）：
+${reportContent}`
+        }],
+        temperature: 0.3,
       })
     })
 
     if (!res.ok) return { score: 80, issues: ['AI審核API失敗'] }
     const data = await res.json()
-    const text = data.choices?.[0]?.message?.content || ''
+    const text = data.content?.[0]?.text || ''
 
-    // 嘗試解析 JSON
     const match = text.match(/\{[\s\S]*\}/)
     if (match) {
       const result = JSON.parse(match[0])
-      console.log(`AI 審核分數: ${result.score}, 問題: ${result.issues?.length || 0}`)
+      const highlights = result.highlights || []
+      console.log(`AI 審核分數: ${result.score}, 問題: ${result.issues?.length || 0}, 亮點: ${highlights.length}`)
       return { score: result.score || 80, issues: result.issues || [] }
     }
     return { score: 80, issues: [] }
   } catch (e) {
     console.error('AI 審核失敗:', e)
-    return { score: 80, issues: [] } // 審核失敗不阻塞
+    return { score: 80, issues: [] }
   }
 }
 

@@ -89,7 +89,7 @@ export function getDPlanStructurePrompt(): string {
 
 ---
 
-## 你的答案（~800字）
+## 你的答案
 
 這是整份報告最重要的一頁。客戶打開報告 10 秒內就要知道你的答案。
 
@@ -103,7 +103,7 @@ export function getDPlanStructurePrompt(): string {
 
 ---
 
-## 一、你的問題，命理怎麼看（~2,500字）
+## 一、你的問題，命理怎麼看
 
 > 一句話直戳問題本質：「你真正的問題不是___，而是___。」
 
@@ -122,7 +122,7 @@ export function getDPlanStructurePrompt(): string {
 
 ---
 
-## 二、根源剖析——你為什麼會卡在這裡（~2,000字）
+## 二、根源剖析——你為什麼會卡在這裡
 
 > 一句當頭棒喝：「你一直在___，但真正需要面對的是___。」
 
@@ -141,7 +141,7 @@ export function getDPlanStructurePrompt(): string {
 
 ---
 
-## 三、你的路——怎麼走出來（~3,000字）
+## 三、你的路——怎麼走出來
 
 > 一句話定調：「你的出路不是___，而是___。」
 
@@ -160,7 +160,7 @@ export function getDPlanStructurePrompt(): string {
 
 ---
 
-## 四、好的地方（~1,200字）
+## 四、好的地方
 
 列出 4-6 項對解決這個問題有利的命格優勢。
 
@@ -172,7 +172,7 @@ export function getDPlanStructurePrompt(): string {
 
 ---
 
-## 五、需要注意的地方（~1,200字）
+## 五、需要注意的地方
 
 列出 4-6 項可能讓問題惡化的風險。一針見血，直接戳痛點。
 
@@ -184,7 +184,7 @@ export function getDPlanStructurePrompt(): string {
 
 ---
 
-## 六、改善建議詳解（~2,000字）
+## 六、改善建議詳解
 
 列出 5-7 項具體的行動處方箋。不是泛泛的建議，是根據你的命格量身定做的。
 
@@ -201,7 +201,7 @@ export function getDPlanStructurePrompt(): string {
 
 ---
 
-## 寫給你的話（~800字）
+## 寫給你的話
 
 用 2-3 段話，像一封私人信件。
 
