@@ -1,13 +1,30 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 export default function SignupPage() {
+  const params = useSearchParams()
   const [form, setForm] = useState({ name: '', email: '', password: '' })
+  const [refCode, setRefCode] = useState(params.get('ref') || '')
+  const [refValid, setRefValid] = useState<string | null>(null) // 推薦人名字
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+
+  // 推薦碼驗證
+  useEffect(() => {
+    if (!refCode || refCode.length < 5) { setRefValid(null); return }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/referral/validate?code=${encodeURIComponent(refCode)}`)
+        const data = await res.json()
+        setRefValid(data.valid ? data.referrerName : null)
+      } catch { setRefValid(null) }
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [refCode])
 
   const handleGoogleLogin = async () => {
     await supabase.auth.signInWithOAuth({
@@ -82,6 +99,20 @@ export default function SignupPage() {
               value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
               className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none" />
             <p className="text-[10px] text-text-muted/60 mt-1">密碼至少 8 個字元</p>
+          </div>
+
+          {/* 推薦碼（選填） */}
+          <div>
+            <label className="block text-xs text-text-muted mb-1">推薦碼（選填）</label>
+            <input type="text" placeholder="JY-XXXXX" maxLength={8}
+              value={refCode} onChange={(e) => setRefCode(e.target.value.toUpperCase())}
+              className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none uppercase tracking-wider" />
+            {refValid && (
+              <p className="text-[11px] text-green-400 mt-1">&#10003; 由 {refValid} 推薦，首次購買雙方都可獲得獎勵點數</p>
+            )}
+            {refCode.length >= 5 && !refValid && (
+              <p className="text-[10px] text-text-muted/50 mt-1">驗證中...</p>
+            )}
           </div>
 
           {error && <p className="text-red-400 text-sm text-center">{error}</p>}
