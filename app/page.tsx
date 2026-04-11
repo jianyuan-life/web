@@ -169,9 +169,9 @@ export default function HomePage() {
           {[
             { num: '15', label: '命理系統', sub: '東西方完整覆蓋',
               icon: <><circle cx="12" cy="12" r="10" /><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20" /></> },
-            { num: '34,458', label: '條專業規則', sub: '每條皆有典籍出處',
+            { num: '34,458', label: '條專業規則', sub: '規則源自數十部經典古籍',
               icon: <><path d="M4 19.5A2.5 2.5 0 016.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" /></> },
-            { num: '100%', label: '隱私加密', sub: '資料全程受保護',
+            { num: '', label: '隱私保護', sub: '資料加密傳輸與儲存',
               icon: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /> },
             { num: '$39', label: '起', sub: '6 種方案任你選擇',
               icon: <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /> },
@@ -202,7 +202,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
               { title: '傳統命理師', items: ['只用 1-2 套系統', '結論因人而異，難以驗證', '收費 $100-$300 美金', '等待 3-7 天出結果', '人為偏見影響判斷'], highlight: false },
-              { title: '鑒源命理', items: ['15 套系統同時分析', '34,458 條規則客觀運算', '最低 $39 美金起', '最快 30 分鐘完成報告', '數據驅動，可重複驗證'], highlight: true },
+              { title: '鑒源命理', items: ['最多 15 套系統交叉分析', '34,458 條規則客觀運算', '最低 $39 美金起', '報告約 30-60 分鐘完成', '規則驅動，排盤可驗證'], highlight: true },
               { title: '免費算命網站', items: ['套公式的罐頭回覆', '千篇一律的描述', '沒有個人化深度', '無法回答「為什麼」', '沒有行動建議'], highlight: false },
             ].map((col) => (
               <div key={col.title} className={`glass rounded-2xl p-6 relative ${col.highlight ? 'border-gold/25 shadow-[0_0_40px_rgba(201,168,76,0.08)]' : ''}`}>
@@ -366,7 +366,7 @@ export default function HomePage() {
               { step: '壹', title: '免費體驗', desc: '輸入出生資料，即時查看八字排盤與性格分析' },
               { step: '貳', title: '選擇方案', desc: '6種方案，從個人到家庭，從 $39 起' },
               { step: '參', title: '填寫資料', desc: '姓名、出生日期時間、性別，簡單三步' },
-              { step: '肆', title: '深度分析', desc: '34,458 條規則逐系統精算' },
+              { step: '肆', title: '深度分析', desc: '專業規則逐系統交叉分析' },
               { step: '伍', title: '查看報告', desc: '線上閱讀 + PDF 永久保存，隨時回顧' },
             ].map((item, i) => (
               <div key={item.step} className="relative text-center">
@@ -413,7 +413,7 @@ export default function HomePage() {
                 </svg>
               </div>
               <div className="flex-1">
-                <div className="text-gold text-xs tracking-[0.15em] mb-1">鑒源獨家</div>
+                <div className="text-gold text-xs tracking-[0.15em] mb-1">鑒源特色</div>
                 <h2 className="text-2xl font-bold text-cream mb-4" style={{ fontFamily: 'var(--font-sans)' }}>
                   奇門遁甲出門訣 — 讓命理真正落地
                 </h2>
@@ -541,9 +541,9 @@ export default function HomePage() {
             <span className="text-xs tracking-[0.2em]">用戶心聲</span>
           </div>
           <h2 className="text-2xl md:text-3xl text-center mb-4 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
-            真實用戶回饋
+            使用情境
           </h2>
-          <p className="text-center text-text-muted text-sm mb-12">看看他們如何在鑒源的報告中找到答案</p>
+          <p className="text-center text-text-muted text-sm mb-12">以下為示範情境，展示鑒源報告可以如何幫助您</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
               { name: '陳先生', location: '台北', plan: '人生藍圖', color: 'bg-gold/20',
@@ -596,7 +596,7 @@ export default function HomePage() {
             您可能想知道
           </h2>
           {[
-            { q: '鑒源的命理分析準確嗎？', a: '排盤計算使用經過驗證的確定性算法，與專業命理軟體一致。分析解讀基於數十部經典古籍提煉的 34,458 條專業規則，再由智能引擎整合出個人化報告。最重要的是，鑒源用十五套系統交叉驗證——當多數系統得出相同結論時，準確度遠高於單一系統的判斷。' },
+            { q: '鑒源的命理分析準確嗎？', a: '排盤計算使用確定性算法（如壽星天文曆、Swiss Ephemeris），結果可重複驗證，與專業命理軟體一致。分析解讀基於數十部經典古籍提煉的專業規則，由 AI 引擎整合成個人化報告。鑒源最多用十五套系統交叉分析——當多數系統得出相同結論時，可信度遠高於單一系統的判斷。' },
             { q: '報告多久可以收到？', a: '付款後系統自動開始運算。個人報告（人生藍圖、心之所惑）約 30 分鐘完成；出門訣需排算數百個時辰，約需 40 分鐘以上。完成後會立即寄送 Email 通知，您也可以在儀表板即時查看分析進度。' },
             { q: '需要提供什麼資料？', a: '姓名、出生日期、出生時間（時辰）、性別。出生時間越精確，分析越準確。如果不確定出生時間，可以選擇最接近的時辰，部分不依賴時辰的系統仍可正常分析。' },
             { q: '15套系統會不會互相矛盾？', a: '不同系統觀察的角度不同，偶有差異屬正常。這正是鑒源的核心價值——我們用三層加權架構進行交叉驗證，取各系統共識作為最終結論。單一系統只有一個觀點，十五套系統交叉驗證才能得到更全面、更可靠的結論。' },

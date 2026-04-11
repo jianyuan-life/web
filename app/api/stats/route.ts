@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// 基數：老闆指定的起始值
-const BASE_COUNT = 1012
+// 只顯示真實數據，不加虛假基數
+const BASE_COUNT = 0
 
 function getServiceSupabase() {
   return createClient(
