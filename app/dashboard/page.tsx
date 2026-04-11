@@ -6,6 +6,7 @@ import { Suspense } from 'react'
 import { supabase } from '@/lib/supabase'
 import ReportProgress from '@/components/ReportProgress'
 import FamilyMembersManager from '@/components/FamilyMembersManager'
+import ReferralCard from '@/components/ReferralCard'
 
 const PLAN_NAMES: Record<string, string> = {
   C: '人生藍圖', D: '心之所惑',
@@ -560,6 +561,9 @@ function DashboardContent() {
             </a>
           </div>
         )}
+
+        {/* 推薦與點數 */}
+        <ReferralCard />
 
         {/* 我的家人 */}
         <FamilyMembersManager />
