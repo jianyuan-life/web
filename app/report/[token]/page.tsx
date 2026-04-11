@@ -80,10 +80,13 @@ function isThematicReport(markdown: string, reportResult: ReportData['report_res
 // 命格名片數據結構
 interface PersonalityCardData {
   title: string        // 人格封號
-  talents: string[]    // 天賦
-  challenges: string[] // 課題
+  definition?: string  // 一句話定義你
+  talents: string[]    // 天賦 Top 3
+  challenges: string[] // 課題 Top 3
   firstImpression?: string  // 第一印象
   trueself?: string         // 真實的你
+  keywords?: string[]  // 關鍵字（5個詞）
+  yearTheme?: string   // 2026一句話
   rawContent: string   // 原始內容（fallback 用）
 }
 
@@ -95,51 +98,111 @@ function parsePersonalityCard(markdown: string): PersonalityCardData | null {
 
   const content = cardMatch[1].trim()
 
-  // 提取人格封號（通常是第一行粗體或標題）
+  // 輔助函式：清除 markdown 粗體和前導編號
+  const cleanMd = (s: string) => s.replace(/\*{1,2}/g, '').replace(/^[\d]+\.\s*/, '').trim()
+
+  // 提取人格封號
+  // AI 輸出格式多樣：「1. **命格封號**：參天大樹」「命格封號：**參天大樹**」「### 參天大樹」
   let title = ''
-  const titleMatch = content.match(/(?:人格封號|命格封號|你的封號)[：:]\s*\*{0,2}(.+?)\*{0,2}\s*$/m)
-    || content.match(/^###?\s*(.+?)$/m)
-    || content.match(/^\*\*(.+?)\*\*\s*$/m)
+  const titleMatch = content.match(/(?:人格封號|命格封號|你的封號)\*{0,2}[：:]\s*\*{0,2}(.+?)\*{0,2}\s*$/m)
   if (titleMatch) {
-    title = titleMatch[1].replace(/\*{1,2}/g, '').trim()
+    title = cleanMd(titleMatch[1])
+  } else {
+    // fallback：第一個 ### 標題或第一個粗體行
+    const h3Match = content.match(/^###?\s*(.+?)$/m)
+    const boldMatch = content.match(/^\*\*(.+?)\*\*\s*$/m)
+    if (h3Match) title = cleanMd(h3Match[1])
+    else if (boldMatch) title = cleanMd(boldMatch[1])
   }
 
-  // 提取天賦（綠色標籤）
+  // 提取「一句話定義你」
+  // 格式：「2. **一句話定義你**：你就是那種...」或「一句話定義你：...」
+  let definition: string | undefined
+  const defMatch = content.match(/一句話定義[你您]?\*{0,2}[：:]\s*(.+?)$/m)
+  if (defMatch) definition = cleanMd(defMatch[1]).replace(/^[「「"']|[」」"']$/g, '')
+
+  // 提取天賦 Top 3（bullet 列表）
+  // AI 格式：「3. **天賦 Top 3**：\n- 項目一\n- 項目二」
   const talents: string[] = []
-  const talentSection = content.match(/(?:天賦|優勢|天生強項)[：:]*\s*\n?([\s\S]*?)(?=\n(?:課題|挑戰|需要注意|第一印象|真實的你|$))/i)
+  const talentSection = content.match(/(?:天賦|優勢|天生強項)\s*(?:Top\s*\d+)?\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\s*(?:\d+\.\s*\*{0,2}(?:課題|挑戰|需要注意|第一印象|真實的你|關鍵字|2026)|(?:課題|挑戰|需要注意|第一印象|真實的你|關鍵字|2026))|$)/i)
   if (talentSection) {
-    const lines = talentSection[1].split('\n')
-    for (const line of lines) {
-      const clean = line.replace(/^[\s\-•·*]+/, '').replace(/\*{1,2}/g, '').trim()
-      if (clean && clean.length > 1 && clean.length < 50) talents.push(clean)
+    for (const line of talentSection[1].split('\n')) {
+      const cleaned = line.replace(/^[\s\-•·*>]+/, '').replace(/\*{1,2}/g, '').trim()
+      // 過濾空行、標題行（不以 - 開頭的長段落通常是描述不是列表項）
+      if (cleaned && cleaned.length > 1 && cleaned.length < 80) {
+        // 提取 bullet 項目的核心名稱（冒號前的部分作為標籤）
+        const labelMatch = cleaned.match(/^(.+?)[：:—–]\s*/)
+        talents.push(labelMatch ? labelMatch[1].trim() : cleaned)
+      }
     }
   }
 
-  // 提取課題（橙色標籤）
+  // 提取課題 Top 3（bullet 列表）
   const challenges: string[] = []
-  const challengeSection = content.match(/(?:課題|挑戰|需要注意)[：:]*\s*\n?([\s\S]*?)(?=\n(?:天賦|第一印象|真實的你|$))/i)
+  const challengeSection = content.match(/(?:課題|挑戰|需要注意)\s*(?:Top\s*\d+)?\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\s*(?:\d+\.\s*\*{0,2}(?:天賦|第一印象|真實的你|關鍵字|2026)|(?:第一印象|真實的你|關鍵字|2026))|$)/i)
   if (challengeSection) {
-    const lines = challengeSection[1].split('\n')
-    for (const line of lines) {
-      const clean = line.replace(/^[\s\-•·*]+/, '').replace(/\*{1,2}/g, '').trim()
-      if (clean && clean.length > 1 && clean.length < 50) challenges.push(clean)
+    for (const line of challengeSection[1].split('\n')) {
+      const cleaned = line.replace(/^[\s\-•·*>]+/, '').replace(/\*{1,2}/g, '').trim()
+      if (cleaned && cleaned.length > 1 && cleaned.length < 80) {
+        const labelMatch = cleaned.match(/^(.+?)[：:—–]\s*/)
+        challenges.push(labelMatch ? labelMatch[1].trim() : cleaned)
+      }
     }
   }
 
-  // 提取「第一印象 vs 真實的你」
+  // 提取「第一印象」和「真實的你」
+  // AI 格式多樣：「第一印象（外在）：...」「- 第一印象：...」或多行段落
   let firstImpression: string | undefined
   let trueself: string | undefined
-  const impressionMatch = content.match(/第一印象[：:]\s*(.+?)$/m)
-  const trueselfMatch = content.match(/真實的你[：:]\s*(.+?)$/m)
-  if (impressionMatch) firstImpression = impressionMatch[1].replace(/\*{1,2}/g, '').trim()
-  if (trueselfMatch) trueself = trueselfMatch[1].replace(/\*{1,2}/g, '').trim()
+
+  // 嘗試單行格式
+  const impressionMatch = content.match(/第一印象[（(]?外在[）)]?[：:]\s*(.+?)$/m)
+    || content.match(/第一印象[：:]\s*(.+?)$/m)
+  if (impressionMatch) firstImpression = cleanMd(impressionMatch[1]).replace(/^[「「"']|[」」"']$/g, '')
+
+  const trueselfMatch = content.match(/真實的你[（(]?內在[）)]?[：:]\s*(.+?)$/m)
+    || content.match(/真實的你[：:]\s*(.+?)$/m)
+  if (trueselfMatch) trueself = cleanMd(trueselfMatch[1]).replace(/^[「「"']|[」」"']$/g, '')
+
+  // 如果第一印象/真實的你是多行段落，嘗試提取段落
+  if (!firstImpression) {
+    const multiMatch = content.match(/第一印象[^：:\n]*[：:]\s*\n([\s\S]*?)(?=\n\s*(?:[-*]?\s*真實的你|$))/m)
+    if (multiMatch) {
+      const text = multiMatch[1].replace(/\*{1,2}/g, '').replace(/^[\s\-•·*>]+/gm, '').trim()
+      if (text.length > 5 && text.length < 300) firstImpression = text.split('\n')[0].trim()
+    }
+  }
+  if (!trueself) {
+    const multiMatch = content.match(/真實的你[^：:\n]*[：:]\s*\n([\s\S]*?)(?=\n\s*(?:[-*]?\s*落差|[-*]?\s*\d+\.|關鍵字|2026|$))/m)
+    if (multiMatch) {
+      const text = multiMatch[1].replace(/\*{1,2}/g, '').replace(/^[\s\-•·*>]+/gm, '').trim()
+      if (text.length > 5 && text.length < 300) trueself = text.split('\n')[0].trim()
+    }
+  }
+
+  // 提取「關鍵字」（5個詞）
+  let keywords: string[] | undefined
+  const kwMatch = content.match(/關鍵字\*{0,2}[：:]\s*(.+?)$/m)
+  if (kwMatch) {
+    keywords = kwMatch[1].replace(/\*{1,2}/g, '').split(/[、，,／\/|｜\s]+/).map(k => k.trim()).filter(k => k.length > 0 && k.length < 20)
+  }
+
+  // 提取「2026一句話」
+  let yearTheme: string | undefined
+  const yearMatch = content.match(/2026\s*一句話\*{0,2}[：:]\s*(.+?)$/m)
+    || content.match(/2026\s*年?.*?核心主題\*{0,2}[：:]\s*(.+?)$/m)
+    || content.match(/2026\s*丙午年?\*{0,2}[：:]\s*(.+?)$/m)
+  if (yearMatch) yearTheme = cleanMd(yearMatch[1]).replace(/^[「「"']|[」」"']$/g, '')
 
   return {
     title: title || '命格名片',
-    talents,
-    challenges,
+    definition,
+    talents: talents.slice(0, 3),
+    challenges: challenges.slice(0, 3),
     firstImpression,
     trueself,
+    keywords,
+    yearTheme,
     rawContent: content,
   }
 }
@@ -593,7 +656,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             }} />
 
             {/* 人格封號 */}
-            <div className="text-center mb-6">
+            <div className="text-center mb-2">
               <div className="text-gold/50 text-[10px] tracking-[4px] mb-2 uppercase">命格名片</div>
               <h2 className="text-2xl sm:text-3xl font-bold tracking-wide" style={{
                 color: '#c9a84c',
@@ -603,6 +666,29 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 {personalityCard.title}
               </h2>
             </div>
+
+            {/* 一句話定義 */}
+            {personalityCard.definition && (
+              <p className="text-center text-cream/80 text-sm leading-relaxed mb-6 max-w-lg mx-auto">
+                {personalityCard.definition}
+              </p>
+            )}
+            {!personalityCard.definition && <div className="mb-4" />}
+
+            {/* 關鍵字標籤 */}
+            {personalityCard.keywords && personalityCard.keywords.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-2 mb-6">
+                {personalityCard.keywords.map((kw, i) => (
+                  <span key={i} className="px-3 py-1 rounded-full text-xs" style={{
+                    background: 'rgba(197,150,58,0.1)',
+                    color: '#c9a84c',
+                    border: '1px solid rgba(197,150,58,0.2)',
+                  }}>
+                    {kw}
+                  </span>
+                ))}
+              </div>
+            )}
 
             {/* 第一印象 vs 真實的你（雙欄對比）*/}
             {personalityCard.firstImpression && personalityCard.trueself && (
@@ -620,12 +706,12 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
             {/* 天賦 vs 課題 標籤 */}
             {(personalityCard.talents.length > 0 || personalityCard.challenges.length > 0) && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 {/* 天賦（綠色標籤）*/}
                 {personalityCard.talents.length > 0 && (
                   <div>
                     <div className="text-xs font-semibold mb-2.5 flex items-center gap-1.5" style={{ color: '#6ab04c' }}>
-                      <span>&#10003;</span> 天賦
+                      <span>&#10003;</span> 天賦 Top 3
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {personalityCard.talents.map((t, i) => (
@@ -644,7 +730,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 {personalityCard.challenges.length > 0 && (
                   <div>
                     <div className="text-xs font-semibold mb-2.5 flex items-center gap-1.5" style={{ color: '#e0963a' }}>
-                      <span>&#9888;</span> 課題
+                      <span>&#9888;</span> 課題 Top 3
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {personalityCard.challenges.map((c, i) => (
@@ -662,8 +748,19 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               </div>
             )}
 
+            {/* 2026 年度一句話 */}
+            {personalityCard.yearTheme && (
+              <div className="rounded-xl p-4 text-center" style={{
+                background: 'rgba(197,150,58,0.06)',
+                border: '1px solid rgba(197,150,58,0.15)',
+              }}>
+                <div className="text-gold/50 text-[10px] tracking-[2px] mb-1.5">2026 丙午年</div>
+                <p className="text-cream text-sm leading-relaxed">{personalityCard.yearTheme}</p>
+              </div>
+            )}
+
             {/* 如果沒有結構化數據，顯示原始內容 */}
-            {personalityCard.talents.length === 0 && personalityCard.challenges.length === 0 && !personalityCard.firstImpression && (
+            {personalityCard.talents.length === 0 && personalityCard.challenges.length === 0 && !personalityCard.firstImpression && !personalityCard.definition && (
               <div className="report-p mt-2" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(personalityCard.rawContent) }} />
             )}
           </div>

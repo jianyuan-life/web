@@ -518,7 +518,7 @@ export default function ZiweiToolPage() {
                   </div>
                   <div className="glass rounded-xl p-5 text-center">
                     <div className="text-3xl mb-2">&#128202;</div>
-                    <h4 className="font-bold text-white mb-1">11 章 35,000字+ 深度報告</h4>
+                    <h4 className="font-bold text-white mb-1">11 章 30,000字+ 深度報告</h4>
                     <p className="text-sm text-text-muted">從命格名片到刻意練習，涵蓋人生全面向</p>
                   </div>
                   <div className="glass rounded-xl p-5 text-center">

@@ -113,7 +113,7 @@ export default function ReportPreview() {
                       <polyline points="14 2 14 8 20 8" />
                     </svg>
                   ),
-                  title: '11 章主題式深度報告（35,000字+）',
+                  title: '11 章主題式深度報告（30,000字+）',
                   desc: '從命格名片到刻意練習，涵蓋人生全面向',
                 },
                 {
