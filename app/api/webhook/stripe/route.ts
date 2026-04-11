@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import { Resend } from 'resend'
 
 function getStripe() {
   // @ts-expect-error - Stripe SDK version mismatch
@@ -165,8 +166,41 @@ export async function POST(req: NextRequest) {
           birth_data: birthData,
         }).eq('id', reportId)
 
-        // 觸發 Workflow（帶超時確認 + Fallback 機制）
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
+        const PLAN_NAMES: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月盤出門訣' }
+
+        // 付款後立即發訂單確認信（讓客戶知道我們收到了）
+        try {
+          const resend = new Resend(process.env.RESEND_API_KEY || '')
+          const planName = PLAN_NAMES[planCode] || planCode
+          const dashboardUrl = `${siteUrl}/dashboard?session_id=${session.id}`
+          await resend.emails.send({
+            from: '鑒源命理 <noreply@jianyuan.life>',
+            to: customerEmail,
+            subject: `已收到您的訂單 — ${planName}`,
+            html: `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #333;">
+                <h2 style="color: #1a1a2e; margin-bottom: 16px;">感謝您的購買</h2>
+                <p>您好，</p>
+                <p>我們已收到您的<strong>「${planName}」</strong>訂單，系統正在啟動分析。</p>
+                <p style="background: #f8f6f0; padding: 16px; border-radius: 8px; border-left: 3px solid #c9a84c;">
+                  報告預計 <strong>30-60 分鐘</strong>內完成。完成後會再寄信通知您。<br/>
+                  您也可以隨時到儀表板查看進度。
+                </p>
+                <p style="margin-top: 24px;">
+                  <a href="${dashboardUrl}" style="display: inline-block; background: #c9a84c; color: #1a1a2e; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold;">查看報告進度</a>
+                </p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
+                <p style="font-size: 12px; color: #999;">鑒源命理 jianyuan.life — 十五大命理系統精準分析</p>
+              </div>
+            `,
+          })
+          console.log('✅ 訂單確認信已發送:', customerEmail)
+        } catch (emailErr) {
+          console.error('訂單確認信發送失敗（不影響報告生成）:', emailErr)
+        }
+
+        // 觸發 Workflow（帶超時確認 + Fallback 機制）
         let workflowTriggered = false
 
         try {
