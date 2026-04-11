@@ -49,6 +49,51 @@ function getPhases(planCode: string) {
   return ['E1', 'E2'].includes(planCode) ? PHASES_CHUMENJI : PHASES_DEFAULT
 }
 
+// 命理小知識——讓客戶在等待時學到東西
+const FACTS_DEFAULT = [
+  '八字中的「食神」代表創造力與口福，食神旺的人天生懂得享受生活。',
+  '紫微斗數起源於宋朝，由陳希夷創立，距今已有千年歷史。',
+  '西洋占星的上升星座代表你給人的第一印象，比太陽星座更影響外在表現。',
+  '人類圖結合了易經、卡巴拉、脈輪和西洋占星四大體系，1987年才被創立。',
+  '八字的「日主」就是你出生那天的天干，它代表你的核心性格。',
+  '紫微斗數共有14顆主星，分布在12個宮位中，形成獨一無二的命盤。',
+  '奇門遁甲被稱為「帝王之術」，古代只有皇室才能使用。',
+  '姓名學的康熙筆畫跟現代筆畫不同——「草」字康熙筆畫是12畫，不是9畫。',
+  '八字中五行平衡的人不到5%，大多數人都有某種五行偏重。',
+  '吠陀占星比西洋占星早了兩千年，起源於古印度吠陀經典。',
+]
+const FACTS_CHUMENJI = [
+  '奇門遁甲的「遁」指的是天干中的「甲」被隱藏，藏在六儀之下。',
+  '時家奇門遁甲共有1,080局，由節氣和時辰決定。',
+  '出門訣的核心是「接引吉方能量」——到達吉方定點後需停留40分鐘讓能量灌滿。',
+  '奇門遁甲的八門中，「開門」「休門」「生門」是三吉門，最適合出行。',
+  '出門訣的「九遁」包括天遁、地遁、人遁等9種特殊吉格，遇到任一種都是大吉。',
+  '奇門遁甲中的「值使門」是當值的門神，它的落宮方位影響整個時辰的吉凶。',
+]
+
+function FunFacts({ planCode }: { planCode: string }) {
+  const [idx, setIdx] = useState(0)
+  const facts = ['E1', 'E2'].includes(planCode) ? FACTS_CHUMENJI : FACTS_DEFAULT
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIdx(prev => (prev + 1) % facts.length)
+    }, 20_000) // 每 20 秒換一條
+    return () => clearInterval(timer)
+  }, [facts.length])
+
+  return (
+    <div className="bg-gold/5 border border-gold/10 rounded-lg px-4 py-3">
+      <div className="flex items-start gap-2">
+        <span className="text-gold text-sm flex-shrink-0 mt-0.5">&#9733;</span>
+        <p className="text-xs text-text-muted/80 leading-relaxed transition-opacity duration-500">
+          <span className="text-gold/60 font-medium">命理小知識：</span>{facts[idx]}
+        </p>
+      </div>
+    </div>
+  )
+}
+
 function getPhaseIndex(pct: number) {
   if (pct < 25) return 0
   if (pct < 55) return 1
@@ -154,6 +199,9 @@ export default function ReportProgress({ createdAt, planCode }: { createdAt: str
           ))}
         </div>
       )}
+
+      {/* 命理小知識輪播 — 讓等待時間有價值 */}
+      <FunFacts planCode={planCode} />
 
       {/* 底部狀態說明 */}
       <div className="flex items-center justify-between text-xs pt-1 border-t border-white/5">
