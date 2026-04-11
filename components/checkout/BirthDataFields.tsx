@@ -117,15 +117,15 @@ export default function BirthDataFields({
         </div>
       </div>
 
-      {/* 出生國家/地區 */}
+      {/* 出生地區 */}
       <div className="relative">
-        <label className="block text-xs text-text-muted mb-1">出生國家/地區（可選，用於真太陽時校正）</label>
+        <label className="block text-xs text-text-muted mb-1">出生地區（可選，用於真太陽時校正）</label>
         {needCityForCountry && (
           <p className="text-xs text-gold/80 mb-1">已選擇「{needCityForCountry}」（多時區），請輸入城市名</p>
         )}
         <input
           type="text"
-          placeholder={needCityForCountry ? `輸入${needCityForCountry}的城市名` : '輸入國家名（如：台灣、香港、日本）'}
+          placeholder={needCityForCountry ? `輸入${needCityForCountry}的城市名` : '輸入地區名（如：台灣、香港、日本）'}
           value={form.birthCity}
           onChange={(e) => onCitySearch(e.target.value)}
           className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-white text-sm focus:border-gold focus:outline-none"

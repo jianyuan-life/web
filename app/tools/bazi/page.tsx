@@ -266,13 +266,13 @@ export default function FreeToolPage() {
                 )}
               </div>
 
-              {/* 出生國家/地區 */}
+              {/* 出生地區 */}
               <div className="relative">
-                <label className="block text-sm text-text-muted mb-1.5">出生國家/地區</label>
+                <label className="block text-sm text-text-muted mb-1.5">出生地區</label>
                 {needCityForCountry && (
                   <p className="text-xs text-gold/80 mb-1.5">已選擇「{needCityForCountry}」（多時區），請輸入城市名</p>
                 )}
-                <input type="text" placeholder={needCityForCountry ? `輸入${needCityForCountry}的城市名` : '輸入國家名（如：台灣、香港、日本）'} value={form.city}
+                <input type="text" placeholder={needCityForCountry ? `輸入${needCityForCountry}的城市名` : '輸入地區名（如：台灣、香港、日本）'} value={form.city}
                   onChange={(e) => {
                     const val = e.target.value
                     setForm({...form, city:val})
