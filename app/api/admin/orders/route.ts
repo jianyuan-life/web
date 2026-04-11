@@ -98,7 +98,7 @@ export async function PATCH(req: NextRequest) {
       const fbTimeout = setTimeout(() => fbController.abort(), 8000)
       await fetch(`${siteUrl}/api/generate-report`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.CRON_SECRET || '' },
         body: JSON.stringify({ reportId: id }),
         signal: fbController.signal,
       })

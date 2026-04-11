@@ -12,10 +12,13 @@ export interface FamilyMember {
   birthCity?: string
   cityLat?: number
   cityLng?: number
+  cityTz?: number
+  calendarType?: 'solar' | 'lunar'
+  lunarLeap?: boolean
 }
 
 export function newMember(): FamilyMember {
-  return { name: '', year: '1990', month: '1', day: '1', hour: '12', timeMode: 'shichen', minute: '0', gender: 'M', birthCity: '', cityLat: 0, cityLng: 0 }
+  return { name: '', year: '1990', month: '1', day: '1', hour: '12', timeMode: 'shichen', minute: '0', gender: 'M', birthCity: '', cityLat: 0, cityLng: 0, cityTz: 8, calendarType: 'solar', lunarLeap: false }
 }
 
 export const PLANS: Record<string, { name: string; price: number; systems: number }> = {

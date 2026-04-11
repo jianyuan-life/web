@@ -192,7 +192,7 @@ export async function POST(req: NextRequest) {
 
             const fallbackRes = await fetch(`${siteUrl}/api/generate-report`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.CRON_SECRET || '' },
               body: JSON.stringify({ reportId }),
               signal: fallbackController.signal,
             })

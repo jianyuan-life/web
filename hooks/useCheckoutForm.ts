@@ -415,6 +415,11 @@ export function useCheckoutForm() {
               birth_city: m.birthCity || undefined,
               city_lat: m.cityLat || undefined,
               city_lng: m.cityLng || undefined,
+              latitude: m.cityLat || undefined,
+              longitude: m.cityLng || undefined,
+              timezone_offset: m.cityTz ?? 8,
+              calendar_type: m.calendarType || 'solar',
+              lunar_leap: m.calendarType === 'lunar' ? m.lunarLeap : undefined,
             })),
             relation_description: rRelationDesc,
           }
