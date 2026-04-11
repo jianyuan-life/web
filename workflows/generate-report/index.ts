@@ -327,49 +327,18 @@ export async function generateReportWorkflow(reportId: string) {
     console.error('Post-generation QA 執行失敗（不阻塞）:', e)
   }
 
-  // Step 3: 自動品質閘門（不通過就重新生成，最多重試 1 次）
-  let qualityPassed = false
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const qResult = await qualityGate(reportContent, planCode, analyses.length)
-      if (qResult.passed) {
-        qualityPassed = true
-        break
-      }
-      console.warn(`品質閘門未通過（第${attempt+1}次）: ${qResult.warnings.join('; ')}`)
-
-      if (attempt === 0 && planCode === 'C') {
-        // 第一次不通過：重��生成（3-call 順序執行）
-        console.log('品質不通過，嘗試重新生成...')
-        const r1 = await aiGenerateCall1(calcResult, birthData, birthData.question || birthData.topic, reportId)
-        const r2 = await aiGenerateCall2(calcResult, birthData, r1.content, reportId)
-        const r3 = await aiGenerateCall3(calcResult, birthData, r1.content, r2.content, undefined, undefined, reportId)
-
-        // Call 3 完整性檢查（與主流程一致）
-        let retryCall3Content = r3.content
-        const retryHasDP = retryCall3Content.includes('刻意練習')
-        const retryHasCL = retryCall3Content.includes('寫給') && (retryCall3Content.includes('的話') || retryCall3Content.includes('們的話'))
-        if (!retryHasDP || !retryHasCL) {
-          const missingParts: string[] = []
-          if (!retryHasDP) missingParts.push('刻意練習（投資/感情/事業/健康/人際五大面向，每項至少200字）')
-          if (!retryHasCL) missingParts.push('寫給客戶的話（至少3段，帶命理依據的回顧過去+看見現在+展望未來）')
-          const retryR3 = await aiGenerateCall3(calcResult, birthData, r1.content, r2.content, true, missingParts, reportId)
-          retryCall3Content = retryR3.content
-        }
-
-        const appendix = buildAppendix(calcResult.analyses)
-        const rawContent = [r1.content, r2.content, retryCall3Content, appendix].join('\n\n')
-        reportContent = cleanFinalReport(rawContent, birthData.name)
-        aiModelUsed = r1.model
-      }
-    } catch (e) {
-      console.error('品質閘門執行失敗:', e)
-      break
+  // Step 3: 品質閘門（只記錄警告，不重跑）
+  // 128k tokens 無上限 + 犀利版 Prompt 已經能產出高品質內容
+  // 重跑造成的問題（重複章節、浪費 token）比品質警告更嚴重
+  try {
+    const qResult = await qualityGate(reportContent, planCode, analyses.length)
+    if (qResult.passed) {
+      console.log('品質閘門通過')
+    } else {
+      console.warn(`品質閘門警告（不重跑）: ${qResult.warnings.join('; ')}`)
     }
-  }
-  // 即使品質閘門不通過也繼續（總比沒報告好），但記錄警告
-  if (!qualityPassed) {
-    console.error('品質閘門最終未通過，以現有內容繼續')
+  } catch (e) {
+    console.error('品質閘門執行失敗:', e)
   }
 
   // Step 3.5: AI 審核員（客戶視角品質審查）
