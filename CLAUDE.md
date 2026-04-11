@@ -282,6 +282,42 @@ Resend 寄 Email（含報告連結）
 
 ---
 
+## 分支策略（百年基業標準）
+
+| 分支 | 用途 | 部署目標 |
+|:---|:---|:---|
+| `main` | Production，只接受從 staging merge | jianyuan.life（正式環境）|
+| `staging` | 測試環境，所有改動先推這裡 | Vercel Preview URL（自動生成）|
+
+### 開發流程
+```
+寫程式碼 → npm run type-check → 修復錯誤 → npm run pre-deploy
+→ git push origin staging → Vercel Preview URL 測試
+→ 確認沒問題 → merge 到 main → Production 部署
+```
+
+### 規則（不可違反）
+1. **禁止直接 push 到 main** — 所有改動必須先經過 staging 測試
+2. **staging → main 的合併方式**：在 staging 測試通過後，切回 main 執行 `git merge staging`
+3. **CI 會跑在 staging 和 main 兩個分支** — push staging 時 GitHub Actions 自動跑 type-check + test + build
+4. **Vercel Preview URL** — 每次 push staging 分支，Vercel 自動生成一個 preview URL，用此 URL 做端對端測試
+5. **hotfix 例外** — 生產緊急修復可直接 push main，但修完後必須同步回 staging（`git checkout staging && git merge main`）
+
+### 合併指令
+```bash
+# staging 測試通過後，合併到 production
+git checkout main
+git merge staging
+git push origin main
+
+# hotfix 後同步回 staging
+git checkout staging
+git merge main
+git push origin staging
+```
+
+---
+
 ## 部署守則（TypeScript Build 守門機制）
 
 ### 部署前必須執行
@@ -302,11 +338,6 @@ npm run pre-deploy
 | TS7006 | 隱式 any | 為參數加上明確型別 |
 | TS2304 | 找不到名稱 | 檢查 import 是否遺漏 |
 | TS18046 | 可能為 undefined | 加上 null check |
-
-### 開發流程
-```
-寫程式碼 → npm run type-check → 修復錯誤 → npm run pre-deploy → git push
-```
 
 ## 注意事項
 - 修改後自動 commit + push GitHub（Vercel 會自動部署）
