@@ -12,6 +12,111 @@ export interface City {
   tzName: string    // 時區名稱
 }
 
+// ══════ 國家/地區優先搜尋 ══════
+
+export interface Country {
+  name: string       // 繁體中文名
+  nameEn: string     // 英文名
+  tz: number         // UTC 時區偏移
+  lat: number        // 首都/代表城市緯度
+  lng: number        // 首都/代表城市經度
+  isMultiTz?: boolean // 是否為多時區國家
+}
+
+// 單一時區國家（選了就完成）
+export const SINGLE_TZ_COUNTRIES: Country[] = [
+  // 華人常用（置頂）
+  { name: '台灣', nameEn: 'Taiwan', tz: 8, lat: 23.69, lng: 120.96 },
+  { name: '香港', nameEn: 'Hong Kong', tz: 8, lat: 22.32, lng: 114.17 },
+  { name: '中國', nameEn: 'China', tz: 8, lat: 39.91, lng: 116.40 },
+  { name: '新加坡', nameEn: 'Singapore', tz: 8, lat: 1.35, lng: 103.85 },
+  { name: '馬來西亞', nameEn: 'Malaysia', tz: 8, lat: 3.14, lng: 101.69 },
+  { name: '日本', nameEn: 'Japan', tz: 9, lat: 35.68, lng: 139.69 },
+  { name: '韓國', nameEn: 'South Korea', tz: 9, lat: 37.57, lng: 126.98 },
+  { name: '泰國', nameEn: 'Thailand', tz: 7, lat: 13.76, lng: 100.50 },
+  { name: '越南', nameEn: 'Vietnam', tz: 7, lat: 21.03, lng: 105.85 },
+  { name: '菲律賓', nameEn: 'Philippines', tz: 8, lat: 14.60, lng: 120.98 },
+  { name: '英國', nameEn: 'United Kingdom', tz: 0, lat: 51.51, lng: -0.13 },
+  { name: '法國', nameEn: 'France', tz: 1, lat: 48.86, lng: 2.35 },
+  { name: '德國', nameEn: 'Germany', tz: 1, lat: 52.52, lng: 13.41 },
+  { name: '印度', nameEn: 'India', tz: 5.5, lat: 28.61, lng: 77.21 },
+  { name: '紐西蘭', nameEn: 'New Zealand', tz: 12, lat: -41.29, lng: 174.78 },
+  { name: '澳門', nameEn: 'Macau', tz: 8, lat: 22.20, lng: 113.54 },
+  { name: '阿聯酋', nameEn: 'UAE', tz: 4, lat: 25.21, lng: 55.27 },
+]
+
+// 多時區國家（需要進一步選城市）
+export const MULTI_TZ_COUNTRIES: Country[] = [
+  { name: '美國', nameEn: 'United States', tz: -5, lat: 40.71, lng: -74.01, isMultiTz: true },
+  { name: '加拿大', nameEn: 'Canada', tz: -5, lat: 43.65, lng: -79.38, isMultiTz: true },
+  { name: '澳洲', nameEn: 'Australia', tz: 10, lat: -33.87, lng: 151.21, isMultiTz: true },
+  { name: '俄羅斯', nameEn: 'Russia', tz: 3, lat: 55.76, lng: 37.62, isMultiTz: true },
+  { name: '巴西', nameEn: 'Brazil', tz: -3, lat: -23.55, lng: -46.63, isMultiTz: true },
+  { name: '印尼', nameEn: 'Indonesia', tz: 7, lat: -6.21, lng: 106.85, isMultiTz: true },
+  { name: '墨西哥', nameEn: 'Mexico', tz: -6, lat: 19.43, lng: -99.13, isMultiTz: true },
+]
+
+export interface CountrySearchResult {
+  type: 'country'
+  country: Country
+  isMultiTz: boolean
+}
+
+export interface CitySearchResult {
+  type: 'city'
+  city: City
+}
+
+export type LocationSearchResult = CountrySearchResult | CitySearchResult
+
+// 搜尋國家（中文或英文）
+function searchCountries(query: string): CountrySearchResult[] {
+  const q = query.toLowerCase().trim()
+  const results: CountrySearchResult[] = []
+
+  // 先搜尋單一時區國家
+  for (const c of SINGLE_TZ_COUNTRIES) {
+    if (c.name.includes(q) || c.nameEn.toLowerCase().includes(q)) {
+      results.push({ type: 'country', country: c, isMultiTz: false })
+    }
+  }
+
+  // 再搜尋多時區國家
+  for (const c of MULTI_TZ_COUNTRIES) {
+    if (c.name.includes(q) || c.nameEn.toLowerCase().includes(q)) {
+      results.push({ type: 'country', country: c, isMultiTz: true })
+    }
+  }
+
+  return results
+}
+
+// 統一搜尋：先匹配國家，再匹配城市
+export function searchLocations(query: string): LocationSearchResult[] {
+  if (!query || query.length < 1) return []
+  const q = query.toLowerCase().trim()
+
+  const results: LocationSearchResult[] = []
+
+  // 1. 先匹配國家
+  const countryResults = searchCountries(q)
+  results.push(...countryResults)
+
+  // 2. 再匹配城市（排除已經被國家覆蓋的）
+  const matchedCountryNames = new Set(countryResults.map(r => r.country.name))
+  const cityResults = CITIES.filter(c =>
+    c.name.includes(q) || c.name_s.includes(q) ||
+    c.name_en.toLowerCase().includes(q)
+  ).filter(c => !matchedCountryNames.has(c.country)) // 避免國家名搜出一堆城市
+  .slice(0, 6)
+
+  for (const city of cityResults) {
+    results.push({ type: 'city', city })
+  }
+
+  return results.slice(0, 8)
+}
+
 export const CITIES: City[] = [
   // ══════ 台灣 ══════
   { name:'台北', name_s:'台北', name_en:'Taipei', country:'台灣', lat:25.033, lng:121.565, tz:8, tzName:'Asia/Taipei' },

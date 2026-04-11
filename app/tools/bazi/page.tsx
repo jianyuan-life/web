@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { searchCities, type City } from '@/lib/cities'
+import { searchCities, searchLocations, type City, type LocationSearchResult } from '@/lib/cities'
 
 const SHICHEN = [
   { label: '子時 (23:00-01:00)', value: 0 }, { label: '丑時 (01:00-03:00)', value: 2 },
@@ -48,7 +48,8 @@ export default function FreeToolPage() {
     exactHour:'12', exactMinute:'0', // 精確時間
     city:'', cityLat:0, cityLng:0, cityTz:8, // 出生城市
   })
-  const [cityResults, setCityResults] = useState<import('@/lib/cities').City[]>([])
+  const [cityResults, setCityResults] = useState<LocationSearchResult[]>([])
+  const [needCityForCountry, setNeedCityForCountry] = useState('')  // 多時區國家名
   const [result, setResult] = useState<Result|null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -265,30 +266,63 @@ export default function FreeToolPage() {
                 )}
               </div>
 
-              {/* 出生城市 */}
+              {/* 出生國家/地區 */}
               <div className="relative">
-                <label className="block text-sm text-text-muted mb-1.5">出生城市</label>
-                <input type="text" placeholder="輸入城市名（如：台北、香港、上海）" value={form.city}
+                <label className="block text-sm text-text-muted mb-1.5">出生國家/地區</label>
+                {needCityForCountry && (
+                  <p className="text-xs text-gold/80 mb-1.5">已選擇「{needCityForCountry}」（多時區），請輸入城市名</p>
+                )}
+                <input type="text" placeholder={needCityForCountry ? `輸入${needCityForCountry}的城市名` : '輸入國家名（如：台灣、香港、日本）'} value={form.city}
                   onChange={(e) => {
                     const val = e.target.value
                     setForm({...form, city:val})
-                    setCityResults(val.length >= 1 ? searchCities(val) : [])
+                    if (needCityForCountry) {
+                      // 多時區國家：搜尋城市
+                      const cities = searchCities(val).filter(c => c.country === needCityForCountry || c.name.includes(val) || c.name_en.toLowerCase().includes(val.toLowerCase()))
+                      setCityResults(cities.map(c => ({ type: 'city' as const, city: c })))
+                    } else {
+                      setCityResults(val.length >= 1 ? searchLocations(val) : [])
+                    }
                   }}
                   className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-3 text-cream text-base focus:border-gold/40 focus:outline-none" />
                 {cityResults.length > 0 && (
                   <div className="absolute z-20 w-full mt-1 glass rounded-lg border border-gold/20 max-h-48 overflow-y-auto">
-                    {cityResults.map((c: City) => (
-                      <button key={c.name_en} type="button"
+                    {cityResults.map((r, idx) => r.type === 'country' ? (
+                      <button key={`country-${r.country.name}`} type="button"
                         onClick={() => {
-                          setForm({...form, city:`${c.name}（${c.country}）`, cityLat:c.lat, cityLng:c.lng, cityTz:c.tz})
-                          setCityResults([])
+                          if (r.isMultiTz) {
+                            setNeedCityForCountry(r.country.name)
+                            setForm({...form, city: ''})
+                            setCityResults([])
+                          } else {
+                            setForm({...form, city: r.country.name, cityLat: r.country.lat, cityLng: r.country.lng, cityTz: r.country.tz})
+                            setCityResults([])
+                            setNeedCityForCountry('')
+                          }
                         }}
                         className="w-full text-left px-4 py-2.5 hover:bg-gold/10 transition-colors flex justify-between items-center">
-                        <span className="text-sm text-cream">{c.name} <span className="text-text-muted">({c.country})</span></span>
-                        <span className="text-[10px] text-text-muted/60">UTC{c.tz>=0?'+':''}{c.tz}</span>
+                        <span className="text-sm text-cream">{r.country.name}</span>
+                        <span className="text-[10px] text-text-muted/60">
+                          {r.isMultiTz ? '多時區，請選擇城市' : `UTC${r.country.tz >= 0 ? '+' : ''}${r.country.tz}`}
+                        </span>
+                      </button>
+                    ) : (
+                      <button key={`city-${r.city.name_en}-${idx}`} type="button"
+                        onClick={() => {
+                          setForm({...form, city:`${r.city.name}（${r.city.country}）`, cityLat:r.city.lat, cityLng:r.city.lng, cityTz:r.city.tz})
+                          setCityResults([])
+                          setNeedCityForCountry('')
+                        }}
+                        className="w-full text-left px-4 py-2.5 hover:bg-gold/10 transition-colors flex justify-between items-center">
+                        <span className="text-sm text-cream">{r.city.name} <span className="text-text-muted">({r.city.country})</span></span>
+                        <span className="text-[10px] text-text-muted/60">UTC{r.city.tz>=0?'+':''}{r.city.tz}</span>
                       </button>
                     ))}
                   </div>
+                )}
+                {needCityForCountry && (
+                  <button type="button" onClick={() => { setNeedCityForCountry(''); setForm({...form, city: ''}); setCityResults([]) }}
+                    className="text-xs text-gold/60 hover:text-gold mt-1 underline">取消，重新選擇國家</button>
                 )}
                 {form.cityLat !== 0 && (
                   <p className="text-[10px] text-text-muted/50 mt-1">經度 {form.cityLng.toFixed(2)}° | 時區 UTC{form.cityTz>=0?'+':''}{form.cityTz} | 將自動校正真太陽時</p>

@@ -1721,7 +1721,7 @@ export async function sendReportEmail(
         <p style="color:#6b7280;font-size:12px;margin:12px 0 0 0;">${emailText.linkNote}</p>
       </div>
     </div>
-    ${!['E1', 'E2', 'E3'].includes(planCode) ? `
+    ${!['E1', 'E2'].includes(planCode) ? `
     <div style="background:#1a1a2e;border:1px solid #2a2a4a;border-radius:12px;padding:24px;margin-bottom:24px;">
       <div style="color:#c9a84c;font-size:13px;font-weight:600;margin-bottom:8px;">${emailText.promoTitle}</div>
       <p style="color:#9ca3af;font-size:13px;line-height:1.7;margin:0 0 16px 0;">${emailText.promoBody}</p>

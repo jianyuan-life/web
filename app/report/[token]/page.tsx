@@ -719,7 +719,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         })}
 
         {/* ──── 出門訣推廣 ──── */}
-        {!['E1', 'E2', 'E3'].includes(report.plan_code) && (
+        {!['E1', 'E2'].includes(report.plan_code) && (
           <div className="section-card no-print" style={{ background: 'linear-gradient(135deg, rgba(197,150,58,0.1), rgba(26,42,74,0.4))', border: '1px solid rgba(197,150,58,0.25)' }}>
             <div className="flex flex-col sm:flex-row gap-5 items-start">
               <div className="text-4xl shrink-0">&#9788;</div>

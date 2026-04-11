@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v4.5.18（2026-04-09）
+**網站版本：** v4.5.24（2026-04-11）
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
@@ -138,6 +138,18 @@ Resend 寄 Email（含報告連結）
 
 ## 更新紀錄
 
+### v4.5.24（2026-04-11）
+- ✅ 移除所有評分系統（命不該有分數）：報告頁/Dashboard/OG圖/Prompt/PDF 全面清除
+- ✅ 報告生成架構重構：Promise.all→順序執行、超時600s、移除截斷hack、max_tokens調降
+- ✅ 人格名稱統一：新建 lib/profiles.ts 共用模組，付費版強制用計算器封號
+- ✅ Dashboard 付款修復：session_id 獨立查詢，不依賴 auth cookie
+- ✅ Email 亮點模板：6套方案專屬亮點取代前300字原始預覽
+- ✅ 免費工具優化：Navbar FREE徽章、首頁引導區塊、動畫12→4步
+- ✅ 出門訣信心指數去掉百分比數字
+- ✅ Claude API 529/402 錯誤處理補全
+- ✅ R方案相容度改四級文字描述
+- ✅ PDF白底封面+移除評分圖表+emoji清理統一+正文色#333333
+
 ### v4.5.11-v4.5.18（2026-04-09）
 
 **安全與品質審計：**
@@ -204,23 +216,24 @@ Resend 寄 Email（含報告連結）
 
 ## 待辦事項
 
-### 🔴 上線前必做
-1. **各方案端對端品質驗證** — G15/R/E1/E2 完整流程測試
-2. **R 方案雙人合盤 AI 報告開發** — 結帳表單已完成，AI prompt + 報告頁待開發
-3. **Stripe 切換 Live 模式** — sk_test_ → sk_live_（等產品完善後）
-4. **Resend 域名驗證確認** — DNS 已設定，需到 resend.com 確認綠燈
+### 🔴 上線前必做（按優先順序）
+1. ~~**🚨 報告生成架構根治重構**~~ — ✅ 已完成（v4.5.24）
+2. **各方案端對端品質驗證** — G15/R/E1/E2 完整流程測試
+3. **R 方案雙人合盤 AI 報告開發** — 結帳表單已完成，AI prompt + 報告頁待開發
+4. **Stripe 切換 Live 模式** — sk_test_ → sk_live_（等產品完善後）
+5. **Resend 域名驗證確認** — DNS 已設定，需到 resend.com 確認綠燈
 
 ### 🟡 功能完善
-5. **免費工具轉化率排查** — 分析免費八字工具到付費方案的轉化路徑
-6. **Email 通知附報告亮點** — Resend 寄信時附上報告重點摘要
-7. **報告截斷實際驗證** — 跑一份 C 方案測試確認 max_tokens 修復有效
-8. **PDF 版面精修** — 目錄頁碼寬度等細節
+6. **免費工具轉化率排查** — 分析免費八字工具到付費方案的轉化路徑（已加 Navbar FREE 徽章+首頁引導）
+7. ~~**Email 通知附報告亮點**~~ — ✅ 已完成（v4.5.24，6套方案專屬亮點模板）
+8. **報告截斷實際驗證** — 跑一份 C 方案測試確認順序執行+max_tokens調降後完整度
+9. ~~**PDF 版面精修**~~ — ✅ 已完成（v4.5.24，白底封面+移除評分+emoji清理+正文色）
 
 ### 🟢 未來優化
-9. **PDF 白底重設計** — 藝術部門方案已提交，待審核後分三階段實作
-10. **PDF 附件加入 Email** — Resend 寄信時把 PDF base64 附上
-11. **退款按鈕** — Admin 後台加 Stripe Refund API
-12. **types.ts 死代碼清理** — FAMILY_EXTRA_PRICE G15:69 等
+10. **PDF 白底重設計** — 藝術部門方案已提交，部分已於 v4.5.24 實作（封面白底）
+11. **PDF 附件加入 Email** — Resend 寄信時把 PDF base64 附上
+12. **退款按鈕** — Admin 後台加 Stripe Refund API
+13. **types.ts 死代碼清理** — FAMILY_EXTRA_PRICE G15:69 等
 
 ---
 

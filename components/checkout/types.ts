@@ -27,10 +27,6 @@ export const PLANS: Record<string, { name: string; price: number; systems: numbe
   E2: { name: '月盤出門訣', price: 89, systems: 1 },
 }
 
-export const FAMILY_EXTRA_PRICE: Record<string, number> = {
-  G15: 69,
-  R: 19,
-}
 
 // G15 家族藍圖：從已完成的人生藍圖報告中選取成員
 export interface G15SelectedReport {

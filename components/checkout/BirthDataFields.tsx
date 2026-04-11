@@ -1,6 +1,6 @@
 'use client'
 
-import { type City } from '@/lib/cities'
+import { type City, type LocationSearchResult, type Country } from '@/lib/cities'
 import BirthTimeField from './BirthTimeField'
 import { type CheckoutFormState as FormState } from './types'
 
@@ -9,14 +9,18 @@ interface BirthDataFieldsProps {
   setForm: React.Dispatch<React.SetStateAction<FormState>>
   timeMode: 'unknown' | 'shichen' | 'exact'
   setTimeMode: (m: 'unknown' | 'shichen' | 'exact') => void
-  cityResults: City[]
+  cityResults: LocationSearchResult[]
   onCitySearch: (val: string) => void
   onCitySelect: (c: City) => void
+  onCountrySelect?: (country: Country, isMultiTz: boolean) => void
+  onCancelCountry?: () => void
+  needCityForCountry?: string
 }
 
 export default function BirthDataFields({
   form, setForm, timeMode, setTimeMode,
   cityResults, onCitySearch, onCitySelect,
+  onCountrySelect, onCancelCountry, needCityForCountry,
 }: BirthDataFieldsProps) {
   return (
     <>
@@ -113,25 +117,45 @@ export default function BirthDataFields({
         </div>
       </div>
 
-      {/* 出生城市 */}
+      {/* 出生國家/地區 */}
       <div className="relative">
-        <label className="block text-xs text-text-muted mb-1">出生城市（可選，用於真太陽時校正）</label>
+        <label className="block text-xs text-text-muted mb-1">出生國家/地區（可選，用於真太陽時校正）</label>
+        {needCityForCountry && (
+          <p className="text-xs text-gold/80 mb-1">已選擇「{needCityForCountry}」（多時區），請輸入城市名</p>
+        )}
         <input
           type="text"
-          placeholder="輸入城市名（如：台北、香港、上海）"
+          placeholder={needCityForCountry ? `輸入${needCityForCountry}的城市名` : '輸入國家名（如：台灣、香港、日本）'}
           value={form.birthCity}
           onChange={(e) => onCitySearch(e.target.value)}
           className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-white text-sm focus:border-gold focus:outline-none"
         />
         {cityResults.length > 0 && (
-          <div className="absolute z-10 w-full mt-1 bg-dark border border-gold/20 rounded-lg overflow-hidden shadow-xl">
-            {cityResults.map((c: City) => (
-              <button key={`${c.name}-${c.lat}`} type="button"
-                className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gold/10 border-b border-gold/5 last:border-0"
-                onClick={() => onCitySelect(c)}
-              >{c.name}（{c.country}）</button>
+          <div className="absolute z-10 w-full mt-1 bg-dark border border-gold/20 rounded-lg overflow-hidden shadow-xl max-h-48 overflow-y-auto">
+            {cityResults.map((r, idx) => r.type === 'country' ? (
+              <button key={`country-${r.country.name}`} type="button"
+                className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gold/10 border-b border-gold/5 last:border-0 flex justify-between items-center"
+                onClick={() => onCountrySelect?.(r.country, r.isMultiTz)}
+              >
+                <span>{r.country.name}</span>
+                <span className="text-[10px] text-text-muted/60">
+                  {r.isMultiTz ? '多時區，請選擇城市' : `UTC${r.country.tz >= 0 ? '+' : ''}${r.country.tz}`}
+                </span>
+              </button>
+            ) : (
+              <button key={`city-${r.city.name_en}-${idx}`} type="button"
+                className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gold/10 border-b border-gold/5 last:border-0 flex justify-between items-center"
+                onClick={() => onCitySelect(r.city)}
+              >
+                <span>{r.city.name}（{r.city.country}）</span>
+                <span className="text-[10px] text-text-muted/60">UTC{r.city.tz >= 0 ? '+' : ''}{r.city.tz}</span>
+              </button>
             ))}
           </div>
+        )}
+        {needCityForCountry && (
+          <button type="button" onClick={() => onCancelCountry?.()}
+            className="text-xs text-gold/60 hover:text-gold mt-1 underline">取消，重新選擇國家</button>
         )}
         {form.cityLat !== 0 && (
           <p className="text-[10px] text-text-muted/50 mt-1">

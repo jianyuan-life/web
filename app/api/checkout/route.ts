@@ -59,12 +59,17 @@ export async function POST(req: NextRequest) {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
 
     // G15 家族藍圖：固定 $59，不再按人數加價
-    // R 方案：可加人（前端傳 totalPrice）
+    // R 方案：可加人（前端傳 totalPrice），但必須驗證最低價格
     // 其他方案：使用固定金額
     const isVariablePrice = planCode === 'R' && typeof totalPrice === 'number'
     let baseAmount = isVariablePrice
       ? Math.round(totalPrice * 100)
       : plan.amount
+
+    // 伺服器端價格驗證：前端傳來的金額不得低於方案定價
+    if (baseAmount < plan.amount) {
+      return NextResponse.json({ error: '金額低於方案最低定價' }, { status: 400 })
+    }
 
     // 套用優惠碼折扣（伺服器端二次驗證）
     let finalAmount = baseAmount

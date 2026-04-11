@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import * as gtag from '@/lib/gtag'
-import { searchCities, type City } from '@/lib/cities'
+import { searchCities, searchLocations, type City, type LocationSearchResult, type Country } from '@/lib/cities'
 import {
-  PLANS, FAMILY_EXTRA_PRICE, D_TOPICS, TIME_BLOCKS,
+  PLANS, D_TOPICS, TIME_BLOCKS,
   newMember, type FamilyMember,
   newFamilyEmail, type FamilyEmailEntry,
   type G15SelectedReport, type G15SearchResult,
@@ -33,7 +33,8 @@ export function useCheckoutForm() {
   const [timeMode, setTimeMode] = useState<'unknown' | 'shichen' | 'exact'>(
     (params.get('timeMode') as 'unknown' | 'shichen' | 'exact') || 'shichen'
   )
-  const [cityResults, setCityResults] = useState<City[]>([])
+  const [cityResults, setCityResults] = useState<LocationSearchResult[]>([])
+  const [needCityForCountry, setNeedCityForCountry] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -84,19 +85,14 @@ export function useCheckoutForm() {
 
   // 計算金額
   const extraMemberCount = Math.max(0, familyMembers.length - 2)
-  const extraPrice = FAMILY_EXTRA_PRICE[planCode] ?? 0
+  const extraPrice = 0
   const rExtraCount = Math.max(0, rMembers.length - 2)
-  // G15 新版固定 $59，不再按人數加價
-  const totalPrice = planCode === 'G15'
-    ? plan.price
-    : planCode === 'G3'
-    ? plan.price + extraMemberCount * extraPrice
-    : planCode === 'R'
+  const totalPrice = planCode === 'R'
     ? plan.price + rExtraCount * 19
     : plan.price
   const finalPrice = couponApplied ? Math.max(0, totalPrice - couponApplied.discountAmount) : totalPrice
 
-  const isFamilyPlan = planCode === 'G3'  // G15 now uses email form, not family member form
+  const isFamilyPlan = false  // G3 已移除
   const isG15Plan = planCode === 'G15'
   const isRelationPlan = planCode === 'R'
 
@@ -121,14 +117,39 @@ export function useCheckoutForm() {
     }
   }
 
-  // 城市搜尋
+  // 國家/城市搜尋
   const handleCitySearch = (val: string) => {
     setForm(f => ({ ...f, birthCity: val, cityLat: 0, cityLng: 0 }))
-    setCityResults(val.length >= 1 ? searchCities(val) : [])
+    if (needCityForCountry) {
+      // 多時區國家模式：搜尋城市
+      const cities = searchCities(val).filter(c => c.country === needCityForCountry || c.name.includes(val) || c.name_en.toLowerCase().includes(val.toLowerCase()))
+      setCityResults(cities.map(c => ({ type: 'city' as const, city: c })))
+    } else {
+      setCityResults(val.length >= 1 ? searchLocations(val) : [])
+    }
   }
 
   const selectCity = (c: City) => {
     setForm(f => ({ ...f, birthCity: `${c.name}（${c.country}）`, cityLat: c.lat, cityLng: c.lng, cityTz: c.tz }))
+    setCityResults([])
+    setNeedCityForCountry('')
+  }
+
+  const selectCountry = (country: Country, isMultiTz: boolean) => {
+    if (isMultiTz) {
+      setNeedCityForCountry(country.name)
+      setForm(f => ({ ...f, birthCity: '' }))
+      setCityResults([])
+    } else {
+      setForm(f => ({ ...f, birthCity: country.name, cityLat: country.lat, cityLng: country.lng, cityTz: country.tz }))
+      setCityResults([])
+      setNeedCityForCountry('')
+    }
+  }
+
+  const cancelCountrySelection = () => {
+    setNeedCityForCountry('')
+    setForm(f => ({ ...f, birthCity: '' }))
     setCityResults([])
   }
 
@@ -263,18 +284,6 @@ export function useCheckoutForm() {
         alert('請至少選擇 2 位家庭成員的人生藍圖報告')
         return
       }
-    } else if (planCode === 'G3') {
-      for (let i = 0; i < familyMembers.length; i++) {
-        if (!familyMembers[i].name.trim()) {
-          alert(`請輸入第 ${i + 1} 位成員的姓名`)
-          return
-        }
-        const yr = parseInt(familyMembers[i].year)
-        if (yr < 1900 || yr > new Date().getFullYear()) {
-          alert(`第 ${i + 1} 位成員的出生年份不正確`)
-          return
-        }
-      }
     } else {
       if (!form.name.trim()) { alert('請輸入姓名'); return }
       const yr = parseInt(form.year)
@@ -314,21 +323,6 @@ export function useCheckoutForm() {
           plan_type: 'family_reports',
           report_ids: g15Selected.map(s => s.reportId),
           member_names: g15Selected.map(s => s.name),
-        }
-      } else if (planCode === 'G3') {
-        birthData = {
-          plan_type: 'family',
-          members: familyMembers.map(m => ({
-            name: m.name,
-            year: parseInt(m.year),
-            month: parseInt(m.month),
-            day: parseInt(m.day),
-            hour: m.timeMode === 'unknown' ? 12 : parseInt(m.hour),
-            minute: m.timeMode === 'exact' ? parseInt(m.minute) : 0,
-            gender: m.gender,
-            time_unknown: m.timeMode === 'unknown',
-            time_mode: m.timeMode,
-          })),
         }
       } else {
         birthData = {
@@ -400,7 +394,7 @@ export function useCheckoutForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           planCode,
-          totalPrice: ['G15', 'G3', 'R'].includes(planCode) ? finalPrice : undefined,
+          totalPrice: ['G15', 'R'].includes(planCode) ? finalPrice : undefined,
           birthData,
           locale: userLocale,
           couponCode: couponApplied?.code || undefined,
@@ -432,7 +426,7 @@ export function useCheckoutForm() {
     planCode, plan, isFamilyPlan, isRelationPlan, isG15Plan,
     // 表單
     form, setForm, timeMode, setTimeMode,
-    cityResults, handleCitySearch, selectCity,
+    cityResults, handleCitySearch, selectCity, selectCountry, cancelCountrySelection, needCityForCountry,
     loading, error,
     // 優惠碼
     couponInput, setCouponInput, couponApplied, setCouponApplied,
@@ -449,7 +443,7 @@ export function useCheckoutForm() {
     searchG15Reports, addG15Report, removeG15Report,
     // G15 舊版 email（保留相容）
     g15Emails, updateG15Email, addG15Email, removeG15Email, g15VerifyLoading,
-    // G15/G3 方案（舊版 family members）
+    // 家庭成員（保留供 UI 相容）
     familyMembers, updateFamilyMember, addFamilyMember, removeFamilyMember,
     // E1 方案
     e1StartDate, setE1StartDate, e1EndDate, setE1EndDate,

@@ -1110,15 +1110,17 @@ ${analyses.length}套系統排盤完整數據：
       ? "'PingFang SC','Microsoft YaHei','Noto Sans SC',sans-serif"
       : "'PingFang TC','Microsoft JhengHei','Noto Sans TC',sans-serif"
     const emailText = {
-      brand: isCN ? '鉴 源' : '鑑 源',
+      brand: isCN ? '鉴 源' : '鑒 源',
       subtitle: isCN ? 'JIANYUAN · 东西方命理整合平台' : 'JIANYUAN · 東西方命理整合平台',
       notice: isCN ? '✦ 报告完成通知' : '✦ 報告完成通知',
       title: isCN
         ? `${birthData?.name || ''}，您的报告已完成`
         : `${birthData?.name || ''}，您的報告已完成`,
-      systemCount: isCN
-        ? `${planName} · ${analyses.length} 套命理系统分析`
-        : `${planName} · ${analyses.length} 套命理系統分析`,
+      systemCount: ['E1', 'E2'].includes(planCode)
+        ? (isCN ? `${planName} · 奇门遁甲精算` : `${planName} · 奇門遁甲精算`)
+        : planCode === 'G15'
+        ? (isCN ? `${planName} · 家族互动分析` : `${planName} · 家族互動分析`)
+        : (isCN ? `${planName} · ${analyses.length} 套命理系统分析` : `${planName} · ${analyses.length} 套命理系統分析`),
       cta: getEmailCta(planCode, isCN),
       linkNote: isCN ? '此链接专属于您，无需登录即可查看' : '此連結專屬於您，無需登入即可查看',
       promoTitle: isCN ? '🧭 加强您的命理能量' : '🧭 加強您的命理能量',
@@ -1179,7 +1181,7 @@ ${analyses.length}套系統排盤完整數據：
     </div>
 
     <!-- 出門訣推廣（非 E 方案才顯示）-->
-    ${!['E1','E2','E3'].includes(planCode) ? `
+    ${!['E1','E2'].includes(planCode) ? `
     <div style="background:#1a1a2e;border:1px solid #2a2a4a;border-radius:12px;padding:24px;margin-bottom:24px;">
       <div style="color:#c9a84c;font-size:13px;font-weight:600;margin-bottom:8px;">${emailText.promoTitle}</div>
       <p style="color:#9ca3af;font-size:13px;line-height:1.7;margin:0 0 16px 0;">

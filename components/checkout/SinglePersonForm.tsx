@@ -1,6 +1,6 @@
 'use client'
 
-import { type City } from '@/lib/cities'
+import { type City, type LocationSearchResult, type Country } from '@/lib/cities'
 import HistoricalFigures from '@/components/HistoricalFigures'
 import BirthDataFields from './BirthDataFields'
 import TimeBlockPicker from './TimeBlockPicker'
@@ -13,9 +13,12 @@ interface SinglePersonFormProps {
   setForm: React.Dispatch<React.SetStateAction<FormState>>
   timeMode: 'unknown' | 'shichen' | 'exact'
   setTimeMode: (m: 'unknown' | 'shichen' | 'exact') => void
-  cityResults: City[]
+  cityResults: LocationSearchResult[]
   onCitySearch: (val: string) => void
   onCitySelect: (c: City) => void
+  onCountrySelect?: (country: Country, isMultiTz: boolean) => void
+  onCancelCountry?: () => void
+  needCityForCountry?: string
   // D 方案
   dTopic: string
   setDTopic: (v: string) => void
@@ -42,6 +45,7 @@ interface SinglePersonFormProps {
 export default function SinglePersonForm({
   planCode, form, setForm, timeMode, setTimeMode,
   cityResults, onCitySearch, onCitySelect,
+  onCountrySelect, onCancelCountry, needCityForCountry,
   dTopic, setDTopic, dOtherDesc, setDOtherDesc,
   e1StartDate, setE1StartDate, e1EndDate, setE1EndDate,
   eSelectedBlocks, setESelectedBlocks,
@@ -63,6 +67,9 @@ export default function SinglePersonForm({
         cityResults={cityResults}
         onCitySearch={onCitySearch}
         onCitySelect={onCitySelect}
+        onCountrySelect={onCountrySelect}
+        onCancelCountry={onCancelCountry}
+        needCityForCountry={needCityForCountry}
       />
 
       {/* 方案 D：分析主題 */}

@@ -88,8 +88,8 @@ export default function ReportPreview() {
                   </svg>
                 </div>
                 <div>
-                  <div className="text-[11px] text-text-muted">綜合評分</div>
-                  <div className="text-lg font-bold text-gradient-gold">85/100</div>
+                  <div className="text-[11px] text-text-muted">整合分析</div>
+                  <div className="text-lg font-bold text-gradient-gold">15 系統</div>
                 </div>
               </div>
             </div>

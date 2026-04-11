@@ -261,6 +261,9 @@ function CheckoutForm() {
             cityResults={ctx.cityResults}
             onCitySearch={ctx.handleCitySearch}
             onCitySelect={ctx.selectCity}
+            onCountrySelect={ctx.selectCountry}
+            onCancelCountry={ctx.cancelCountrySelection}
+            needCityForCountry={ctx.needCityForCountry}
             dTopic={ctx.dTopic}
             setDTopic={ctx.setDTopic}
             dOtherDesc={ctx.dOtherDesc}

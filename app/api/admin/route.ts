@@ -43,8 +43,8 @@ export async function GET(req: NextRequest) {
   ] = await Promise.all([
     // 訪客總數（去重 session_id）— 包含 user_agent 用於 bot 過濾
     supabase.from('visitor_events').select('session_id, user_agent', { count: 'exact' }).gte('created_at', sinceISO),
-    // 付費報告
-    supabase.from('paid_reports').select('*').gte('created_at', sinceISO).order('created_at', { ascending: false }),
+    // 付費報告（只選統計需要的欄位，不拉 report_result 大 JSON）
+    supabase.from('paid_reports').select('id, plan_code, amount_usd, status, created_at, customer_email, client_name, stripe_session_id').gte('created_at', sinceISO).order('created_at', { ascending: false }),
     // 免費工具使用
     supabase.from('free_tool_usage').select('*', { count: 'exact' }).gte('created_at', sinceISO),
     // 熱門頁面 Top 10（含 user_agent 用於 bot 過濾）
