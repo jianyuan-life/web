@@ -2,6 +2,8 @@
 
 import { SHICHEN } from './types'
 
+const TIME_BLOCK_NAMES = ['子時', '丑時', '寅時', '卯時', '辰時', '巳時', '午時', '未時', '申時', '酉時', '戌時', '亥時']
+
 interface ConfirmationModalProps {
   show: boolean
   onClose: () => void
@@ -20,10 +22,15 @@ interface ConfirmationModalProps {
   }
   timeMode: 'unknown' | 'shichen' | 'exact'
   loading: boolean
+  e1StartDate?: string
+  e1EndDate?: string
+  eSelectedBlocks?: boolean[]
+  customerNote?: string
 }
 
 export default function ConfirmationModal({
   show, onClose, onConfirm, planCode, form, timeMode, loading,
+  e1StartDate, e1EndDate, eSelectedBlocks, customerNote,
 }: ConfirmationModalProps) {
   if (!show) return null
 
@@ -76,6 +83,36 @@ export default function ConfirmationModal({
             <span className="text-text-muted text-sm">出生地區</span>
             <span className="text-white font-medium">{form.birthCity}</span>
           </div>
+
+          {/* E1/E2 專屬：事件日期+可配合時辰+事件描述 */}
+          {(planCode === 'E1' || planCode === 'E2') && (
+            <>
+              {planCode === 'E1' && e1StartDate && (
+                <div className="flex justify-between items-center py-2 border-b border-white/10">
+                  <span className="text-text-muted text-sm">事件日期</span>
+                  <span className="text-white font-medium">{e1StartDate}{e1EndDate ? ` ~ ${e1EndDate}` : '（一個月內）'}</span>
+                </div>
+              )}
+              {eSelectedBlocks && eSelectedBlocks.some(b => b) && (
+                <div className="py-2 border-b border-white/10">
+                  <span className="text-text-muted text-sm block mb-1">可配合出行時辰</span>
+                  <div className="flex flex-wrap gap-1">
+                    {eSelectedBlocks.map((checked, i) => checked && (
+                      <span key={i} className="px-2 py-0.5 rounded text-xs bg-gold/20 text-gold border border-gold/30">
+                        {TIME_BLOCK_NAMES[i]}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {customerNote && (
+                <div className="py-2 border-b border-white/10">
+                  <span className="text-text-muted text-sm block mb-1">事件描述</span>
+                  <span className="text-white text-sm">{customerNote}</span>
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* 警告提示 */}

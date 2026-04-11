@@ -241,6 +241,10 @@ export default function SinglePersonForm({
         form={form}
         timeMode={timeMode}
         loading={loading}
+        e1StartDate={e1StartDate}
+        e1EndDate={e1EndDate}
+        eSelectedBlocks={eSelectedBlocks}
+        customerNote={customerNote}
       />
     </form>
   )
