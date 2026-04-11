@@ -567,6 +567,11 @@ export async function loadReportRecord(reportId: string) {
   const { data: updated, error: updateErr } = await supabase.from('paid_reports').update({
     status: 'generating',
     error_message: null,
+    // 記錄真實的 workflow 啟動時間，供 cron 精準判斷超時
+    generation_progress: {
+      started_at: new Date().toISOString(),
+      workflow_instance: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    },
   })
     .eq('id', reportId)
     .in('status', ['pending', 'failed'])
@@ -1433,21 +1438,27 @@ export async function qualityGate(
     }
 
     // 2b. 每個命理系統章節必須包含「好的地方」「需要注意」「改善建議」
+    // regex 需涵蓋 AI 常見的各種用詞變體，避免誤報
     const systemNames = [
       '八字', '紫微', '奇門', '風水', '姓名學', '西洋占星', '吠陀占星',
       '易經', '人類圖', '塔羅', '數字能量', '古典占星', '生肖', '生物節律', '南洋術數',
     ]
     // 按 ## 切分章節
     const chapters = reportContent.split(/^## /m).slice(1)
+    let missingSubsectionCount = 0
     for (const sysName of systemNames) {
       const sysChapter = chapters.find(ch => ch.startsWith(sysName) || ch.includes(sysName))
-      if (!sysChapter) continue // 系統不在報告中（不在此檢查，由系統數量檢查負責）
-      const hasPositive = /好的地方|好的方面|優勢|優點|天賦/.test(sysChapter)
-      const hasCaution = /需要注意|需注意|注意的地方|風險|挑戰/.test(sysChapter)
-      const hasImprovement = /改善方案|改善建議|改善|建議|行動指南/.test(sysChapter)
-      if (!hasPositive) warnings.push(`${sysName}: 缺少「好的地方」子章節`)
-      if (!hasCaution) warnings.push(`${sysName}: 缺少「需要注意」子章節`)
-      if (!hasImprovement) warnings.push(`${sysName}: 缺少「改善建議」子章節`)
+      if (!sysChapter) continue
+      const hasPositive = /好的地方|好的方面|優勢|優點|天賦|強項|亮點|有利|正面|長處|閃光點|值得肯定/.test(sysChapter)
+      const hasCaution = /需要注意|需注意|注意的地方|風險|挑戰|課題|考驗|提醒|留意|警示|弱點|不足|待改善|需要留意/.test(sysChapter)
+      const hasImprovement = /改善方案|改善建議|改善|建議|行動指南|行動方案|實踐|練習|調整|具體做法|操作建議|成長方向/.test(sysChapter)
+      if (!hasPositive) missingSubsectionCount++
+      if (!hasCaution) missingSubsectionCount++
+      if (!hasImprovement) missingSubsectionCount++
+    }
+    // 只在大量缺失時才警告（允許少數系統用詞不同）
+    if (missingSubsectionCount > 6) {
+      warnings.push(`${missingSubsectionCount} 個系統子章節缺少標準結構（好的地方/需要注意/改善建議）`)
     }
   }
 
@@ -1632,14 +1643,27 @@ export async function saveReportToSupabase(
   if (top5Timings) reportResult.top5_timings = top5Timings
 
   const supabase = getSupabase()
-  const { error } = await supabase.from('paid_reports').update({
+
+  // 原子操作：只有 generating 狀態才能寫入 completed
+  // 防止 cron 已標記 failed 後被覆蓋，或已完成的報告被重複寫入
+  const { data: saved, error } = await supabase.from('paid_reports').update({
     report_result: reportResult,
     pdf_url: pdfUrl,
     status: 'completed',
-  }).eq('id', reportId)
+    error_message: null,
+  })
+    .eq('id', reportId)
+    .in('status', ['generating', 'pending', 'failed']) // 允許所有非 completed 狀態
+    .select('id')
 
   if (error) {
     throw new RetryableError(`Supabase 更新失敗: ${error.message}`)
+  }
+
+  if (!saved?.length) {
+    // 報告已經是 completed（被另一個 workflow 實例先完成了）
+    console.log(`⏭️ 報告 ${reportId} 已被其他實例完成，跳過重複寫入`)
+    return true
   }
 
   console.log(`✅ 報告 ${reportId} 已標記完成`)

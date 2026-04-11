@@ -1,24 +1,27 @@
 // ============================================================
 // Workflow 觸發端點：啟動報告生成 workflow
 // POST /api/workflows/generate-report
+//
+// 防重複觸發：
+// 1. 檢查報告狀態，只有 pending/failed 才啟動
+// 2. generating/completed 直接跳過，避免重複浪費 API
 // ============================================================
 
 import { start } from 'workflow/api'
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { generateReportWorkflow } from '@/workflows/generate-report'
 
 export async function POST(req: NextRequest) {
   try {
     // 安全驗證：只允許內部呼叫（Webhook/Cron/Fallback）
-    // 檢查來源是否為同網站或帶有正確的 CRON_SECRET
     const origin = req.headers.get('origin') || ''
     const referer = req.headers.get('referer') || ''
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
     const authHeader = req.headers.get('authorization')
-    const isInternalCall = origin.startsWith(siteUrl) || referer.startsWith(siteUrl) || origin === '' // 伺服器端 fetch 無 origin
+    const isInternalCall = origin.startsWith(siteUrl) || referer.startsWith(siteUrl) || origin === ''
     const hasCronSecret = authHeader === `Bearer ${process.env.CRON_SECRET}`
 
-    // 外部直接呼叫且無授權 → 拒絕
     if (!isInternalCall && !hasCronSecret) {
       return NextResponse.json({ error: '未授權' }, { status: 401 })
     }
@@ -29,8 +32,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '缺少 reportId' }, { status: 400 })
     }
 
-    console.log(`啟動報告生成 workflow: ${reportId}`)
+    // 防重複觸發：先檢查報告狀態
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+    )
+    const { data: report } = await supabase
+      .from('paid_reports')
+      .select('status')
+      .eq('id', reportId)
+      .single()
 
+    if (report?.status === 'completed') {
+      console.log(`⏭️ 報告 ${reportId} 已完成，跳過重複觸發`)
+      return NextResponse.json({ success: true, skipped: true, reason: '已完成' })
+    }
+
+    if (report?.status === 'generating') {
+      console.log(`⏭️ 報告 ${reportId} 正在生成中，跳過重複觸發`)
+      return NextResponse.json({ success: true, skipped: true, reason: '正在生成中' })
+    }
+
+    console.log(`啟動報告生成 workflow: ${reportId}`)
     const run = await start(generateReportWorkflow, [reportId])
 
     return NextResponse.json({
