@@ -708,7 +708,7 @@ export async function callPythonCalculate(birthData: BirthData) {
         year: birthData.year, month: birthData.month, day: birthData.day,
         hour: birthData.hour, minute: birthData.minute || 0,
         gender: birthData.gender,
-        ...(birthData.cityLat && birthData.cityLng ? { lat: birthData.cityLat, lng: birthData.cityLng } : {}),
+        ...(birthData.cityLat && birthData.cityLng ? { latitude: birthData.cityLat, longitude: birthData.cityLng, timezone_offset: birthData.cityTz || 8 } : {}),
       }),
       signal: controller.signal,
     })
@@ -905,7 +905,7 @@ async function claudeStreamingCall(
 
     if (e instanceof Error && e.name === 'AbortError') {
       clearTimeout(timeout)
-      throw new RetryableError(`Claude API 串流超時（600秒，已收到 ${result.length} 字，已存檔）`, { retryAfter: '30s' })
+      throw new RetryableError(`Claude API 串流超時（900秒，已收到 ${result.length} 字，已存檔）`, { retryAfter: '30s' })
     }
     clearTimeout(timeout)
     throw e

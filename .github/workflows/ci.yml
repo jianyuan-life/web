@@ -1,4 +1,4 @@
-name: TypeScript 型別檢查
+name: CI Quality Gate
 
 on:
   push:
@@ -7,17 +7,20 @@ on:
     branches: [main]
 
 jobs:
-  type-check:
+  quality-gate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
-          cache: npm
+          node-version: '24'
+          cache: 'npm'
 
       - run: npm ci
 
       - name: TypeScript 型別檢查
-        run: npx tsc --noEmit --skipLibCheck
+        run: npm run type-check
+
+      - name: Build 驗證
+        run: npm run build
