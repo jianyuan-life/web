@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { searchCities, searchLocations, type LocationSearchResult } from '@/lib/cities'
+import FamilyMemberPicker from '@/components/checkout/FamilyMemberPicker'
+import type { SavedFamilyMember } from '@/components/FamilyMembersManager'
 
 const SHICHEN = [
   { label: '子時 (23:00-01:00)', value: 0 }, { label: '丑時 (01:00-03:00)', value: 2 },
@@ -75,6 +77,34 @@ export default function NameToolPage() {
   const [error, setError] = useState('')
   const [currentStep, setCurrentStep] = useState(-1)
   const [completedSteps, setCompletedSteps] = useState<number[]>([])
+
+  // 從家人選擇後自動填入表單
+  const handleFamilySelect = (member: SavedFamilyMember) => {
+    // 嘗試拆分姓名：第一個字為姓，其餘為名
+    const fullName = member.name || ''
+    const surname = fullName.length > 0 ? fullName[0] : ''
+    const givenName = fullName.length > 1 ? fullName.slice(1) : ''
+    const hourVal = member.time_mode === 'exact' ? String(member.hour) : String(Math.floor(member.hour / 2) * 2)
+    setForm({
+      ...form,
+      surname,
+      givenName,
+      gender: member.gender,
+      year: String(member.year),
+      month: String(member.month),
+      day: String(member.day),
+      hour: hourVal,
+      timeMode: member.time_mode as 'unknown' | 'shichen' | 'exact',
+      exactHour: String(member.hour),
+      exactMinute: String(member.minute),
+      city: member.birth_city || '',
+      cityLat: member.city_lat || 0,
+      cityLng: member.city_lng || 0,
+      cityTz: member.city_tz || 8,
+    })
+    setCityResults([])
+    setNeedCityForCountry('')
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -197,6 +227,9 @@ export default function NameToolPage() {
         {!result && !loading && (
           <div className="max-w-lg mx-auto">
             <form onSubmit={handleSubmit} className="glass rounded-2xl p-8 space-y-5">
+              {/* 從家人選擇 */}
+              <FamilyMemberPicker onSelect={handleFamilySelect} />
+
               {/* 姓 + 名 */}
               <div className="grid grid-cols-2 gap-3">
                 <div>

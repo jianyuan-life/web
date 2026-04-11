@@ -2,7 +2,9 @@
 
 import BirthTimeField from './BirthTimeField'
 import CustomerNote from './CustomerNote'
+import FamilyMemberPicker from './FamilyMemberPicker'
 import { type FamilyMember } from './types'
+import type { SavedFamilyMember } from '@/components/FamilyMembersManager'
 
 interface RMemberFormProps {
   rMembers: FamilyMember[]
@@ -42,6 +44,24 @@ export default function RMemberForm({
                   </button>
                 )}
               </div>
+              {/* 從家人選擇 */}
+              <FamilyMemberPicker onSelect={(saved: SavedFamilyMember) => {
+                const hourVal = saved.time_mode === 'exact' ? String(saved.hour) : String(Math.floor(saved.hour / 2) * 2)
+                updateRMember(index, {
+                  ...member,
+                  name: saved.name,
+                  gender: saved.gender,
+                  year: String(saved.year),
+                  month: String(saved.month),
+                  day: String(saved.day),
+                  hour: hourVal,
+                  minute: saved.time_mode === 'exact' ? String(saved.minute) : '0',
+                  timeMode: saved.time_mode as 'unknown' | 'shichen' | 'exact',
+                  birthCity: saved.birth_city || '',
+                  cityLat: saved.city_lat || 0,
+                  cityLng: saved.city_lng || 0,
+                })
+              }} />
               <div>
                 <label className="block text-xs text-text-muted mb-1">姓名 *</label>
                 <input type="text" required placeholder={`請輸入${label}的姓名`}
