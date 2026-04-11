@@ -22,5 +22,8 @@ jobs:
       - name: TypeScript 型別檢查
         run: npm run type-check
 
+      - name: 自動化測試
+        run: npm test
+
       - name: Build 驗證
         run: npm run build
