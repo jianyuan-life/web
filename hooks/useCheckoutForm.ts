@@ -335,6 +335,9 @@ export function useCheckoutForm() {
         }
       }
       if (!rRelationDesc.trim()) { alert('請描述你們的關係與想了解的問題'); return }
+      // R 方案用 rMembers 不用 form，直接提交（跟 G15 同邏輯）
+      await confirmCheckout()
+      return
     }
 
     if (planCode === 'E1') {
