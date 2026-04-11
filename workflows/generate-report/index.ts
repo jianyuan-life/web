@@ -133,13 +133,21 @@ export async function generateReportWorkflow(reportId: string) {
     try {
       const members = birthData.members as Array<{
         name?: string; gender?: string; year?: number; month?: number; day?: number;
-        hour?: number; minute?: number; cityLat?: number; cityLng?: number
+        hour?: number; minute?: number;
+        city_lat?: number; city_lng?: number; cityLat?: number; cityLng?: number;
+        latitude?: number; longitude?: number;
+        timezone_offset?: number; city_tz?: number; cityTz?: number;
+        calendar_type?: string; lunar_leap?: boolean;
+        time_unknown?: boolean; time_mode?: string;
       }>
       console.log(`R 方案：為 ${members.length} 位成員分別排盤...`)
 
       // 為每位成員分別呼叫排盤 API
       const memberResults = []
       for (const member of members) {
+        const lat = member.latitude || member.city_lat || member.cityLat
+        const lng = member.longitude || member.city_lng || member.cityLng
+        const tz = member.timezone_offset || member.city_tz || member.cityTz || 8
         const memberBirthData = {
           name: member.name || '',
           year: member.year || 0,
@@ -148,8 +156,13 @@ export async function generateReportWorkflow(reportId: string) {
           hour: member.hour || 0,
           minute: member.minute || 0,
           gender: member.gender || 'M',
-          cityLat: member.cityLat,
-          cityLng: member.cityLng,
+          latitude: lat,
+          longitude: lng,
+          timezone_offset: tz,
+          calendar_type: member.calendar_type || 'solar',
+          lunar_leap: member.lunar_leap || false,
+          time_unknown: member.time_unknown || false,
+          time_mode: member.time_mode || 'shichen',
         }
         const result = await callPythonCalculate(memberBirthData)
         memberResults.push(result)

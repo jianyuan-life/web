@@ -592,7 +592,7 @@ export function cleanFinalReport(text: string, clientName?: string): string {
   }
 
   // 3. 刪除空章節（## 標題後到下一個 ## 之間不到 50 字）
-  cleaned = cleaned.replace(/^## .+\n([\s\S]*?)(?=^## |\Z)/gm, (match, body) => {
+  cleaned = cleaned.replace(/^## .+\n([\s\S]*?)(?=^## |$)/gm, (match, body) => {
     const bodyText = body.replace(/\s/g, '')
     if (bodyText.length < 50) {
       console.log(`[cleanFinalReport] 刪除空章節: ${match.split('\n')[0]}`)
@@ -708,7 +708,11 @@ export async function callPythonCalculate(birthData: BirthData) {
         year: birthData.year, month: birthData.month, day: birthData.day,
         hour: birthData.hour, minute: birthData.minute || 0,
         gender: birthData.gender,
-        ...(birthData.cityLat && birthData.cityLng ? { latitude: birthData.cityLat, longitude: birthData.cityLng, timezone_offset: birthData.cityTz || 8 } : {}),
+        ...((birthData.latitude || birthData.cityLat) && (birthData.longitude || birthData.cityLng) ? {
+          latitude: birthData.latitude || birthData.cityLat,
+          longitude: birthData.longitude || birthData.cityLng,
+          timezone_offset: birthData.timezone_offset || birthData.cityTz || 8,
+        } : {}),
       }),
       signal: controller.signal,
     })
@@ -1644,15 +1648,10 @@ export async function qualityGate(
         warnings.push(`合否缺少必要章節: ${sec.name}`)
       }
     }
-    // 相容度分數檢查
-    const scoreMatch = reportContent.match(/相容度總分\s*[:：]?\s*(\d+)\s*[/／]?\s*100/)
-    if (!scoreMatch) {
-      warnings.push('合否缺少相容度總分（格式：XX/100）')
-    } else {
-      const score = parseInt(scoreMatch[1])
-      if (score < 0 || score > 100) {
-        warnings.push(`合否相容度分數異常: ${score}（應在 0-100 之間）`)
-      }
+    // R 方案已禁止評分（命不該有分數），改為檢查是否有明確的合/不合結論
+    const hasConclusion = /結論\s*[:：]/.test(reportContent) || /你們(合|不合|合，但)/.test(reportContent)
+    if (!hasConclusion) {
+      warnings.push('合否缺少明確結論（應有「你們合/不合/合但有致命雷區」）')
     }
     // 內容長度檢查
     if (reportContent.length < 8000) {
@@ -1663,8 +1662,8 @@ export async function qualityGate(
   // 2e. G15 家族藍圖必要章節檢查
   if (planCode === 'G15') {
     const g15Required = [
-      { pattern: /家族能量|能量圖譜/, name: '家族能量圖譜' },
-      { pattern: /互動關係|成員互動/, name: '成員互動關係深度分析' },
+      { pattern: /家族能量|能量圖譜|能量全貌/, name: '家族能量圖譜' },
+      { pattern: /互動關係|成員互動|互動.*分析/, name: '成員互動關係深度分析' },
       { pattern: /溝通模式/, name: '家庭溝通模式' },
       { pattern: /家運走勢|家運/, name: '家運走勢' },
       { pattern: /行動指南|家族行動/, name: '家族行動指南' },
