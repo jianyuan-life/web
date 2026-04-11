@@ -424,6 +424,9 @@ export default function ZiweiToolPage() {
               </div>
             )}
 
+            {/* 速算概覽提示 */}
+            <p className="text-xs text-text-muted/50 text-center">以上為命宮主星速算概覽，完整報告將根據您的完整命盤做 15 系統個人化深度分析</p>
+
             {/* 升級引導 */}
             <div className="rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(184,134,11,0.12), rgba(26,58,92,0.4))' }}>
               <div className="p-8 md:p-10">
@@ -463,7 +466,9 @@ export default function ZiweiToolPage() {
                         month: form.month,
                         day: form.day,
                         hour: form.timeMode === 'exact' ? form.exactHour : form.hour,
+                        minute: form.timeMode === 'exact' ? form.exactMinute : '0',
                         gender: form.gender,
+                        timeMode: form.timeMode,
                       })
                       const label = idx === 0 ? '解鎖人生藍圖完整報告 $89' : '聚焦單一困惑深度分析 $39'
                       const cls = idx === 0
