@@ -44,7 +44,7 @@ export default function FreeToolPage() {
   const [form, setForm] = useState({
     name:'', year:'1990', month:'1', day:'1', hour:'12', gender:'M',
     calendarType:'solar' as 'solar'|'lunar', // 國曆/農曆
-    timeMode:'unknown' as 'unknown'|'shichen'|'exact', // 預設不確定，展開進階選項才選時辰
+    timeMode:'shichen' as 'unknown'|'shichen'|'exact', // 時辰是八字基本要求
     exactHour:'12', exactMinute:'0', // 精確時間
     city:'', cityLat:0, cityLng:0, cityTz:8, // 出生城市
   })
@@ -54,7 +54,7 @@ export default function FreeToolPage() {
   const [error, setError] = useState('')
   const [currentStep, setCurrentStep] = useState(-1)
   const [completedSteps, setCompletedSteps] = useState<number[]>([])
-  const [showAdvanced, setShowAdvanced] = useState(false)
+  // showAdvanced 已移除：八字所有欄位都是基本需求，不應折疊
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -181,19 +181,8 @@ export default function FreeToolPage() {
                 </div>
               </div>
 
-              {/* 進階選項折疊區 */}
-              <div>
-                <button type="button" onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="flex items-center gap-2 text-sm text-gold/70 hover:text-gold transition-colors w-full py-1">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                    className={`transition-transform ${showAdvanced ? 'rotate-90' : ''}`}>
-                    <polyline points="9 6 15 12 9 18" />
-                  </svg>
-                  進階選項（曆法、出生時間、出生城市）
-                </button>
-              </div>
-
-              {showAdvanced && <>
+              {/* 曆法、出生時間、出生城市（八字基本必要欄位） */}
+              <>
               {/* 國曆/農曆切換 */}
               <div>
                 <label className="block text-sm text-text-muted mb-1.5">曆法</label>
@@ -306,7 +295,7 @@ export default function FreeToolPage() {
                 )}
               </div>
 
-              </>}
+              </>
 
               <button type="submit" disabled={loading}
                 className="w-full py-4 bg-gold text-dark font-bold rounded-xl text-lg btn-glow disabled:opacity-50">
