@@ -311,6 +311,9 @@ export function useCheckoutForm() {
         alert('請至少選擇 2 位家庭成員的人生藍圖報告')
         return
       }
+      // G15 不需要出生資料確認（選的是已完成報告），直接提交
+      await confirmCheckout()
+      return
     } else if (planCode !== 'R') {
       // R 方案用 rMembers，不用 form，所以跳過 form 驗證
       if (!form.name.trim()) { alert('請輸入姓名'); return }
