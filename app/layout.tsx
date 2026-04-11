@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import pkg from '../package.json'
 import { Noto_Serif_TC, Noto_Sans_TC, Noto_Serif_SC, Noto_Sans_SC } from 'next/font/google'
 import Image from 'next/image'
 import Navbar from '@/components/Navbar'
@@ -138,7 +139,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
             <div className="mt-12 pt-8 border-t border-gold/5 text-center text-xs text-text-muted/60">
               <p>本服務融合傳統命理學與現代科技，分析結果僅供參考，不構成任何醫療、投資或法律建議。</p>
-              <p className="mt-2">&copy; {new Date().getFullYear()} 鑒源 JianYuan. All rights reserved. &middot; v4.5.25</p>
+              <p className="mt-2">&copy; {new Date().getFullYear()} 鑒源 JianYuan. All rights reserved. &middot; v{pkg.version}</p>
             </div>
           </div>
         </footer>
