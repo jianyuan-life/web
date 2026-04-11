@@ -61,6 +61,7 @@ function CheckoutForm() {
             loading={ctx.loading}
             error={ctx.error}
             finalPrice={ctx.finalPrice}
+            isFormValid={ctx.isFormValid}
             onSubmit={ctx.handleCheckout}
           />
         ) : ctx.isG15Plan ? (
@@ -279,7 +280,11 @@ function CheckoutForm() {
             loading={ctx.loading}
             error={ctx.error}
             finalPrice={ctx.finalPrice}
+            isFormValid={ctx.isFormValid}
             onSubmit={ctx.handleCheckout}
+            showConfirmModal={ctx.showConfirmModal}
+            onCloseConfirmModal={() => ctx.setShowConfirmModal(false)}
+            onConfirmCheckout={ctx.confirmCheckout}
           />
         )}
       </div>

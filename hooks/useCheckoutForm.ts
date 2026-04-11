@@ -17,6 +17,9 @@ export function useCheckoutForm() {
   const planCode = params.get('plan') || 'C'
   const plan = PLANS[planCode] || PLANS.C
 
+  // 確認彈窗
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+
   const [form, setForm] = useState({
     name: params.get('name') || '',
     year: params.get('year') || '1990',
@@ -95,6 +98,31 @@ export function useCheckoutForm() {
   const isFamilyPlan = false  // G3 已移除
   const isG15Plan = planCode === 'G15'
   const isRelationPlan = planCode === 'R'
+
+  // 表單驗證：判斷所有必填欄位是否完成
+  const isFormValid = (() => {
+    if (planCode === 'G15') {
+      return g15Selected.length >= 2
+    }
+    if (planCode === 'R') {
+      const allMembersValid = rMembers.every(m => m.name.trim() !== '' && (m.birthCity || '').trim() !== '')
+      return allMembersValid && rRelationDesc.trim() !== ''
+    }
+    // 單人表單驗證
+    if (!form.name.trim()) return false
+    const yr = parseInt(form.year)
+    if (yr < 1900 || yr > new Date().getFullYear()) return false
+    if (!form.gender) return false
+    // 出生地區必填：必須選了國家/城市（cityLat !== 0 或 birthCity 非空且不是搜尋中）
+    if (!form.birthCity || form.cityLat === 0) return false
+    // E1 必填
+    if (planCode === 'E1' && (!e1StartDate || !e1EndDate)) return false
+    // E1/E2 時段
+    if ((planCode === 'E1' || planCode === 'E2') && !eSelectedBlocks.some(b => b)) return false
+    // D 方案問事（其他）必填描述
+    if (planCode === 'D' && dTopic === '問事（其他）' && !dOtherDesc.trim()) return false
+    return true
+  })()
 
   // 優惠碼驗證
   const applyCoupon = async () => {
@@ -274,12 +302,11 @@ export function useCheckoutForm() {
     if (index >= 2) setRMembers(prev => prev.filter((_, i) => i !== index))
   }
 
-  // 提交
+  // 提交前先顯示確認彈窗
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (planCode === 'G15') {
-      // G15：檢查已選取的報告數量
       if (g15Selected.length < 2) {
         alert('請至少選擇 2 位家庭成員的人生藍圖報告')
         return
@@ -288,12 +315,18 @@ export function useCheckoutForm() {
       if (!form.name.trim()) { alert('請輸入姓名'); return }
       const yr = parseInt(form.year)
       if (yr < 1900 || yr > new Date().getFullYear()) { alert('出生年份範圍需在 1900 至今年之間'); return }
+      // 出生地區必填
+      if (!form.birthCity || form.cityLat === 0) { alert('請選擇出生地區'); return }
     }
 
     if (planCode === 'R') {
       for (let i = 0; i < rMembers.length; i++) {
         if (!rMembers[i].name.trim()) {
           alert(`請輸入${i === 0 ? '您' : `第 ${i + 1} 位當事人`}的姓名`)
+          return
+        }
+        if (!(rMembers[i].birthCity || '').trim()) {
+          alert(`請輸入${i === 0 ? '您' : `第 ${i + 1} 位當事人`}的出生地區`)
           return
         }
       }
@@ -311,6 +344,13 @@ export function useCheckoutForm() {
       }
     }
 
+    // 顯示確認彈窗
+    setShowConfirmModal(true)
+  }
+
+  // 確認後真正提交
+  const confirmCheckout = async () => {
+    setShowConfirmModal(false)
     setLoading(true)
 
     try {
@@ -453,7 +493,11 @@ export function useCheckoutForm() {
     extraMemberCount, extraPrice, rExtraCount, totalPrice, finalPrice,
     // Auth
     authChecked,
+    // 驗證
+    isFormValid,
+    // 確認彈窗
+    showConfirmModal, setShowConfirmModal,
     // 提交
-    handleCheckout,
+    handleCheckout, confirmCheckout,
   }
 }

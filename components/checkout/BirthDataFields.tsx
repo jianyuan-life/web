@@ -119,7 +119,7 @@ export default function BirthDataFields({
 
       {/* 出生地區 */}
       <div className="relative">
-        <label className="block text-xs text-text-muted mb-1">出生地區（可選，用於真太陽時校正）</label>
+        <label className="block text-xs text-text-muted mb-1">出生地區 <span className="text-red-400">*</span></label>
         {needCityForCountry && (
           <p className="text-xs text-gold/80 mb-1">已選擇「{needCityForCountry}」（多時區），請輸入城市名</p>
         )}

@@ -61,6 +61,7 @@ export default function FreeToolPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.name.trim()) { setError('請輸入姓名'); return }
+    if (!form.city.trim() || form.cityLat === 0) { setError('請選擇出生地區'); return }
     setLoading(true); setError(''); setResult(null)
     setCurrentStep(0); setCompletedSteps([])
 
@@ -269,7 +270,7 @@ export default function FreeToolPage() {
 
               {/* 出生地區 */}
               <div className="relative">
-                <label className="block text-sm text-text-muted mb-1.5">出生地區</label>
+                <label className="block text-sm text-text-muted mb-1.5">出生地區 <span className="text-red-accent">*</span></label>
                 {needCityForCountry && (
                   <p className="text-xs text-gold/80 mb-1.5">已選擇「{needCityForCountry}」（多時區），請輸入城市名</p>
                 )}
@@ -332,9 +333,13 @@ export default function FreeToolPage() {
 
               </>
 
-              <button type="submit" disabled={loading}
-                className="w-full py-4 bg-gold text-dark font-bold rounded-xl text-lg btn-glow disabled:opacity-50">
-                開始命理分析
+              <button type="submit" disabled={loading || !form.name.trim() || form.cityLat === 0}
+                className={`w-full py-4 font-bold rounded-xl text-lg transition-all ${
+                  form.name.trim() && form.cityLat !== 0
+                    ? 'bg-gold text-dark btn-glow disabled:opacity-50'
+                    : 'bg-white/10 text-text-muted cursor-not-allowed'
+                }`}>
+                {!form.name.trim() || form.cityLat === 0 ? '請填寫完整資料' : '開始命理分析'}
               </button>
               {error && <p className="text-red-400 text-sm text-center mt-2">{error}</p>}
             </form>

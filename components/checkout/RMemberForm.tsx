@@ -16,6 +16,7 @@ interface RMemberFormProps {
   loading: boolean
   error: string
   finalPrice: number
+  isFormValid: boolean
   onSubmit: (e: React.FormEvent) => void
 }
 
@@ -23,7 +24,7 @@ export default function RMemberForm({
   rMembers, updateRMember, addRMember, removeRMember,
   rRelationDesc, setRRelationDesc,
   customerNote, setCustomerNote,
-  loading, error, finalPrice, onSubmit,
+  loading, error, finalPrice, isFormValid, onSubmit,
 }: RMemberFormProps) {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -92,15 +93,18 @@ export default function RMemberForm({
                 minute={member.minute}
                 onChange={(field, val) => updateRMember(index, { ...member, [field]: val })}
               />
-              {/* 出生城市 */}
+              {/* 出生地區 */}
               <div>
-                <label className="block text-xs text-text-muted mb-1">出生城市（可選，用於真太陽時校正）</label>
-                <input type="text"
-                  placeholder="輸入城市名（如：台北、香港、上海）"
+                <label className="block text-xs text-text-muted mb-1">出生地區 <span className="text-red-400">*</span></label>
+                <input type="text" required
+                  placeholder="輸入地區名（如：台灣、香港、日本）"
                   value={member.birthCity || ''}
                   onChange={(e) => updateRMember(index, { ...member, birthCity: e.target.value, cityLat: 0, cityLng: 0 })}
                   className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream text-sm focus:border-gold/40 focus:outline-none placeholder:text-text-muted/40"
                 />
+                {!member.birthCity?.trim() && (
+                  <p className="text-[10px] text-red-400/70 mt-1">請輸入出生地區</p>
+                )}
               </div>
             </div>
           )
@@ -135,10 +139,14 @@ export default function RMemberForm({
       {error && <p className="text-red-400 text-sm text-center">{error}</p>}
 
       <button
-        type="submit" disabled={loading}
-        className="w-full py-3.5 bg-gold text-dark font-bold rounded-xl text-lg btn-glow disabled:opacity-50 mt-4"
+        type="submit" disabled={loading || !isFormValid}
+        className={`w-full py-3.5 font-bold rounded-xl text-lg mt-4 transition-all ${
+          isFormValid
+            ? 'bg-gold text-dark btn-glow disabled:opacity-50'
+            : 'bg-white/10 text-text-muted cursor-not-allowed'
+        }`}
       >
-        {loading ? '跳轉付款中...' : finalPrice === 0 ? '免費領取報告' : `確認付款 — $${finalPrice}`}
+        {loading ? '跳轉付款中...' : !isFormValid ? '請填寫完整資料' : finalPrice === 0 ? '免費領取報告' : `確認付款 — $${finalPrice}`}
       </button>
       <p className="text-xs text-text-muted/60 text-center">
         付款由 Stripe 安全處理。報告平均需 30 分鐘以上，出門訣需 40 分鐘以上。

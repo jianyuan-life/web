@@ -5,6 +5,7 @@ import HistoricalFigures from '@/components/HistoricalFigures'
 import BirthDataFields from './BirthDataFields'
 import TimeBlockPicker from './TimeBlockPicker'
 import CustomerNote from './CustomerNote'
+import ConfirmationModal from './ConfirmationModal'
 import { D_TOPICS, type CheckoutFormState as FormState } from './types'
 
 interface SinglePersonFormProps {
@@ -39,7 +40,12 @@ interface SinglePersonFormProps {
   loading: boolean
   error: string
   finalPrice: number
+  isFormValid: boolean
   onSubmit: (e: React.FormEvent) => void
+  // 確認彈窗
+  showConfirmModal: boolean
+  onCloseConfirmModal: () => void
+  onConfirmCheckout: () => void
 }
 
 export default function SinglePersonForm({
@@ -50,7 +56,8 @@ export default function SinglePersonForm({
   e1StartDate, setE1StartDate, e1EndDate, setE1EndDate,
   eSelectedBlocks, setESelectedBlocks,
   customerNote, setCustomerNote,
-  loading, error, finalPrice, onSubmit,
+  loading, error, finalPrice, isFormValid, onSubmit,
+  showConfirmModal, onCloseConfirmModal, onConfirmCheckout,
 }: SinglePersonFormProps) {
   return (
     <form onSubmit={onSubmit} className="glass rounded-2xl p-6 space-y-4">
@@ -171,15 +178,30 @@ export default function SinglePersonForm({
       </div>
 
       <button
-        type="submit" disabled={loading}
-        className="w-full py-3.5 bg-gold text-dark font-bold rounded-xl text-lg btn-glow disabled:opacity-50 mt-4"
+        type="submit" disabled={loading || !isFormValid}
+        className={`w-full py-3.5 font-bold rounded-xl text-lg mt-4 transition-all ${
+          isFormValid
+            ? 'bg-gold text-dark btn-glow disabled:opacity-50'
+            : 'bg-white/10 text-text-muted cursor-not-allowed'
+        }`}
       >
-        {loading ? '跳轉付款中...' : `確認付款`}
+        {loading ? '跳轉付款中...' : isFormValid ? '確認付款' : '請填寫完整資料'}
       </button>
 
       <p className="text-xs text-text-muted/60 text-center">
         付款由 Stripe 安全處理，您的信用卡資訊不會經過鑒源伺服器
       </p>
+
+      {/* 資料確認彈窗 */}
+      <ConfirmationModal
+        show={showConfirmModal}
+        onClose={onCloseConfirmModal}
+        onConfirm={onConfirmCheckout}
+        planCode={planCode}
+        form={form}
+        timeMode={timeMode}
+        loading={loading}
+      />
     </form>
   )
 }
