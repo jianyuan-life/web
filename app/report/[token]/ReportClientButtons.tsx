@@ -1,9 +1,24 @@
 'use client'
 import { useState } from 'react'
 
-export default function ReportClientButtons({ pdfUrl, planCode }: { pdfUrl: string | null; planCode?: string }) {
+export default function ReportClientButtons({ pdfUrl, planCode, reportId }: { pdfUrl: string | null; planCode?: string; reportId?: string }) {
   const [shareLabel, setShareLabel] = useState('分享報告')
   const isChumenji = planCode === 'E1' || planCode === 'E2'
+
+  // PDF 下載追蹤（5 分鐘內同一報告不重複計算）
+  const trackPdfDownload = () => {
+    if (!reportId) return
+    const storageKey = `pdf_downloaded_${reportId}`
+    const lastDownloaded = sessionStorage.getItem(storageKey)
+    const now = Date.now()
+    if (lastDownloaded && now - parseInt(lastDownloaded, 10) < 5 * 60 * 1000) return
+    sessionStorage.setItem(storageKey, now.toString())
+    fetch('/api/report-view', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ report_id: reportId, plan_code: planCode, event_type: 'pdf_download' }),
+    }).catch(() => {})
+  }
 
   const handleShare = async () => {
     const url = window.location.href
@@ -34,6 +49,7 @@ export default function ReportClientButtons({ pdfUrl, planCode }: { pdfUrl: stri
           href={pdfUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={trackPdfDownload}
           className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold transition-all hover:scale-105"
           style={{ background: 'linear-gradient(135deg, #c9a84c, #e8c87a)', color: '#0a0e1a' }}
         >
