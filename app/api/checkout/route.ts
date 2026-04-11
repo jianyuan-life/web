@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { Resend } from 'resend'
 import crypto from 'crypto'
 
 function getSupabase() {
@@ -156,6 +157,35 @@ export async function POST(req: NextRequest) {
           order_id: fakeSessionId, customer_email: customerEmail,
           plan_code: planCode, original_amount: baseAmount / 100, discount_applied: baseAmount / 100,
         })
+      }
+
+      // 免費方案也發訂單確認信
+      if (customerEmail) {
+        try {
+          const PLAN_NAMES: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月盤出門訣' }
+          const resend = new Resend(process.env.RESEND_API_KEY || '')
+          const planName = PLAN_NAMES[planCode] || planCode
+          await resend.emails.send({
+            from: '鑒源命理 <noreply@jianyuan.life>',
+            to: customerEmail,
+            subject: `已收到您的訂單 — ${planName}（優惠碼 ${verifiedCouponCode}）`,
+            html: `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #333;">
+                <h2 style="color: #1a1a2e; margin-bottom: 16px;">感謝您的購買</h2>
+                <p>您好，</p>
+                <p>您使用優惠碼 <strong>${verifiedCouponCode}</strong> 免費獲得了<strong>「${planName}」</strong>，系統正在啟動分析。</p>
+                <p style="background: #f8f6f0; padding: 16px; border-radius: 8px; border-left: 3px solid #c9a84c;">
+                  報告預計 <strong>30-60 分鐘</strong>內完成。完成後會再寄信通知您。
+                </p>
+                <p style="margin-top: 24px;">
+                  <a href="${siteUrl}/dashboard" style="display: inline-block; background: #c9a84c; color: #1a1a2e; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold;">查看報告進度</a>
+                </p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
+                <p style="font-size: 12px; color: #999;">鑒源命理 jianyuan.life</p>
+              </div>
+            `,
+          })
+        } catch { /* 確認信失敗不影響報告生成 */ }
       }
 
       // 觸發 Workflow 生成報告（await + fallback，與 webhook 一致）
