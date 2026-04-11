@@ -26,4 +26,12 @@ jobs:
         run: npm test
 
       - name: Build 驗證
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+          STRIPE_SECRET_KEY: sk_test_placeholder
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
+          NEXT_PUBLIC_SITE_URL: https://jianyuan.life
+          NEXT_PUBLIC_API_URL: https://placeholder.fly.dev
         run: npm run build
