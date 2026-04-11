@@ -15,13 +15,21 @@ function getSupabase() {
 }
 
 export async function POST(req: NextRequest) {
+  // 安全防護：如果 webhook secret 未設定或為空字串，直接拒絕請求
+  // 避免用空字串做簽名驗證，防止偽造 webhook 事件
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+  if (!webhookSecret) {
+    console.error('❌ STRIPE_WEBHOOK_SECRET 未設定，拒絕處理 webhook')
+    return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
+  }
+
   const stripe = getStripe()
   const body = await req.text()
   const sig = req.headers.get('stripe-signature')
 
   let event: Stripe.Event
   try {
-    event = stripe.webhooks.constructEvent(body, sig || '', process.env.STRIPE_WEBHOOK_SECRET || '')
+    event = stripe.webhooks.constructEvent(body, sig || '', webhookSecret)
   } catch (err) {
     console.error('Webhook signature failed:', err)
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })

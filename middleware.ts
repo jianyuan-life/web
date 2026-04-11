@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+// TODO: 改用 Vercel KV 或 Upstash Redis 做分散式 rate limit（當前 in-memory Map 在 serverless 環境不生效）
 // 每分鐘速率限制（in-memory，適用 Vercel serverless）
 const rateLimit = new Map<string, { count: number; resetTime: number }>()
 
