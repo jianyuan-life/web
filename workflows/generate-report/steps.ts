@@ -793,7 +793,7 @@ async function claudeStreamingCall(
   } catch (e) {
     clearTimeout(timeout)
     if (e instanceof Error && e.name === 'AbortError') {
-      throw new RetryableError('Claude API 連線超時（600秒）', { retryAfter: '15s' })
+      throw new RetryableError('Claude API 連線超時（900秒）', { retryAfter: '15s' })
     }
     throw e
   }
@@ -1138,8 +1138,8 @@ export async function aiGenerateGeneric(
   if (getClaudeApiKeys().length === 0) {
     throw new FatalError(`方案 ${planCode}: 缺少 CLAUDE_API_KEY，付費報告必須使用 Claude Opus。請到 console.anthropic.com 充值。`)
   }
-  const content = await claudeStreamingCall(localizedPrompt, userPrompt, 32768, reportId, `${planCode}_main`)
-  const cleaned = cleanAIResponse(content)
+  const content = await claudeStreamingCall(localizedPrompt, userPrompt, 128000, reportId, `${planCode}_main`)
+  const cleaned = trimToLastCompleteSentence(cleanAIResponse(content))
   console.log(`方案 ${planCode} AI 完成 (claude-opus-4-6): ${cleaned.length} 字`)
   return { content: cleaned, model: 'claude-opus-4-6' }
 }
@@ -1318,8 +1318,8 @@ export async function aiGenerateG15(
   if (getClaudeApiKeys().length === 0) {
     throw new FatalError('G15 家族藍圖：缺少 CLAUDE_API_KEY，付費報告必須使用 Claude Opus。')
   }
-  const content = await claudeStreamingCall(localizedPrompt, userPrompt, 32768, reportId, 'G15_main')
-  const cleaned = cleanAIResponse(content)
+  const content = await claudeStreamingCall(localizedPrompt, userPrompt, 128000, reportId, 'G15_main')
+  const cleaned = trimToLastCompleteSentence(cleanAIResponse(content))
   console.log(`G15 家族藍圖 AI 完成: ${cleaned.length} 字`)
   return { content: cleaned, model: 'claude-opus-4-6' }
 }
@@ -1401,8 +1401,8 @@ export async function aiGenerateR(
   if (getClaudeApiKeys().length === 0) {
     throw new FatalError('R 方案合否：缺少 CLAUDE_API_KEY，付費報告必須使用 Claude Opus。')
   }
-  const content = await claudeStreamingCall(localizedPrompt, userPrompt, 32768, reportId, 'R_main')
-  const cleaned = cleanAIResponse(content)
+  const content = await claudeStreamingCall(localizedPrompt, userPrompt, 128000, reportId, 'R_main')
+  const cleaned = trimToLastCompleteSentence(cleanAIResponse(content))
   console.log(`R 方案合否 AI 完成: ${cleaned.length} 字`)
   return { content: cleaned, model: 'claude-opus-4-6' }
 }
@@ -1499,10 +1499,10 @@ export async function qualityGate(
   // 2. C 方案必要章節檢查
   if (planCode === 'C') {
     const requiredSections = [
-      { pattern: /命格總覽/, name: '命格總覽' },
-      { pattern: /好的地方|天賦優勢/, name: '好的地方' },
-      { pattern: /需要注意/, name: '需要注意的地方' },
-      { pattern: /改善建議|改善方案/, name: '改善建議' },
+      { pattern: /命格名片|命格總覽|人生速覽/, name: '命格名片/人生速覽' },
+      { pattern: /好的地方|天賦優勢|天賦.*Top|🟢/, name: '好的地方' },
+      { pattern: /需要注意|課題|🟡/, name: '需要注意的地方' },
+      { pattern: /改善建議|改善方案|改善|🔵/, name: '改善建議' },
       { pattern: /刻意練習/, name: '刻意練習' },
       { pattern: /寫給.*的話/, name: '寫給你的話' },
     ]
