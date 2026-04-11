@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import ReportClientButtons from './ReportClientButtons'
+import ReportTracker from './ReportTracker'
 import ReportFeedback from '@/components/ReportFeedback'
 
 // ============================================================
@@ -559,17 +560,12 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   // 解析命格名片（主題式報告才有）
   const personalityCard = isThematic ? parsePersonalityCard(aiContent) : null
 
-  // R 方案：從報告內容提取相容度描述（不顯示分數）
+  // R 方案：從報告內容提取合/不合結論（不使用分數，命不該有分數）
   let compatibilityVerdict = ''
   if (isRelationship && aiContent) {
-    const scoreMatch = aiContent.match(/相容度總分\s*[:：]?\s*(\d+)\s*[/／]\s*100/)
-    if (scoreMatch) {
-      const score = parseInt(scoreMatch[1])
-      if (score >= 90) compatibilityVerdict = '天作之合'
-      else if (score >= 70) compatibilityVerdict = '互補互助'
-      else if (score >= 50) compatibilityVerdict = '需要經營'
-      else compatibilityVerdict = '挑戰很大'
-    }
+    if (/你們合，但|合.*但有.*雷區/.test(aiContent)) compatibilityVerdict = '合，但有雷區'
+    else if (/結論\s*[:：]\s*.*不合|你們不合/.test(aiContent)) compatibilityVerdict = '需要經營'
+    else if (/結論\s*[:：]\s*.*合|你們合/.test(aiContent)) compatibilityVerdict = '互補互助'
   }
 
   // 報告內容完整性檢查 — 數據零容忍
@@ -684,6 +680,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         }
       `}</style>
 
+      {/* 瀏覽追蹤（Client Component，不影響 SSR） */}
+      <ReportTracker reportId={report.id} planCode={report.plan_code} token={token} />
+
       <div className="max-w-3xl mx-auto px-6 pt-12">
 
         {/* 品牌標題 */}
@@ -722,7 +721,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           )}
 
           {/* 操作按鈕（Client Component 處理 onClick）*/}
-          <ReportClientButtons pdfUrl={report.pdf_url} planCode={report.plan_code} />
+          <ReportClientButtons pdfUrl={report.pdf_url} planCode={report.plan_code} reportId={report.id} />
         </div>
 
         {/* ──── 命格名片卡片（主題式報告專屬）──── */}
