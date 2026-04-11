@@ -53,6 +53,11 @@ export async function GET(req: NextRequest) {
     const emailParam = searchParams.get('email')?.trim().toLowerCase()
     const query = searchParams.get('q')?.trim()
 
+    // 安全限制：email 參數必須與登入用戶一致，防止查詢其他用戶的報告
+    if (emailParam && emailParam !== authEmail.toLowerCase()) {
+      return NextResponse.json({ error: '只能查詢自己的報告' }, { status: 403 })
+    }
+
     // 如果沒帶 email 也沒帶 q，但有登入 → 自動用登入 email 查詢「我的報告」
     const email = emailParam || (!query ? authEmail : null)
 

@@ -15,12 +15,13 @@ import { generateReportWorkflow } from '@/workflows/generate-report'
 export async function POST(req: NextRequest) {
   try {
     // 安全驗證：只允許內部呼叫（Webhook/Cron/Fallback）
-    const origin = req.headers.get('origin') || ''
-    const referer = req.headers.get('referer') || ''
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
+    // 使用 CRON_SECRET 或 ADMIN_KEY 驗證，不依賴可偽造的 Origin/Referer
     const authHeader = req.headers.get('authorization')
-    const isInternalCall = origin.startsWith(siteUrl) || referer.startsWith(siteUrl) || origin === ''
     const hasCronSecret = authHeader === `Bearer ${process.env.CRON_SECRET}`
+    // 內部呼叫（同一 Vercel 部署）的 server-to-server fetch 不帶 Origin
+    // 用 x-internal-secret header 取代 Origin 判斷
+    const internalSecret = req.headers.get('x-internal-secret')
+    const isInternalCall = internalSecret === (process.env.CRON_SECRET || '')
 
     if (!isInternalCall && !hasCronSecret) {
       return NextResponse.json({ error: '未授權' }, { status: 401 })

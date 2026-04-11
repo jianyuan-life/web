@@ -83,7 +83,7 @@ export async function PATCH(req: NextRequest) {
     const timeout = setTimeout(() => controller.abort(), 5000)
     const wfRes = await fetch(`${siteUrl}/api/workflows/generate-report`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.CRON_SECRET || '' },
       body: JSON.stringify({ reportId: id }),
       signal: controller.signal,
     })
