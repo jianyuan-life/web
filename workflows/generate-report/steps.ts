@@ -118,6 +118,30 @@ async function emitProgress(update: ProgressUpdate) {
 }
 
 // ── AI 回應清理（單次 call 級別）──
+// 截斷防護：如果 AI 輸出被 max_tokens 切斷，裁到最後一個完整句子
+function trimToLastCompleteSentence(text: string): string {
+  const trimmed = text.trimEnd()
+  if (!trimmed) return trimmed
+  const lastChar = trimmed[trimmed.length - 1]
+  // 已經是完整句子
+  if (/[。！？」\n]/.test(lastChar)) return trimmed
+  // 找最後一個句末標點的位置
+  const lastSentenceEnd = Math.max(
+    trimmed.lastIndexOf('。'),
+    trimmed.lastIndexOf('！'),
+    trimmed.lastIndexOf('？'),
+    trimmed.lastIndexOf('」'),
+  )
+  if (lastSentenceEnd > trimmed.length * 0.8) {
+    // 只有在最後 20% 的範圍內找到句末標點才裁剪（避免裁掉太多內容）
+    console.log(`[trimToLastCompleteSentence] 裁剪截斷：從 ${trimmed.length} 字裁到 ${lastSentenceEnd + 1} 字`)
+    return trimmed.slice(0, lastSentenceEnd + 1)
+  }
+  // 找不到合適的句末標點，加個省略句號
+  console.log(`[trimToLastCompleteSentence] 無法找到合適的裁剪點，加句號收尾`)
+  return trimmed + '。'
+}
+
 function cleanAIResponse(text: string): string {
   console.log(`[cleanAIResponse] 開始清理，原始長度: ${text.length} 字`)
   let cleaned = text
@@ -1047,8 +1071,8 @@ export async function aiGenerateCall1(
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call1, birthData)
   const systemPrompt = buildCall1Prompt(ageGroup, clientNeed, birthData.locale)
 
-  const result = await callClaudeOnly(systemPrompt, userPrompt, 16000, 'Call 1', reportId)
-  result.content = cleanAIResponse(result.content)
+  const result = await callClaudeOnly(systemPrompt, userPrompt, 32000, 'Call 1', reportId)
+  result.content = trimToLastCompleteSentence(cleanAIResponse(result.content))
   console.log(`Call 1 完成：${result.content.length} 字`)
   return result
 }
@@ -1067,8 +1091,8 @@ export async function aiGenerateCall2(
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call2, birthData)
   const systemPrompt = buildCall2Prompt(ageGroup, call1Summary, birthData.locale)
 
-  const result = await callClaudeOnly(systemPrompt, userPrompt, 16000, 'Call 2', reportId)
-  result.content = cleanAIResponse(result.content)
+  const result = await callClaudeOnly(systemPrompt, userPrompt, 32000, 'Call 2', reportId)
+  result.content = trimToLastCompleteSentence(cleanAIResponse(result.content))
   console.log(`Call 2 完成：${result.content.length} 字`)
   return result
 }
@@ -1091,11 +1115,11 @@ export async function aiGenerateCall3(
     userPrompt += `\n\n【重要提醒——你上次漏掉了以下章節，這次必須全部補上】\n${missingParts.map((p, i) => `${i + 1}. ${p}`).join('\n')}\n\n不要寫任何前言，直接從章節標題開始。`
   }
 
-  const maxTokens = isRetry ? 14000 : 10000
+  const maxTokens = isRetry ? 20000 : 16000
   const systemPrompt = buildCall3Prompt(ageGroup, birthData.name, call1and2Summary, birthData.locale)
 
   const result = await callClaudeOnly(systemPrompt, userPrompt, maxTokens, 'Call 3', reportId)
-  result.content = cleanAIResponse(result.content)
+  result.content = trimToLastCompleteSentence(cleanAIResponse(result.content))
   console.log(`Call 3 完成：${result.content.length} 字`)
   return result
 }
