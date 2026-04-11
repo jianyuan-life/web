@@ -164,7 +164,7 @@ export default function SinglePersonForm({
               />
             </div>
             <div>
-              <label className="block text-xs text-text-muted mb-1">事件截止日期（選填）</label>
+              <label className="block text-xs text-gold/80 mb-1">事件截止日期（選填）</label>
               <input
                 type="date"
                 value={e1EndDate}
@@ -172,17 +172,17 @@ export default function SinglePersonForm({
                 max={maxEnd}
                 onChange={(e) => setE1EndDate(e.target.value)}
                 placeholder="不填則預設 1 個月"
-                className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none [color-scheme:dark]"
+                className="w-full bg-white/5 border border-gold/30 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none [color-scheme:dark]"
               />
             </div>
           </div>
           <p className="text-[10px] text-text-muted/60">不填截止日期 = 從開始日起算 1 個月內找最佳時機。有明確截止日（如面試、簽約）請填寫。</p>
-          <div className="mt-3">
-            <label className="block text-xs text-text-muted mb-1">事件描述 *（最多 200 字）</label>
+          <div className="mt-4">
+            <label className="block text-sm font-semibold text-gold mb-2">事件描述 *（最多 200 字）</label>
             <textarea
               required
               maxLength={200}
-              rows={3}
+              rows={4}
               placeholder="請描述事件背景（如：重要面試、簽約、旅行、搬家）與希望達成的目標..."
               value={customerNote}
               onChange={(e) => setCustomerNote(e.target.value)}
