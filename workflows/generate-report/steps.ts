@@ -767,9 +767,9 @@ async function claudeStreamingCall(
     }
   }
 
-  // 600 秒超時：Workflow step 支援最長 900s，留足緩衝
+  // 900 秒超時：Workflow step 最長支援 900s，配合 128k max_tokens 需要更多時間
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 600000)
+  const timeout = setTimeout(() => controller.abort(), 900000)
 
   let res: Response
   try {
