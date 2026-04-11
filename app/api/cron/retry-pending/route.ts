@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
   const { data: stuckReports, error: queryErr } = await supabase
     .from('paid_reports')
-    .select('id, retry_count, status, created_at, updated_at')
+    .select('id, retry_count, status, created_at')
     .in('status', ['pending', 'generating'])
     .lt('created_at', fiveMinAgo)
     .order('created_at', { ascending: true })
@@ -58,11 +58,10 @@ export async function GET(req: NextRequest) {
     }
 
     // generating 狀態超過 10 分鐘才重試（給正在執行的 workflow 足夠時間）
-    // 用 updated_at 判斷（進入 generating 狀態的時間），而非 created_at（訂單建立時間）
+    // 用 created_at 判斷（paid_reports 表無 updated_at 欄位）
     if (report.status === 'generating') {
       const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString()
-      const statusTime = report.updated_at || report.created_at
-      if (statusTime > tenMinAgo) {
+      if (report.created_at > tenMinAgo) {
         console.log(`⏳ 報告 ${report.id} 正在生成中（generating），尚未超時，跳過`)
         continue
       }
