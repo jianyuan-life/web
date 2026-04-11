@@ -265,7 +265,9 @@ export async function generateReportWorkflow(reportId: string) {
     if (planCode === 'C') {
       // ── C 方案：3 個 AI call 順序執行 + 附錄自動生成 ──
       console.log('C 方案開始：3-call 順序執行')
-      const r1 = await aiGenerateCall1(calcResult, birthData, birthData.question || birthData.topic, reportId)
+      // C 方案也要讀取 customer_note（客戶在結帳時填的備注/問題）
+      const clientQuestion = (birthData.question || birthData.customer_note || birthData.topic || undefined) as string | undefined
+      const r1 = await aiGenerateCall1(calcResult, birthData, clientQuestion, reportId)
       const r2 = await aiGenerateCall2(calcResult, birthData, r1.content, reportId)
       const r3 = await aiGenerateCall3(calcResult, birthData, r1.content, r2.content, undefined, undefined, reportId)
 
@@ -294,9 +296,12 @@ export async function generateReportWorkflow(reportId: string) {
     } else {
       // ── 其他方案：單次 AI 呼叫 ──
       const systemPrompt = PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C']
+      // D 方案欄位對應：analysis_topic → topic, customer_note/other_question → question
+      const topic = (birthData.topic || birthData.analysis_topic || undefined) as string | undefined
+      const question = (birthData.question || birthData.customer_note || birthData.other_question || undefined) as string | undefined
       const result = await aiGenerateGeneric(
         calcResult, birthData, planCode, systemPrompt,
-        birthData.topic, birthData.question, reportId,
+        topic, question, reportId,
       )
       reportContent = result.content
       aiModelUsed = result.model

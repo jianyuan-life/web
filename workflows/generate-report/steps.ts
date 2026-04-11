@@ -1373,12 +1373,18 @@ export async function aiGenerateR(
     name?: string; gender?: string; year?: number; month?: number; day?: number; hour?: number
   }>
   const relationDescription = (birthData.relation_description || birthData.relation || '') as string
+  const customerNote = (birthData.customer_note || '') as string
 
   let userPrompt = `合否？關係合盤分析 — 共 ${members.length} 位成員\n\n`
 
   // 如果有關係描述，先放在最前面
   if (relationDescription) {
     userPrompt += `【關係描述】${relationDescription}\n\n`
+  }
+
+  // 客戶備注/想了解的問題
+  if (customerNote) {
+    userPrompt += `【客戶想了解的問題】${customerNote}\n\n`
   }
 
   // 逐一列出每位成員的排盤數據
