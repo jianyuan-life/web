@@ -37,7 +37,6 @@ export default async function OgImage({ params }: { params: Promise<{ token: str
 
   let clientName = ''
   let planCode = 'C'
-  let score = 0
   let systemsCount = 0
 
   try {
@@ -57,7 +56,6 @@ export default async function OgImage({ params }: { params: Promise<{ token: str
       planCode = data.plan_code || 'C'
       const analyses = data.report_result?.analyses_summary as { score: number }[] | undefined
       if (analyses && analyses.length > 0) {
-        score = Math.round(analyses.reduce((s: number, a: { score: number }) => s + a.score, 0) / analyses.length)
         systemsCount = analyses.length
       }
     }
@@ -70,10 +68,6 @@ export default async function OgImage({ params }: { params: Promise<{ token: str
   const planSymbol = PLAN_SYMBOLS[planCode] || '鑒'
   const isChumenji = ['E1', 'E2'].includes(planCode)
   const isFamily = planCode === 'G15'
-
-  // 評分等級文字
-  const scoreLabel = score >= 85 ? '優秀' : score >= 75 ? '良好' : score >= 65 ? '普通' : ''
-  const scoreColor = score >= 85 ? '#6ab04c' : score >= 75 ? '#d4a853' : '#f59e0b'
 
   return new ImageResponse(
     (
@@ -330,65 +324,27 @@ export default async function OgImage({ params }: { params: Promise<{ token: str
             </div>
 
             {/* 客戶資訊卡片 */}
-            {(clientName || (score > 0 && !isChumenji)) && (
+            {clientName && (
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '24px',
+                  gap: '10px',
+                  padding: '10px 24px',
+                  borderRadius: '8px',
+                  background: 'rgba(212,168,83,0.06)',
+                  border: '1px solid rgba(212,168,83,0.12)',
                 }}
               >
-                {/* 客戶名字 */}
-                {clientName && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      padding: '10px 24px',
-                      borderRadius: '8px',
-                      background: 'rgba(212,168,83,0.06)',
-                      border: '1px solid rgba(212,168,83,0.12)',
-                    }}
-                  >
-                    <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', display: 'flex' }}>
-                      {isFamily ? '家族' : '為'}
-                    </div>
-                    <div style={{ fontSize: '22px', color: '#d4a853', fontWeight: 600, display: 'flex' }}>
-                      {clientName}
-                    </div>
-                    <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', display: 'flex' }}>
-                      {isFamily ? '專屬家族分析' : '專屬分析'}
-                    </div>
-                  </div>
-                )}
-
-                {/* 評分（非出門訣、非家族） */}
-                {score > 0 && !isChumenji && !isFamily && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'baseline',
-                      gap: '6px',
-                      padding: '10px 20px',
-                      borderRadius: '8px',
-                      background: 'rgba(212,168,83,0.06)',
-                      border: '1px solid rgba(212,168,83,0.12)',
-                    }}
-                  >
-                    <div style={{ fontSize: '32px', color: scoreColor, fontWeight: 700, display: 'flex' }}>
-                      {score}
-                    </div>
-                    <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.35)', display: 'flex' }}>
-                      / 100
-                    </div>
-                    {scoreLabel && (
-                      <div style={{ fontSize: '13px', color: scoreColor, marginLeft: '4px', display: 'flex' }}>
-                        {scoreLabel}
-                      </div>
-                    )}
-                  </div>
-                )}
+                <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', display: 'flex' }}>
+                  {isFamily ? '家族' : '為'}
+                </div>
+                <div style={{ fontSize: '22px', color: '#d4a853', fontWeight: 600, display: 'flex' }}>
+                  {clientName}
+                </div>
+                <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', display: 'flex' }}>
+                  {isFamily ? '專屬家族分析' : '專屬分析'}
+                </div>
               </div>
             )}
           </div>

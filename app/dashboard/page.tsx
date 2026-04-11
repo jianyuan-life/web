@@ -160,8 +160,8 @@ function DashboardContent() {
         setTimeout(getEmail, 3000)
         return
       }
-      // 所有方法均失敗，且不是付款成功重導向 → 跳轉登入頁
-      if (!paymentSuccess) {
+      // 所有方法均失敗，且不是付款成功重導向、也沒有 session_id → 跳轉登入頁
+      if (!paymentSuccess && !stripeSessionId) {
         window.location.href = '/auth/login?redirect=/dashboard'
       }
     }
@@ -232,7 +232,8 @@ function DashboardContent() {
   }
 
   useEffect(() => {
-    if (!userEmail) return
+    // 有 userEmail 或有 stripeSessionId 都可以查報告
+    if (!userEmail && !stripeSessionId) return
     fetchReports()
       .then(rpts => {
         setReports(rpts)
@@ -240,11 +241,11 @@ function DashboardContent() {
       })
       .catch(() => setLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userEmail])
+  }, [userEmail, stripeSessionId])
 
   // 付款成功後輪詢等待報告生成（5秒間隔，60分鐘上限）
   useEffect(() => {
-    if (!paymentSuccess || !userEmail) return
+    if (!paymentSuccess || (!userEmail && !stripeSessionId)) return
     const interval = setInterval(() => {
       if (Date.now() - pollStartTime > 60 * 60 * 1000) {
         clearInterval(interval)
@@ -282,11 +283,11 @@ function DashboardContent() {
     }, 5000)
     return () => clearInterval(interval)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentSuccess, deletedIds, pollStartTime, userEmail])
+  }, [paymentSuccess, deletedIds, pollStartTime, userEmail, stripeSessionId])
 
   // 無論是否剛付款，只要有 pending/generating 報告就持續輪詢（15秒間隔，60分鐘上限）
   useEffect(() => {
-    if (loading || !userEmail) return
+    if (loading || (!userEmail && !stripeSessionId)) return
     const hasPending = reports.some(r => r.status === 'pending' || r.status === 'generating')
     if (!hasPending) return
 
@@ -328,13 +329,9 @@ function DashboardContent() {
 
     return () => clearInterval(interval)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reports, deletedIds, loading, pollStartTime, userEmail])
+  }, [reports, deletedIds, loading, pollStartTime, userEmail, stripeSessionId])
 
-  const avgScore = (report: Report) => {
-    const summary = report.report_result?.analyses_summary
-    if (!summary || summary.length === 0) return 0
-    return Math.round(summary.reduce((a, b) => a + b.score, 0) / summary.length)
-  }
+  // 評分系統已移除（命不該有分數）
 
   return (
     <div className="py-20">
@@ -388,7 +385,7 @@ function DashboardContent() {
             <div className="w-8 h-8 border-2 border-gold/50 border-t-gold rounded-full animate-spin mx-auto mb-4" />
             <p className="text-text-muted">載入中...</p>
           </div>
-        ) : authFailed && paymentSuccess ? (
+        ) : authFailed && paymentSuccess && !stripeSessionId ? (
           <div className="glass rounded-2xl p-10 text-center">
             <div className="text-4xl mb-4">&#128274;</div>
             <h3 className="text-lg font-semibold text-cream mb-2">登入狀態已過期</h3>
@@ -429,12 +426,6 @@ function DashboardContent() {
                   <div className="flex items-center gap-3">
                     {r.status === 'completed' ? (
                       <>
-                        {avgScore(r) > 0 && (
-                          <div className="text-right hidden sm:block">
-                            <div className="text-sm font-semibold text-gold">{avgScore(r)}/100</div>
-                            <div className="text-xs text-text-muted">綜合評分</div>
-                          </div>
-                        )}
                         <div className="flex gap-2">
                           {r.access_token && (
                             <a href={`/report/${r.access_token}`}

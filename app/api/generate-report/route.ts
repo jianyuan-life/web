@@ -23,6 +23,63 @@ const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || ''
 const CLAUDE_API = 'https://api.anthropic.com/v1/messages'
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY || ''
 
+// ── Email 亮點提取 ──
+function getEmailHighlights(planCode: string, reportContent: string, isCN: boolean): string[] {
+  const highlights: string[] = []
+  const text = reportContent.replace(/[#*`]/g, '')
+
+  if (planCode === 'C') {
+    const roleMatch = text.match(/命格角色[：:]\s*(.{2,20})/)?.[1]
+      || text.match(/你的角色[：:]\s*(.{2,20})/)?.[1]
+      || text.match(/角色名稱[：:]\s*(.{2,20})/)?.[1]
+    if (roleMatch) {
+      highlights.push(isCN ? `你的命格角色：${roleMatch.trim()}` : `你的命格角色：${roleMatch.trim()}`)
+    }
+    const keywordMatch = text.match(/年度關鍵[詞词][：:]\s*(.{2,30})/)?.[1]
+      || text.match(/年度关键[詞词][：:]\s*(.{2,30})/)?.[1]
+    if (keywordMatch) {
+      highlights.push(isCN ? `年度关键词：${keywordMatch.trim()}` : `年度關鍵詞：${keywordMatch.trim()}`)
+    }
+    highlights.push(isCN ? '15 套命理系统已完成交叉验证' : '15 套命理系統已完成交叉驗證')
+  } else if (planCode === 'D') {
+    highlights.push(isCN ? '你的问题已从多个角度深度分析' : '你的問題已從多個角度深度分析')
+    highlights.push(isCN ? '结合命理与心理学给出具体建议' : '結合命理與心理學給出具體建議')
+  } else if (planCode === 'G15') {
+    highlights.push(isCN ? '家族成员的互动模式已解析' : '家族成員的互動模式已解析')
+    highlights.push(isCN ? '家族能量流动与角色定位已完成' : '家族能量流動與角色定位已完成')
+  } else if (planCode === 'E1' || planCode === 'E2') {
+    const timeMatch = text.match(/(?:最佳|第一|Top\s*1)[吉時时]*[：:]\s*(.{2,20})/)?.[1]
+    const dirMatch = text.match(/(?:最佳|建議|建议)方位[：:]\s*(.{2,10})/)?.[1]
+    if (timeMatch) {
+      highlights.push(isCN ? `最佳吉时：${timeMatch.trim()}` : `最佳吉時：${timeMatch.trim()}`)
+    }
+    if (dirMatch) {
+      highlights.push(isCN ? `建议方位：${dirMatch.trim()}` : `建議方位：${dirMatch.trim()}`)
+    }
+    highlights.push(isCN ? '奇门遁甲 25+ 步精算完成' : '奇門遁甲 25+ 步精算完成')
+  } else if (planCode === 'R') {
+    highlights.push(isCN ? '双方命格已完成交叉比对' : '雙方命格已完成交叉比對')
+    highlights.push(isCN ? '关系互动模式与建议已生成' : '關係互動模式與建議已生成')
+  }
+
+  if (highlights.length === 0) {
+    highlights.push(isCN ? '你的专属命理报告已完成深度分析' : '你的專屬命理報告已完成深度分析')
+  }
+
+  return highlights
+}
+
+function getEmailCta(planCode: string, isCN: boolean): string {
+  switch (planCode) {
+    case 'C': return isCN ? '查看完整命格报告 →' : '查看完整命格報告 →'
+    case 'D': return isCN ? '查看深度解答 →' : '查看深度解答 →'
+    case 'G15': return isCN ? '查看家族分析报告 →' : '查看家族分析報告 →'
+    case 'E1': case 'E2': return isCN ? '查看最佳吉时推荐 →' : '查看最佳吉時推薦 →'
+    case 'R': return isCN ? '查看合盘分析报告 →' : '查看合盤分析報告 →'
+    default: return isCN ? '查看完整报告 →' : '查看完整報告 →'
+  }
+}
+
 // ── AI 回應清理：移除前言、修正品牌名 ──
 function cleanAIResponse(text: string): string {
   let cleaned = text
@@ -86,6 +143,12 @@ async function callClaudeStreaming(
     clearTimeout(timeout)
     const errText = await res.text()
     console.error(`Claude API 回傳 HTTP ${res.status}，回應內容: ${errText.slice(0, 500)}`)
+    if (res.status === 529) {
+      throw new Error(`Claude API 529 過載，請稍後重試`)
+    }
+    if (res.status === 402) {
+      throw new Error(`Claude API 402 額度不足：請到 console.anthropic.com 充值`)
+    }
     throw new Error(`Claude API 錯誤 ${res.status}: ${errText}`)
   }
 
@@ -126,11 +189,7 @@ async function callClaudeStreaming(
   } catch (e) {
     clearTimeout(timeout)
     if (e instanceof Error && e.name === 'AbortError') {
-      // 串流讀取中超時：如果已收到足夠內容就使用
-      if (result.length > 5000) {
-        console.warn(`Claude 串流超時但已收到 ${result.length} 字，使用部分結果`)
-        return result
-      }
+      // 串流超時一律拋錯重試，不接受截斷的部分結果
       throw new Error(`Claude API 串流超時（${timeoutMs / 1000}秒，已收到 ${result.length} 字）`)
     }
     throw e
@@ -846,7 +905,7 @@ ${analyses.length}套系統排盤完整數據：
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
           ],
-          max_tokens: 20000,
+          max_tokens: 16000,
           temperature: 0.7,
         }),
         signal: controller.signal,
@@ -863,71 +922,23 @@ ${analyses.length}套系統排盤完整數據：
 
     if (planCode === 'C') {
       // ============================================================
-      // C 方案：Claude Opus 4.6 多步並行生成（4 call）
-      // 失敗時 fallback 到 DeepSeek 單次呼叫
+      // C 方案 Fallback：單次 Claude 呼叫（受 Vercel 300s 限制）
+      // 主流程由 Workflow 處理（4-call 順序），這裡是備援
       // ============================================================
-      console.log('C 方案：使用 Claude Opus 4.6 多步並行生成...')
-
-      const ageGroup = getAgeGroup(birthData.year)
-      console.log(`年齡分層：${ageGroup}（出生年：${birthData.year}）`)
-
-      const userPrompt1 = buildUserPrompt(cd, analyses, SYSTEM_GROUPS.call1, birthData)
-      const userPrompt2 = buildUserPrompt(cd, analyses, SYSTEM_GROUPS.call2, birthData)
-      const userPrompt3 = buildUserPrompt(cd, analyses, SYSTEM_GROUPS.call3, birthData)
-      const allSystems = [...SYSTEM_GROUPS.call1, ...SYSTEM_GROUPS.call2, ...SYSTEM_GROUPS.call3]
-      const userPrompt4 = buildUserPrompt(cd, analyses, allSystems, birthData)
-      const clientNeed = question || topic || undefined
+      console.log('C 方案 Fallback：使用 Claude Opus 4.6 單次呼叫...')
 
       if (CLAUDE_API_KEY) {
         try {
-          const [raw1, raw2, raw3, raw4] = await Promise.all([
-            callClaudeStreaming(buildCall1Prompt(ageGroup, clientNeed, birthData.locale), userPrompt1, 24576),
-            callClaudeStreaming(buildCall2Prompt(ageGroup, birthData.locale), userPrompt2, 20480),
-            callClaudeStreaming(buildCall3Prompt(ageGroup, birthData.locale), userPrompt3, 16384),
-            callClaudeStreaming(buildCall4Prompt(ageGroup, birthData.name, birthData.locale), userPrompt4, 32768),
-          ])
+          // Fallback route 受 Vercel 300s 限制，4 call 順序執行可能超時
+          // 改為單次 generic prompt 呼叫，確保在時限內完成
+          const systemPrompt = localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
+          const genericUserPrompt = buildGenericUserPrompt()
+          const rawResult = await callClaudeStreaming(systemPrompt, genericUserPrompt, 16000)
 
-          // 清理 AI 前言 + 品牌名修正
-          const result1 = cleanAIResponse(raw1)
-          const result2 = cleanAIResponse(raw2)
-          const result3 = cleanAIResponse(raw3)
-          let result4 = cleanAIResponse(raw4)
-
-          console.log(`Claude Call 1: ${result1.length} 字`)
-          console.log(`Claude Call 2: ${result2.length} 字`)
-          console.log(`Claude Call 3: ${result3.length} 字`)
-          console.log(`Claude Call 4: ${result4.length} 字`)
-
-          // Call D 完整性檢查：必須包含「刻意練習」「寫給你的話」「幸運元素」「交叉驗證」
-          const hasDeliberatePractice = result4.includes('刻意練習')
-          const hasClosingLetter = result4.includes('寫給') && (result4.includes('的話') || result4.includes('們的話'))
-          const hasLuckyElements = result4.includes('幸運元素') || result4.includes('幸運色')
-          const hasCrossValidation = result4.includes('交叉驗證') || result4.includes('共識')
-
-          const missingParts: string[] = []
-          if (!hasDeliberatePractice) missingParts.push('刻意練習（投資/感情/事業/健康/人際五大面向，每項至少200字）')
-          if (!hasClosingLetter) missingParts.push('寫給客戶的話（至少3段，帶命理依據的回顧過去+看見現在+展望未來）')
-          if (!hasLuckyElements) missingParts.push('幸運元素總表（幸運色/方位/數字/飾品/食物）')
-          if (!hasCrossValidation) missingParts.push('十五系統交叉驗證（六大領域共識分析）')
-
-          if (missingParts.length > 0) {
-            console.warn(`Call D 缺少關鍵章節：${missingParts.join('、')}，重新生成...`)
-            try {
-              const retryRaw4 = await callClaudeStreaming(
-                buildCall4Prompt(ageGroup, birthData.name, birthData.locale),
-                userPrompt4 + `\n\n【重要提醒——你上次漏掉了以下章節，這次必須全部補上】\n${missingParts.map((p, i) => `${i + 1}. ${p}`).join('\n')}\n\n不要寫任何前言，直接從章節標題開始。`,
-                32768,
-              )
-              result4 = cleanAIResponse(retryRaw4)
-              console.log(`Call D 重新生成完成：${result4.length} 字`)
-            } catch (retryErr) {
-              console.error('Call D 重新生成失敗，使用原始結果:', retryErr)
-            }
-          }
-
-          reportContent = [result1, result2, result3, result4].join('\n\n')
+          // Fallback 單次呼叫，清理後直接使用
+          reportContent = cleanAIResponse(rawResult)
           aiModelUsed = 'claude-opus-4-6'
-          console.log(`C 方案 Claude 報告總長：${reportContent.length} 字`)
+          console.log(`C 方案 Fallback Claude 單次呼叫完成：${reportContent.length} 字`)
         } catch (e) {
           console.error('C 方案 Claude 多步生成失敗，嘗試 DeepSeek fallback:', e)
         }
@@ -1108,7 +1119,7 @@ ${analyses.length}套系統排盤完整數據：
       systemCount: isCN
         ? `${planName} · ${analyses.length} 套命理系统分析`
         : `${planName} · ${analyses.length} 套命理系統分析`,
-      cta: isCN ? '查看完整报告 →' : '查看完整報告 →',
+      cta: getEmailCta(planCode, isCN),
       linkNote: isCN ? '此链接专属于您，无需登录即可查看' : '此連結專屬於您，無需登入即可查看',
       promoTitle: isCN ? '🧭 加强您的命理能量' : '🧭 加強您的命理能量',
       promoBody: isCN
@@ -1126,7 +1137,10 @@ ${analyses.length}套系統排盤完整數據：
     if (customerEmail && accessToken) {
       try {
         const resend = new Resend(process.env.RESEND_API_KEY || '')
-        const previewContent = reportContent.slice(0, 300).replace(/[#*`]/g, '').trim()
+        const emailHighlights = getEmailHighlights(planCode, reportContent, isCN)
+        const highlightsHtml = emailHighlights.map(h =>
+          `<div style="color:#d1d5db;font-size:14px;line-height:1.8;margin:0 0 8px 0;"><span style="color:#c9a84c;margin-right:6px;">✦</span>${h}</div>`
+        ).join('')
 
         await resend.emails.send({
           from: emailText.from,
@@ -1150,9 +1164,9 @@ ${analyses.length}套系統排盤完整數據：
       <h1 style="color:#ffffff;font-size:22px;margin:0 0 8px 0;">${emailText.title}</h1>
       <p style="color:#9ca3af;font-size:14px;margin:0 0 24px 0;">${emailText.systemCount}</p>
 
-      <!-- 報告預覽 -->
+      <!-- 報告亮點 -->
       <div style="background:rgba(255,255,255,0.05);border-left:3px solid #c9a84c;border-radius:4px;padding:16px;margin-bottom:24px;">
-        <p style="color:#d1d5db;font-size:14px;line-height:1.8;margin:0;">${previewContent}...</p>
+        ${highlightsHtml}
       </div>
 
       <!-- CTA 按鈕 -->

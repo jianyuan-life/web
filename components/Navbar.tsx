@@ -50,8 +50,9 @@ export default function Navbar() {
           <a href="/pricing" className="text-text-muted hover:text-gold transition-colors">{txt.nav_pricing}</a>
           <a href="/blog" className="text-text-muted hover:text-gold transition-colors">{txt.nav_blog}</a>
           <div className="relative" onMouseEnter={() => setToolsOpen(true)} onMouseLeave={() => setToolsOpen(false)}>
-            <button className="text-text-muted hover:text-gold transition-colors flex items-center gap-1 py-2">
+            <button className="text-text-muted hover:text-gold transition-colors flex items-center gap-1 py-2 px-2.5 rounded-lg bg-gold/[0.08] border border-gold/10">
               {txt.nav_free}
+              <span className="text-[9px] font-bold bg-gold text-dark px-1.5 py-0.5 rounded-full leading-none">FREE</span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
             </button>
             {toolsOpen && (

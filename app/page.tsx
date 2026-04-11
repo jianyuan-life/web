@@ -141,6 +141,28 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ========== 免費工具引導 ========== */}
+      <section className="py-16 relative">
+        <div className="max-w-[720px] mx-auto px-6">
+          <div className="glass rounded-[20px] p-10 md:p-12 text-center border border-gold/[0.12]" style={{ background: 'linear-gradient(135deg, rgba(201,168,76,0.04), rgba(15,22,40,0.4))' }}>
+            <h2 className="text-xl md:text-2xl font-bold text-cream mb-3" style={{ fontFamily: 'var(--font-sans)' }}>
+              30 秒，免費看見你的命格密碼
+            </h2>
+            <p className="text-sm text-text-muted leading-relaxed mb-6">
+              只需姓名、生日、性別，即刻獲得八字排盤 + AI 深度分析
+            </p>
+            <a href="/tools/bazi"
+              className="inline-flex items-center gap-2 px-8 py-3.5 bg-gold text-dark font-bold rounded-[10px] text-[15px] btn-glow">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
+              </svg>
+              立即免費體驗
+            </a>
+            <p className="text-xs text-text-muted/50 mt-4">不需註冊 &middot; 不需付費 &middot; 完全免費</p>
+          </div>
+        </div>
+      </section>
+
       {/* ========== 信任指標（帶 SVG 圖示） ========== */}
       <section className="py-14 border-y border-gold/[0.06]">
         <div className="max-w-5xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">

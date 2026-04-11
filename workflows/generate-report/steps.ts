@@ -627,11 +627,11 @@ export async function callPythonCalculate(birthData: BirthData) {
 }
 callPythonCalculate.maxRetries = 3
 
-// ── Claude 串流呼叫（內部輔助，非 step）——含 290s 超時 ──
+// ── Claude 串流呼叫（內部輔助，非 step）——含 600s 超時 ──
 async function claudeStreamingCall(systemPrompt: string, userPrompt: string, maxTokens: number): Promise<string> {
-  // 290 秒超時：Vercel Functions 預設 300s 上限，留 10s 緩衝
+  // 600 秒超時：Workflow step 支援最長 900s，留足緩衝
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 290000)
+  const timeout = setTimeout(() => controller.abort(), 600000)
 
   let res: Response
   try {
@@ -655,7 +655,7 @@ async function claudeStreamingCall(systemPrompt: string, userPrompt: string, max
   } catch (e) {
     clearTimeout(timeout)
     if (e instanceof Error && e.name === 'AbortError') {
-      throw new RetryableError('Claude API 連線超時（200秒）', { retryAfter: '15s' })
+      throw new RetryableError('Claude API 連線超時（600秒）', { retryAfter: '15s' })
     }
     throw e
   }
@@ -665,6 +665,12 @@ async function claudeStreamingCall(systemPrompt: string, userPrompt: string, max
     const errText = await res.text()
     if (res.status === 429) {
       throw new RetryableError(`Claude API 429 限流`, { retryAfter: '30s' })
+    }
+    if (res.status === 529) {
+      throw new RetryableError(`Claude API 529 過載，等待 120 秒後重試`, { retryAfter: '120s' })
+    }
+    if (res.status === 402) {
+      throw new FatalError(`Claude API 402 額度不足：請到 console.anthropic.com 充值。${errText.slice(0, 200)}`)
     }
     if (res.status >= 500) {
       throw new RetryableError(`Claude API ${res.status}: ${errText.slice(0, 300)}`, { retryAfter: '15s' })
@@ -703,15 +709,9 @@ async function claudeStreamingCall(systemPrompt: string, userPrompt: string, max
     }
   } catch (e) {
     if (e instanceof Error && e.name === 'AbortError') {
-      // 串流讀取中超時：回傳已收到的部分內容（如果夠長就用）
-      // 閾值 8000 字：低於此數代表截斷太嚴重，強制重試
-      if (result.length > 8000) {
-        console.warn(`Claude 串流超時但已收到 ${result.length} 字，使用部分結果`)
-        clearTimeout(timeout)
-        return result
-      }
+      // 串流超時一律重試，不接受截斷的部分結果
       clearTimeout(timeout)
-      throw new RetryableError(`Claude API 串流超時（200秒，已收到 ${result.length} 字）`, { retryAfter: '15s' })
+      throw new RetryableError(`Claude API 串流超時（600秒，已收到 ${result.length} 字）`, { retryAfter: '30s' })
     }
     clearTimeout(timeout)
     throw e
@@ -899,7 +899,7 @@ export async function aiGenerateCall1(
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call1, birthData)
   const systemPrompt = buildCall1Prompt(ageGroup, clientNeed, birthData.locale)
 
-  const result = await callClaudeOnly(systemPrompt, userPrompt, 24000, 'Call A')
+  const result = await callClaudeOnly(systemPrompt, userPrompt, 16000, 'Call A')
   result.content = cleanAIResponse(result.content)
   return result
 }
@@ -916,7 +916,7 @@ export async function aiGenerateCall2(
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call2, birthData)
   const systemPrompt = buildCall2Prompt(ageGroup, birthData.locale)
 
-  const result = await callClaudeOnly(systemPrompt, userPrompt, 20000, 'Call B')
+  const result = await callClaudeOnly(systemPrompt, userPrompt, 16000, 'Call B')
   result.content = cleanAIResponse(result.content)
   return result
 }
@@ -933,7 +933,7 @@ export async function aiGenerateCall3(
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call3, birthData)
   const systemPrompt = buildCall3Prompt(ageGroup, birthData.locale)
 
-  const result = await callClaudeOnly(systemPrompt, userPrompt, 20000, 'Call C')
+  const result = await callClaudeOnly(systemPrompt, userPrompt, 16000, 'Call C')
   result.content = cleanAIResponse(result.content)
   return result
 }
@@ -954,7 +954,7 @@ export async function aiGenerateCall4(
     userPrompt += `\n\n【重要提醒——你上次漏掉了以下章節，這次必須全部補上】\n${missingParts.map((p, i) => `${i + 1}. ${p}`).join('\n')}\n\n不要寫任何前言，直接從章節標題開始。`
   }
 
-  const maxTokens = isRetry ? 32768 : 24000
+  const maxTokens = isRetry ? 20000 : 16000
   const systemPrompt = buildCall4Prompt(ageGroup, birthData.name, birthData.locale)
 
   const result = await callClaudeOnly(systemPrompt, userPrompt, maxTokens, 'Call D')
@@ -1564,6 +1564,66 @@ export async function saveReportToSupabase(
   return true
 }
 
+// ── Email 亮點提取 ──
+function getEmailHighlights(planCode: string, reportContent: string, isCN: boolean): string[] {
+  const highlights: string[] = []
+  const text = reportContent.replace(/[#*`]/g, '')
+
+  if (planCode === 'C') {
+    // 人生藍圖：提取命格角色名 + 年度關鍵詞
+    const roleMatch = text.match(/命格角色[：:]\s*(.{2,20})/)?.[1]
+      || text.match(/你的角色[：:]\s*(.{2,20})/)?.[1]
+      || text.match(/角色名稱[：:]\s*(.{2,20})/)?.[1]
+    if (roleMatch) {
+      highlights.push(isCN ? `你的命格角色：${roleMatch.trim()}` : `你的命格角色：${roleMatch.trim()}`)
+    }
+    const keywordMatch = text.match(/年度關鍵[詞词][：:]\s*(.{2,30})/)?.[1]
+      || text.match(/年度关键[詞词][：:]\s*(.{2,30})/)?.[1]
+    if (keywordMatch) {
+      highlights.push(isCN ? `年度关键词：${keywordMatch.trim()}` : `年度關鍵詞：${keywordMatch.trim()}`)
+    }
+    highlights.push(isCN ? '15 套命理系统已完成交叉验证' : '15 套命理系統已完成交叉驗證')
+  } else if (planCode === 'D') {
+    highlights.push(isCN ? '你的问题已从多个角度深度分析' : '你的問題已從多個角度深度分析')
+    highlights.push(isCN ? '结合命理与心理学给出具体建议' : '結合命理與心理學給出具體建議')
+  } else if (planCode === 'G15') {
+    highlights.push(isCN ? '家族成员的互动模式已解析' : '家族成員的互動模式已解析')
+    highlights.push(isCN ? '家族能量流动与角色定位已完成' : '家族能量流動與角色定位已完成')
+  } else if (planCode === 'E1' || planCode === 'E2') {
+    // 出門訣：提取 Top1 吉時 + 方位
+    const timeMatch = text.match(/(?:最佳|第一|Top\s*1)[吉時时]*[：:]\s*(.{2,20})/)?.[1]
+    const dirMatch = text.match(/(?:最佳|建議|建议)方位[：:]\s*(.{2,10})/)?.[1]
+    if (timeMatch) {
+      highlights.push(isCN ? `最佳吉时：${timeMatch.trim()}` : `最佳吉時：${timeMatch.trim()}`)
+    }
+    if (dirMatch) {
+      highlights.push(isCN ? `建议方位：${dirMatch.trim()}` : `建議方位：${dirMatch.trim()}`)
+    }
+    highlights.push(isCN ? '奇门遁甲 25+ 步精算完成' : '奇門遁甲 25+ 步精算完成')
+  } else if (planCode === 'R') {
+    highlights.push(isCN ? '双方命格已完成交叉比对' : '雙方命格已完成交叉比對')
+    highlights.push(isCN ? '关系互动模式与建议已生成' : '關係互動模式與建議已生成')
+  }
+
+  // 保底：如果沒提取到任何亮點，至少給一條通用的
+  if (highlights.length === 0) {
+    highlights.push(isCN ? '你的专属命理报告已完成深度分析' : '你的專屬命理報告已完成深度分析')
+  }
+
+  return highlights
+}
+
+function getEmailCta(planCode: string, isCN: boolean): string {
+  switch (planCode) {
+    case 'C': return isCN ? '查看完整命格报告 →' : '查看完整命格報告 →'
+    case 'D': return isCN ? '查看深度解答 →' : '查看深度解答 →'
+    case 'G15': return isCN ? '查看家族分析报告 →' : '查看家族分析報告 →'
+    case 'E1': case 'E2': return isCN ? '查看最佳吉时推荐 →' : '查看最佳吉時推薦 →'
+    case 'R': return isCN ? '查看合盘分析报告 →' : '查看合盤分析報告 →'
+    default: return isCN ? '查看完整报告 →' : '查看完整報告 →'
+  }
+}
+
 // ── Step 5: 寄送 Email ──
 export async function sendReportEmail(
   reportId: string, customerEmail: string, accessToken: string,
@@ -1608,7 +1668,7 @@ export async function sendReportEmail(
       : planCode === 'G15'
       ? (isCN ? `${planName} · 家族互动分析` : `${planName} · 家族互動分析`)
       : (isCN ? `${planName} · ${analysesCount} 套命理系统分析` : `${planName} · ${analysesCount} 套命理系統分析`),
-    cta: isCN ? '查看完整报告 →' : '查看完整報告 →',
+    cta: getEmailCta(planCode, isCN),
     linkNote: isCN ? '此链接专属于您，无需登录即可查看' : '此連結專屬於您，無需登入即可查看',
     promoTitle: isCN ? '🧭 加强您的命理能量' : '🧭 加強您的命理能量',
     promoBody: isCN
@@ -1630,7 +1690,10 @@ export async function sendReportEmail(
     from: isCN ? '鉴源命理 <reports@jianyuan.life>' : '鑒源命理 <reports@jianyuan.life>',
   }
 
-  const previewContent = reportContent.slice(0, 300).replace(/[#*`]/g, '').trim()
+  const emailHighlights = getEmailHighlights(planCode, reportContent, isCN)
+  const highlightsHtml = emailHighlights.map(h =>
+    `<div style="color:#d1d5db;font-size:14px;line-height:1.8;margin:0 0 8px 0;"><span style="color:#c9a84c;margin-right:6px;">✦</span>${h}</div>`
+  ).join('')
   const resend = new Resend(process.env.RESEND_API_KEY || '')
 
   await resend.emails.send({
@@ -1651,7 +1714,7 @@ export async function sendReportEmail(
       <h1 style="color:#ffffff;font-size:22px;margin:0 0 8px 0;">${emailText.title}</h1>
       <p style="color:#9ca3af;font-size:14px;margin:0 0 24px 0;">${emailText.systemCount}</p>
       <div style="background:rgba(255,255,255,0.05);border-left:3px solid #c9a84c;border-radius:4px;padding:16px;margin-bottom:24px;">
-        <p style="color:#d1d5db;font-size:14px;line-height:1.8;margin:0;">${previewContent}...</p>
+        ${highlightsHtml}
       </div>
       <div style="text-align:center;">
         <a href="${reportUrl}" style="display:inline-block;background:linear-gradient(135deg,#c9a84c,#e8c87a);color:#0d1117;font-weight:700;font-size:16px;padding:14px 40px;border-radius:8px;text-decoration:none;letter-spacing:1px;">${emailText.cta}</a>

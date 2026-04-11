@@ -263,13 +263,11 @@ export async function generateReportWorkflow(reportId: string) {
 
   try {
     if (planCode === 'C') {
-      // ── C 方案：4 個 AI call 並行生成 ──
-      const [r1, r2, r3, r4] = await Promise.all([
-        aiGenerateCall1(calcResult, birthData, birthData.question || birthData.topic),
-        aiGenerateCall2(calcResult, birthData),
-        aiGenerateCall3(calcResult, birthData),
-        aiGenerateCall4(calcResult, birthData),
-      ])
+      // ── C 方案：4 個 AI call 順序執行（避免並行導致截斷/超時）──
+      const r1 = await aiGenerateCall1(calcResult, birthData, birthData.question || birthData.topic)
+      const r2 = await aiGenerateCall2(calcResult, birthData)
+      const r3 = await aiGenerateCall3(calcResult, birthData)
+      const r4 = await aiGenerateCall4(calcResult, birthData)
 
       // Call D 完整性檢查
       let call4Content = r4.content
@@ -338,15 +336,27 @@ export async function generateReportWorkflow(reportId: string) {
       console.warn(`品質閘門未通過（第${attempt+1}次）: ${qResult.warnings.join('; ')}`)
 
       if (attempt === 0 && planCode === 'C') {
-        // 第一次不通過：重新生成有問題的部分
+        // 第一次不通過：重新生成（順序執行）
         console.log('品質不通過，嘗試重新生成...')
-        const [r1, r2, r3, r4] = await Promise.all([
-          aiGenerateCall1(calcResult, birthData, birthData.question || birthData.topic),
-          aiGenerateCall2(calcResult, birthData),
-          aiGenerateCall3(calcResult, birthData),
-          aiGenerateCall4(calcResult, birthData),
-        ])
-        reportContent = [r1.content, r2.content, r3.content, r4.content].join('\n\n')
+        const r1 = await aiGenerateCall1(calcResult, birthData, birthData.question || birthData.topic)
+        const r2 = await aiGenerateCall2(calcResult, birthData)
+        const r3 = await aiGenerateCall3(calcResult, birthData)
+        const r4 = await aiGenerateCall4(calcResult, birthData)
+
+        // Call D 完整性檢查（與主流程一致）
+        let retryCall4Content = r4.content
+        const retryHasDP = retryCall4Content.includes('刻意練習')
+        const retryHasCL = retryCall4Content.includes('寫給') && (retryCall4Content.includes('的話') || retryCall4Content.includes('們的話'))
+        if (!retryHasDP || !retryHasCL) {
+          const missingParts: string[] = []
+          if (!retryHasDP) missingParts.push('刻意練習（投資/感情/事業/健康/人際五大面向，每項至少200字）')
+          if (!retryHasCL) missingParts.push('寫給客戶的話（至少3段，帶命理依據的回顧過去+看見現在+展望未來）')
+          const retryR4 = await aiGenerateCall4(calcResult, birthData, true, missingParts)
+          retryCall4Content = retryR4.content
+        }
+
+        const rawContent = [r1.content, r2.content, r3.content, retryCall4Content].join('\n\n')
+        reportContent = cleanFinalReport(rawContent, birthData.name)
         aiModelUsed = r1.model
       }
     } catch (e) {

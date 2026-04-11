@@ -34,25 +34,17 @@ type Result = {
 
 // 分析步驟動畫
 const ANALYSIS_STEPS = [
-  { text: '排列四柱八字...', icon: '&#9776;', duration: 800 },
-  { text: '推算天干地支關係...', icon: '&#9737;', duration: 600 },
-  { text: '計算五行能量分佈...', icon: '&#9672;', duration: 700 },
-  { text: '判定日主身強弱...', icon: '&#9878;', duration: 500 },
-  { text: '推導十神格局...', icon: '&#9733;', duration: 600 },
-  { text: '確認用神喜神...', icon: '&#10004;', duration: 500 },
-  { text: '查詢太陽星座...', icon: '&#9790;', duration: 400 },
-  { text: '計算生命靈數...', icon: '&#35;', duration: 400 },
-  { text: '分析生肖流年運勢...', icon: '&#128009;', duration: 500 },
-  { text: '啟動深度分析引擎...', icon: '&#129302;', duration: 600 },
-  { text: '交叉比對命盤數據...', icon: '&#128202;', duration: 800 },
-  { text: '生成個人化命格報告...', icon: '&#128221;', duration: 1000 },
+  { text: '排列四柱八字，推算天干地支...', icon: '&#9776;', duration: 1200 },
+  { text: '計算五行能量分佈與格局...', icon: '&#9672;', duration: 1000 },
+  { text: '查詢星座、生肖、靈數等輔助系統...', icon: '&#9790;', duration: 800 },
+  { text: '啟動 AI 深度分析引擎...', icon: '&#129302;', duration: 1500 },
 ]
 
 export default function FreeToolPage() {
   const [form, setForm] = useState({
     name:'', year:'1990', month:'1', day:'1', hour:'12', gender:'M',
     calendarType:'solar' as 'solar'|'lunar', // 國曆/農曆
-    timeMode:'shichen' as 'unknown'|'shichen'|'exact', // 三種時間模式
+    timeMode:'unknown' as 'unknown'|'shichen'|'exact', // 預設不確定，展開進階選項才選時辰
     exactHour:'12', exactMinute:'0', // 精確時間
     city:'', cityLat:0, cityLng:0, cityTz:8, // 出生城市
   })
@@ -62,6 +54,7 @@ export default function FreeToolPage() {
   const [error, setError] = useState('')
   const [currentStep, setCurrentStep] = useState(-1)
   const [completedSteps, setCompletedSteps] = useState<number[]>([])
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -188,6 +181,19 @@ export default function FreeToolPage() {
                 </div>
               </div>
 
+              {/* 進階選項折疊區 */}
+              <div>
+                <button type="button" onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="flex items-center gap-2 text-sm text-gold/70 hover:text-gold transition-colors w-full py-1">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                    className={`transition-transform ${showAdvanced ? 'rotate-90' : ''}`}>
+                    <polyline points="9 6 15 12 9 18" />
+                  </svg>
+                  進階選項（曆法、出生時間、出生城市）
+                </button>
+              </div>
+
+              {showAdvanced && <>
               {/* 國曆/農曆切換 */}
               <div>
                 <label className="block text-sm text-text-muted mb-1.5">曆法</label>
@@ -299,6 +305,8 @@ export default function FreeToolPage() {
                   <p className="text-[10px] text-text-muted/50 mt-1">經度 {form.cityLng.toFixed(2)}° | 時區 UTC{form.cityTz>=0?'+':''}{form.cityTz} | 將自動校正真太陽時</p>
                 )}
               </div>
+
+              </>}
 
               <button type="submit" disabled={loading}
                 className="w-full py-4 bg-gold text-dark font-bold rounded-xl text-lg btn-glow disabled:opacity-50">

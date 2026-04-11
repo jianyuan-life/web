@@ -192,21 +192,6 @@ function renderSectionMarkdown(content: string): string {
   return html
 }
 
-// 評分等級色彩
-function getScoreColor(score: number): string {
-  if (score >= 85) return '#6ab04c'  // 綠色 - 優秀
-  if (score >= 75) return '#c9a84c'  // 金色 - 良好
-  if (score >= 65) return '#f59e0b'  // 橙色 - 普通
-  return '#ef4444'                    // 紅色 - 需注意
-}
-
-function getScoreLabel(score: number): string {
-  if (score >= 85) return '優秀'
-  if (score >= 75) return '良好'
-  if (score >= 65) return '普通'
-  return '需注意'
-}
-
 // Google Calendar URL 生成（純前端，不需要 API key）
 function buildGCalUrl(timing: Top5Timing, clientName: string): string {
   const dateStr = timing.date.replace(/-/g, '')
@@ -328,23 +313,19 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   const aiContent = report.report_result?.ai_content || ''
   const analysesSummary = report.report_result?.analyses_summary || []
   const top5Timings = report.report_result?.top5_timings || []
-  const avgScore = analysesSummary.length > 0
-    ? Math.round(analysesSummary.reduce((s, a) => s + a.score, 0) / analysesSummary.length)
-    : 0
   const isChumenji = ['E1', 'E2'].includes(report.plan_code)
   const isFamily = report.plan_code === 'G15'
   const isRelationship = report.plan_code === 'R'
 
-  // R 方案：從報告內容提取相容度總分
-  let compatibilityScore: number | null = null
+  // R 方案：從報告內容提取相容度描述（不顯示分數）
   let compatibilityVerdict = ''
   if (isRelationship && aiContent) {
     const scoreMatch = aiContent.match(/相容度總分\s*[:：]?\s*(\d+)\s*[/／]\s*100/)
     if (scoreMatch) {
-      compatibilityScore = parseInt(scoreMatch[1])
-      if (compatibilityScore >= 90) compatibilityVerdict = '天作之合'
-      else if (compatibilityScore >= 70) compatibilityVerdict = '互補互助'
-      else if (compatibilityScore >= 50) compatibilityVerdict = '需要經營'
+      const score = parseInt(scoreMatch[1])
+      if (score >= 90) compatibilityVerdict = '天作之合'
+      else if (score >= 70) compatibilityVerdict = '互補互助'
+      else if (score >= 50) compatibilityVerdict = '需要經營'
       else compatibilityVerdict = '挑戰很大'
     }
   }
@@ -421,9 +402,6 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   const sections = isChumenji ? [] : (isFamily || isRelationship) ? cleanedSections : (summarySections.length >= 3 ? summarySections : cleanedSections)
   const isShowingSummary = !isChumenji && !isFamily && !isRelationship && summarySections.length >= 3 && cleanedSections.length > summarySections.length
 
-  // 排序系統評分（高到低）
-  const sortedScores = [...analysesSummary].sort((a, b) => b.score - a.score)
-
   // 簡體中文報告使用 SC 字體
   const isSimplified = report.birth_data?.locale === 'zh-CN'
 
@@ -438,8 +416,6 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         .report-li-num { margin-left: 1.5rem; color: var(--color-text-muted); list-style: decimal; margin-bottom: 0.5rem; line-height: 1.9; font-size: 0.9rem; }
         .report-p { color: var(--color-text-muted); line-height: 1.9; margin-bottom: 0.85rem; font-size: 0.9rem; }
         .section-card { border-radius: 12px; padding: 28px; margin-bottom: 24px; }
-        .score-bar { height: 8px; border-radius: 4px; transition: width 0.6s ease; }
-        .score-bar-bg { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.06); width: 100%; }
         @media print {
           body { background: white !important; color: #333 !important; }
           .no-print { display: none !important; }
@@ -447,7 +423,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           .report-h3 { color: #1a2a4a; }
           .report-bold { color: #333; }
           .report-li, .report-li-num, .report-p { color: #555; }
-          .score-bar-bg { background: #eee; }
+
         }
       `}</style>
 
@@ -472,71 +448,18 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             {new Date(report.created_at).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })}
           </div>
 
-          {/* R 方案專屬：相容度總分大數字 */}
-          {isRelationship && compatibilityScore !== null && (
-            <div className="mt-8">
-              <div className="inline-flex flex-col items-center">
-                <div className="text-text-muted/40 text-xs tracking-[3px] mb-3 uppercase">相容度評分</div>
-                <div className="relative">
-                  <div
-                    className="text-8xl font-black tracking-tight"
-                    style={{
-                      background: compatibilityScore >= 90
-                        ? 'linear-gradient(135deg, #22c55e, #6ab04c)'
-                        : compatibilityScore >= 70
-                        ? 'linear-gradient(135deg, #c9a84c, #e8c87a)'
-                        : compatibilityScore >= 50
-                        ? 'linear-gradient(135deg, #f59e0b, #d97706)'
-                        : 'linear-gradient(135deg, #ef4444, #dc2626)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      backgroundClip: 'text',
-                    }}
-                  >
-                    {compatibilityScore}
-                  </div>
-                  <div className="absolute -right-8 top-2 text-text-muted/30 text-lg font-light">/100</div>
-                </div>
-                <div
-                  className="mt-2 px-5 py-1.5 rounded-full text-sm font-bold tracking-wider"
-                  style={{
-                    background: compatibilityScore >= 90
-                      ? 'rgba(34,197,94,0.15)'
-                      : compatibilityScore >= 70
-                      ? 'rgba(197,150,58,0.15)'
-                      : compatibilityScore >= 50
-                      ? 'rgba(245,158,11,0.15)'
-                      : 'rgba(239,68,68,0.15)',
-                    color: compatibilityScore >= 90
-                      ? '#22c55e'
-                      : compatibilityScore >= 70
-                      ? '#c9a84c'
-                      : compatibilityScore >= 50
-                      ? '#f59e0b'
-                      : '#ef4444',
-                    border: `1px solid ${
-                      compatibilityScore >= 90
-                        ? 'rgba(34,197,94,0.3)'
-                        : compatibilityScore >= 70
-                        ? 'rgba(197,150,58,0.3)'
-                        : compatibilityScore >= 50
-                        ? 'rgba(245,158,11,0.3)'
-                        : 'rgba(239,68,68,0.3)'
-                    }`,
-                  }}
-                >
-                  {compatibilityVerdict}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {avgScore > 0 && !isChumenji && !isFamily && !isRelationship && (
-            <div className="mt-8 inline-flex items-center gap-4">
-              <div className="text-6xl font-extrabold text-gradient-gold">{avgScore}</div>
-              <div className="text-left">
-                <div className="text-text-muted text-sm">綜合評分</div>
-                <div className="text-text-muted/50 text-xs">{analysesSummary.length} 套系統平均</div>
+          {/* R 方案專屬：相容度文字描述（不顯示分數） */}
+          {isRelationship && compatibilityVerdict && (
+            <div className="mt-6">
+              <div
+                className="inline-block px-5 py-1.5 rounded-full text-sm font-bold tracking-wider"
+                style={{
+                  background: 'rgba(197,150,58,0.15)',
+                  color: '#c9a84c',
+                  border: '1px solid rgba(197,150,58,0.3)',
+                }}
+              >
+                {compatibilityVerdict}
               </div>
             </div>
           )}
@@ -586,32 +509,6 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
-        {/* ──── 各系統評分橫條圖（出門訣方案不顯示）──── */}
-        {sortedScores.length > 0 && !isChumenji && !isFamily && !isRelationship && (
-          <div className="glass rounded-xl p-7 mb-8">
-            <div className="text-gold/70 text-xs tracking-[2px] mb-5">各系統評分</div>
-            <div className="space-y-4">
-              {sortedScores.map((a) => {
-                const color = getScoreColor(a.score)
-                const label = getScoreLabel(a.score)
-                const shortName = a.system.replace('命理', '').replace('斗數', '').replace('占星', '')
-                return (
-                  <div key={a.system}>
-                    <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-cream/90 text-sm">{shortName}</span>
-                      <span className="text-xs font-semibold" style={{ color }}>
-                        {a.score} <span className="text-text-muted/50 font-normal ml-1">{label}</span>
-                      </span>
-                    </div>
-                    <div className="score-bar-bg">
-                      <div className="score-bar" style={{ width: `${a.score}%`, background: color }} />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
 
         {/* ──── 報告不完整時不顯示任何內容，直接顯示生成中 ──── */}
         {isContentEmpty && (
@@ -686,15 +583,18 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   {/* 信心指數 + 值使門（v3.0 新增）*/}
                   {(timing.confidence || timing.zhishi_info) && (
                     <div className="flex gap-3 mb-3">
-                      {timing.confidence && (
+                      {timing.confidence && (() => {
+                        const cleanConfidence = (timing.confidence || '').replace(/\s*\d+%/, '').trim()
+                        return (
                         <div className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{
                           background: timing.confidence.includes('極高') || timing.confidence.includes('高') ? 'rgba(34,197,94,0.1)' : timing.confidence.includes('中') ? 'rgba(234,179,8,0.1)' : 'rgba(239,68,68,0.1)',
                           color: timing.confidence.includes('極高') || timing.confidence.includes('高') ? '#22c55e' : timing.confidence.includes('中') ? '#eab308' : '#ef4444',
                           border: `1px solid ${timing.confidence.includes('極高') || timing.confidence.includes('高') ? 'rgba(34,197,94,0.2)' : timing.confidence.includes('中') ? 'rgba(234,179,8,0.2)' : 'rgba(239,68,68,0.2)'}`,
                         }}>
-                          信心指數：{timing.confidence}
+                          信心指數：{cleanConfidence}
                         </div>
-                      )}
+                        )
+                      })()}
                       {timing.zhishi_info && (
                         <div className="px-3 py-1.5 rounded-lg text-xs text-blue-400" style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}>
                           {timing.zhishi_info}
