@@ -708,6 +708,10 @@ export async function callPythonCalculate(birthData: BirthData) {
         year: birthData.year, month: birthData.month, day: birthData.day,
         hour: birthData.hour, minute: birthData.minute || 0,
         gender: birthData.gender,
+        calendar_type: birthData.calendar_type || birthData.calendarType || 'solar',
+        lunar_leap: birthData.lunar_leap || birthData.lunarLeap || false,
+        time_unknown: birthData.time_unknown || false,
+        time_mode: birthData.time_mode || birthData.timeMode || 'shichen',
         ...((birthData.latitude || birthData.cityLat) && (birthData.longitude || birthData.cityLng) ? {
           latitude: birthData.latitude || birthData.cityLat,
           longitude: birthData.longitude || birthData.cityLng,
