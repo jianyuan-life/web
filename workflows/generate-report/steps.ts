@@ -1603,20 +1603,23 @@ export async function qualityGate(
     }
   }
 
-  // 4. 句子截斷檢查（報告末尾不應以不完整句子結束）
+  // 4. 句子截斷檢查（報告末尾不應以不完整句子結束）——軟性警告，不觸發重跑
   const trimmedEnd = reportContent.trim()
   const lastChar = trimmedEnd[trimmedEnd.length - 1]
   if (lastChar && !/[。！？」\n\r*]/.test(lastChar)) {
-    warnings.push(`報告可能被截斷: 末尾字元為 "${lastChar}"（非句末標點）`)
+    warnings.push(`[軟性] 報告可能被截斷: 末尾字元為 "${lastChar}"（非句末標點）`)
   }
 
-  // 5. 內容長度檢查
+  // 5. 內容長度檢查——軟性警告，不觸發重跑
   if (planCode === 'C' && reportContent.length < 15000) {
-    warnings.push(`C 方案內容偏短: ${reportContent.length} 字（期望 > 15,000 字）`)
+    warnings.push(`[軟性] C 方案內容偏短: ${reportContent.length} 字（期望 > 15,000 字）`)
   }
 
-  const passed = warnings.filter(w => !w.startsWith('含有禁止字眼')).length === 0
-  console.log(`品質閘門: ${passed ? '通過' : '警告'} (${warnings.length} 項)`)
+  // passed 判定：排除「含有禁止字眼」和「[軟性]」警告
+  // 只有結構性問題（缺章節、系統子章節大量缺失）才觸發重跑
+  const criticalWarnings = warnings.filter(w => !w.startsWith('含有禁止字眼') && !w.startsWith('[軟性]'))
+  const passed = criticalWarnings.length === 0
+  console.log(`品質閘門: ${passed ? '通過' : '警告'} (${warnings.length} 項, 嚴重 ${criticalWarnings.length} 項)`)
   return { passed, warnings }
 }
 
