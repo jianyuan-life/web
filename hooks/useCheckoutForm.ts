@@ -115,8 +115,8 @@ export function useCheckoutForm() {
     if (!form.gender) return false
     // 出生地區必填：必須選了國家/城市（cityLat !== 0 或 birthCity 非空且不是搜尋中）
     if (!form.birthCity || form.cityLat === 0) return false
-    // E1 必填
-    if (planCode === 'E1' && (!e1StartDate || !e1EndDate)) return false
+    // E1 必填（結束日期選填，不填則預設開始日期+1個月）
+    if (planCode === 'E1' && !e1StartDate) return false
     // E1/E2 時段
     if ((planCode === 'E1' || planCode === 'E2') && !eSelectedBlocks.some(b => b)) return false
     // D 方案問事（其他）必填描述
@@ -334,7 +334,7 @@ export function useCheckoutForm() {
     }
 
     if (planCode === 'E1') {
-      if (!e1StartDate || !e1EndDate) { alert('請選擇事件時間範圍'); return }
+      if (!e1StartDate) { alert('請選擇事件開始日期'); return }
     }
 
     if (planCode === 'E1' || planCode === 'E2') {
@@ -415,7 +415,13 @@ export function useCheckoutForm() {
 
         if (planCode === 'E1') {
           birthData.event_start_date = e1StartDate
-          birthData.event_end_date = e1EndDate
+          // 結束日期選填：不填則預設開始日期 + 1 個月
+          if (e1EndDate) {
+            birthData.event_end_date = e1EndDate
+          } else {
+            const defaultEnd = new Date(new Date(e1StartDate).getTime() + 30 * 24 * 60 * 60 * 1000)
+            birthData.event_end_date = defaultEnd.toISOString().split('T')[0]
+          }
         }
 
         if (planCode === 'E1' || planCode === 'E2') {

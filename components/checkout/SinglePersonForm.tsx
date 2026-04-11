@@ -112,32 +112,49 @@ export default function SinglePersonForm({
         </div>
       )}
 
-      {/* 方案 E1：事件日期範圍 */}
-      {planCode === 'E1' && (
+      {/* 方案 E1：事件日期範圍（最多 1 個月） */}
+      {planCode === 'E1' && (() => {
+        const today = new Date().toISOString().split('T')[0]
+        const maxStart = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        const maxEnd = e1StartDate
+          ? new Date(new Date(e1StartDate).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+          : maxStart
+        return (
         <div className="border-t border-gold/10 pt-4 space-y-3">
           <p className="text-sm font-semibold text-gold">事件日期</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-text-muted mb-1">事件開始日期 *</label>
+              <label className="block text-xs text-text-muted mb-1">希望從何時開始找吉時？ *</label>
               <input
                 type="date" required
                 value={e1StartDate}
-                onChange={(e) => setE1StartDate(e.target.value)}
+                min={today}
+                max={maxStart}
+                onChange={(e) => {
+                  setE1StartDate(e.target.value)
+                  // 如果結束日期超過新開始日期+1個月，自動清空
+                  if (e1EndDate) {
+                    const newMax = new Date(new Date(e.target.value).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                    if (e1EndDate > newMax) setE1EndDate('')
+                  }
+                }}
                 className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none [color-scheme:dark]"
               />
             </div>
             <div>
-              <label className="block text-xs text-text-muted mb-1">事件結束日期 *</label>
+              <label className="block text-xs text-text-muted mb-1">事件截止日期（選填）</label>
               <input
-                type="date" required
+                type="date"
                 value={e1EndDate}
-                min={e1StartDate}
+                min={e1StartDate || today}
+                max={maxEnd}
                 onChange={(e) => setE1EndDate(e.target.value)}
+                placeholder="不填則預設 1 個月"
                 className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none [color-scheme:dark]"
               />
             </div>
           </div>
-          <p className="text-[10px] text-text-muted/60">請填寫事件的起迄日期，系統將為您找出最佳時機。</p>
+          <p className="text-[10px] text-text-muted/60">不填截止日期 = 從開始日起算 1 個月內找最佳時機。有明確截止日（如面試、簽約）請填寫。</p>
           <div className="mt-3">
             <label className="block text-xs text-text-muted mb-1">事件描述 *（最多 200 字）</label>
             <textarea
@@ -152,7 +169,8 @@ export default function SinglePersonForm({
             <p className="text-[10px] text-text-muted/50 text-right mt-1">{customerNote.length}/200</p>
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* E1/E2 可配合出行時段 */}
       {(planCode === 'E1' || planCode === 'E2') && (
