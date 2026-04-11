@@ -41,26 +41,19 @@ export default function ReportPreview() {
                   </div>
                 </div>
 
-                {/* 評分條 */}
+                {/* 多系統交叉驗證 */}
                 <div className="rounded-xl p-4 bg-gold/[0.03] border border-gold/[0.06]">
                   <div className="text-[10px] text-gold/60 tracking-wider">Chapter 05</div>
                   <h5 className="text-sm text-cream mt-1 mb-3" style={{ fontFamily: 'var(--font-sans)' }}>
                     事業與財運分析
                   </h5>
-                  {[
-                    { name: '八字', score: 82 },
-                    { name: '紫微', score: 76 },
-                    { name: '占星', score: 88 },
-                  ].map((s) => (
-                    <div key={s.name} className="flex items-center gap-3 mt-1.5">
-                      <span className="text-[11px] text-text-muted w-10">{s.name}</span>
-                      <div className="flex-1 h-1.5 rounded-full bg-gold/[0.08] overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-gold to-gold-light"
-                          style={{ width: `${s.score}%` }}
-                        />
+                  {['八字', '紫微', '占星'].map((name) => (
+                    <div key={name} className="flex items-center gap-3 mt-1.5">
+                      <span className="text-[11px] text-text-muted w-10">{name}</span>
+                      <div className="space-y-1.5 flex-1">
+                        <div className="h-2 rounded bg-white/[0.04] w-full" />
+                        <div className="h-2 rounded bg-white/[0.04] w-[85%]" />
                       </div>
-                      <span className="text-[11px] text-gold w-6 text-right">{s.score}</span>
                     </div>
                   ))}
                 </div>
@@ -79,16 +72,16 @@ export default function ReportPreview() {
               </div>
             </div>
 
-            {/* 浮動評分卡 */}
+            {/* 浮動資訊卡 */}
             <div className="absolute top-[20%] -right-4 lg:right-[-40px] glass rounded-xl p-4 shadow-2xl animate-float hidden md:block">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-gold)" strokeWidth="2">
-                    <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                    <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
                   </svg>
                 </div>
                 <div>
-                  <div className="text-[11px] text-text-muted">整合分析</div>
+                  <div className="text-[11px] text-text-muted">交叉驗證</div>
                   <div className="text-lg font-bold text-gradient-gold">15 系統</div>
                 </div>
               </div>

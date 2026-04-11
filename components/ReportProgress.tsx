@@ -23,9 +23,9 @@ const ALL_SYSTEMS = [
 // 各方案使用系統數 + 預估總分鐘數
 const PLAN_CONFIG: Record<string, { systems: number; totalMinutes: number; label: string }> = {
   C:   { systems: 15, totalMinutes: 30, label: '全方位命理分析' },
-  D:   { systems: 15, totalMinutes: 30, label: '深度主題分析' },
+  D:   { systems: 0,  totalMinutes: 30, label: '深度主題分析' },
   G15: { systems: 15, totalMinutes: 45, label: '家族命理分析' },
-  R:   { systems: 15, totalMinutes: 35, label: '合盤關係分析' },
+  R:   { systems: 0,  totalMinutes: 35, label: '合盤關係分析' },
   E1:  { systems: 1,  totalMinutes: 40, label: '事件出門訣排算' },
   E2:  { systems: 1,  totalMinutes: 45, label: '月盤 360 時辰排算' },
 }
@@ -164,7 +164,9 @@ export default function ReportProgress({ createdAt, planCode }: { createdAt: str
               ? `正在排算 360 個時辰奇門局，套入命格驗證吉位`
               : planCode === 'E1'
               ? `正在排算事件前後所有時辰，交叉驗證命格吉位`
-              : `正在同步分析 ${cfg.systems} 套命理系統`}
+              : cfg.systems > 0
+              ? `正在同步分析 ${cfg.systems} 套命理系統`
+              : `正在進行${cfg.label}`}
           </span>
         </div>
         <span className="text-white/30 tabular-nums">

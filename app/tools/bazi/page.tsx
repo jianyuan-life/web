@@ -604,7 +604,7 @@ export default function FreeToolPage() {
                   <div className="glass rounded-xl p-5 text-center">
                     <div className="text-3xl mb-2">&#129302;</div>
                     <h4 className="font-bold text-white mb-1">科技量化深度解讀</h4>
-                    <p className="text-sm text-text-muted">融合數十部經典古籍規則，每句分析精準到您個人命盤</p>
+                    <p className="text-sm text-text-muted">AI 深度引擎逐句分析，每段結論精準到您個人命盤</p>
                   </div>
                   <div className="glass rounded-xl p-5 text-center">
                     <div className="text-3xl mb-2">&#127760;</div>

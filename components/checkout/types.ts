@@ -20,9 +20,9 @@ export function newMember(): FamilyMember {
 
 export const PLANS: Record<string, { name: string; price: number; systems: number }> = {
   C: { name: '人生藍圖', price: 89, systems: 15 },
-  D: { name: '心之所惑', price: 39, systems: 15 },
-  G15: { name: '家族藍圖', price: 59, systems: 8 },
-  R: { name: '合否？', price: 59, systems: 15 },
+  D: { name: '心之所惑', price: 39, systems: 0 },
+  G15: { name: '家族藍圖', price: 59, systems: 15 },
+  R: { name: '合否？', price: 59, systems: 0 },
   E1: { name: '事件出門訣', price: 119, systems: 1 },
   E2: { name: '月盤出門訣', price: 89, systems: 1 },
 }

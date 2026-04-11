@@ -487,7 +487,7 @@ export default function NameToolPage() {
 
             {/* 速算提示 */}
             <p className="text-center text-xs text-text-muted/50 leading-relaxed">
-              以上為日主速算概覽，完整報告將根據您的完整命盤做 15 系統個人化深度分析
+              以上為姓名速算概覽，完整報告將根據您的完整命盤做 15 系統個人化深度分析
             </p>
 
             {/* 升級引導 */}

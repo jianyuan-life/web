@@ -29,9 +29,9 @@ type Report = {
   retry_count?: number
 }
 
-// 各方案使用的命理系統數量
+// 各方案使用的命理系統數量（0 表示不顯示系統數）
 const PLAN_SYSTEMS: Record<string, number> = {
-  C: 15, D: 15, G15: 15, R: 15, E1: 1, E2: 1,
+  C: 15, D: 0, G15: 15, R: 0, E1: 1, E2: 1,
 }
 
 function DashboardContent() {
@@ -416,7 +416,10 @@ function DashboardContent() {
                         <span>
                           {['E1', 'E2'].includes(r.plan_code)
                             ? '奇門遁甲出門訣'
-                            : `${r.report_result?.systems_count ?? PLAN_SYSTEMS[r.plan_code] ?? 15} 套系統`}
+                            : (() => {
+                                const count = r.report_result?.systems_count ?? PLAN_SYSTEMS[r.plan_code] ?? 0
+                                return count > 0 ? `${count} 套系統` : r.plan_code === 'D' ? '深度主題分析' : '關係合盤分析'
+                              })()}
                         </span>
                         <span>${r.amount_usd}</span>
                         <span>{new Date(r.created_at).toLocaleDateString('zh-TW')}</span>

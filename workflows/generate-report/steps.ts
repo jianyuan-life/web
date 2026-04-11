@@ -1857,8 +1857,8 @@ export async function sendReportEmail(
     linkNote: isCN ? '此链接专属于您，无需登录即可查看' : '此連結專屬於您，無需登入即可查看',
     promoTitle: isCN ? '🧭 加强您的命理能量' : '🧭 加強您的命理能量',
     promoBody: isCN
-      ? '报告揭示了您的命格能量，而<strong style="color:#e5e7eb;">出门诀</strong>能让您在最佳时机、最佳方位行动，将命理能量转化为现实中的改变。许多客户在使用出门诀后，事业和财运都有显著提升。'
-      : '報告揭示了您的命格能量，而<strong style="color:#e5e7eb;">出門訣</strong>能讓您在最佳時機、最佳方位行動，將命理能量轉化為現實中的改變。許多客戶在使用出門訣後，事業和財運都有顯著提升。',
+      ? '报告揭示了您的命格能量，而<strong style="color:#e5e7eb;">出门诀</strong>能帮您在最佳时机、最佳方位行动，将命理洞察转化为日常决策的参考依据。'
+      : '報告揭示了您的命格能量，而<strong style="color:#e5e7eb;">出門訣</strong>能幫您在最佳時機、最佳方位行動，將命理洞察轉化為日常決策的參考依據。',
     promoLink: isCN ? '了解出门诀方案 →' : '了解出門訣方案 →',
     footer: isCN ? '如有任何问题，请联系' : '如有任何問題，請聯繫',
     copyright: isCN ? '© 2026 鉴源命理平台 · jianyuan.life' : '© 2026 鑒源命理平台 · jianyuan.life',

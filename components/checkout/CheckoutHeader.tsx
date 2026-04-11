@@ -52,6 +52,8 @@ export default function CheckoutHeader({
               ? `基礎 2 人 $159，每加一人 +$${extraPrice}`
               : isRelationPlan
               ? '含兩人分析，每加1人 +$19/人'
+              : planCode === 'D' ? '精選相關系統聚焦分析'
+              : ['E1', 'E2'].includes(planCode) ? '奇門遁甲出門訣'
               : `${planSystems} 套系統分析`}
           </div>
           {isFamilyPlan && extraMemberCount > 0 && (
