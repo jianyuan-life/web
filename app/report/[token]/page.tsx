@@ -203,11 +203,21 @@ function renderInlineMarkdown(text: string): string {
     .replace(/✅/g, '<span style="color:#6ab04c">✅</span>')
     .replace(/⚠️/g, '<span style="color:#e0963a">⚠️</span>')
     .replace(/🔧/g, '<span style="color:#c9a84c">🔧</span>')
+    .replace(/🟢/g, '<span style="color:#6ab04c">🟢</span>')
+    .replace(/🟡/g, '<span style="color:#e0963a">🟡</span>')
+    .replace(/🔵/g, '<span style="color:#5b9bd5">🔵</span>')
+    .replace(/📌/g, '<span style="color:#c9a84c">📌</span>')
     // __TABLE__ 安全網：如果後處理沒清乾淨，在渲染時轉成可讀格式
     .replace(/^__TABLE__\s+(.+)$/gm, (_m: string, content: string) => {
       const parts = content.trim().split(/\s{2,}/)
       return '<div style="padding:8px 12px;margin:6px 0;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);font-size:13px;line-height:1.8">' + parts.join(' ｜ ') + '</div>'
     })
+    // 引言框（> 開頭）→ 金色左邊框 callout
+    .replace(/^&gt;\s*(.+)$/gm, '<blockquote style="border-left:3px solid rgba(197,150,58,0.6);padding:8px 16px;margin:12px 0;background:rgba(197,150,58,0.06);border-radius:0 8px 8px 0;font-style:normal;color:var(--color-gold);">$1</blockquote>')
+    // 📌 本章重點 → 特殊樣式
+    .replace(/^📌\s*(.+)$/gm, '<div style="background:rgba(197,150,58,0.08);border:1px solid rgba(197,150,58,0.2);border-radius:8px;padding:10px 14px;margin:10px 0;font-weight:600;color:var(--color-gold);font-size:0.85rem;">📌 $1</div>')
+    // → 行動建議 → 突出顯示
+    .replace(/^→\s*(.+)$/gm, '<div style="padding:4px 0 4px 16px;border-left:2px solid rgba(106,176,76,0.4);margin:4px 0;font-size:0.88rem;">→ $1</div>')
     .replace(/^[•·]\s*(.+)$/gm, '<li class="report-li">$1</li>')
     .replace(/^- (.+)$/gm, '<li class="report-li">$1</li>')
     .replace(/^(\d+)\. (.+)$/gm, '<li class="report-li-num">$2</li>')
@@ -226,9 +236,9 @@ const SUB_BOX_STYLES: Record<string, { bg: string; border: string; titleColor: s
 }
 
 function classifySubSection(title: string): 'positive' | 'caution' | 'improvement' | 'general' {
-  if (/好的地方|好的方面|優勢|優點|強項|祝福|相容性/.test(title)) return 'positive'
-  if (/需要注意|需注意|注意的地方|注意|風險|挑戰|弱點|關係張力/.test(title)) return 'caution'
-  if (/改善方案|改善建議|改善|建議|提升|行動|指南|刻意練習/.test(title)) return 'improvement'
+  if (/好的地方|好的方面|優勢|優點|強項|祝福|相容性|🟢/.test(title)) return 'positive'
+  if (/需要注意|需注意|注意的地方|注意|風險|挑戰|弱點|關係張力|🟡/.test(title)) return 'caution'
+  if (/改善方案|改善建議|改善|建議|提升|行動|指南|刻意練習|🔵/.test(title)) return 'improvement'
   return 'general'
 }
 
