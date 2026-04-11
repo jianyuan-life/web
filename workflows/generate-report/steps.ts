@@ -20,7 +20,31 @@ const PYTHON_API = process.env.NEXT_PUBLIC_API_URL || 'https://fortune-reports-a
 const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions'
 const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || ''
 const CLAUDE_API = 'https://api.anthropic.com/v1/messages'
-const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY || ''
+
+// ── 多 API Key 輪詢（防 429 限流 + 提高併發吞吐量）──
+// 支援 1~N 個 key：CLAUDE_API_KEY, CLAUDE_API_KEY_2, CLAUDE_API_KEY_3, ...
+// 每個 key 來自不同帳號 = 獨立 rate limit = 線性擴展
+function getClaudeApiKeys(): string[] {
+  const keys: string[] = []
+  // 主 key
+  if (process.env.CLAUDE_API_KEY) keys.push(process.env.CLAUDE_API_KEY)
+  // 額外 key：CLAUDE_API_KEY_2 ~ CLAUDE_API_KEY_20
+  for (let i = 2; i <= 20; i++) {
+    const key = process.env[`CLAUDE_API_KEY_${i}`]
+    if (key) keys.push(key)
+  }
+  return keys
+}
+
+// 全域計數器：輪詢分配，確保每個 key 均勻使用
+let claudeKeyIndex = 0
+function getNextClaudeKey(): string {
+  const keys = getClaudeApiKeys()
+  if (keys.length === 0) return ''
+  const key = keys[claudeKeyIndex % keys.length]
+  claudeKeyIndex++
+  return key
+}
 
 // ── 型別 ──
 export interface BirthData {
@@ -562,6 +586,25 @@ export async function loadReportRecord(reportId: string) {
     throw new FatalError(`報告 ${reportId} 缺少出生資料`)
   }
 
+  // ── 併發控制閘門：限制同時生成的報告數量 ──
+  // 防止 1000 人同時付款時 3000 個 Claude 呼叫打爆 API
+  const MAX_CONCURRENT_REPORTS = 15 // 最多 15 份報告同時生成（= 45 個 Claude 呼叫）
+  const { count: generatingCount } = await supabase
+    .from('paid_reports')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'generating')
+
+  if ((generatingCount || 0) >= MAX_CONCURRENT_REPORTS) {
+    // 排隊等候：利用 Workflow 的 RetryableError 機制自動延遲重試
+    // 每次延遲 30-90 秒（加隨機抖動避免驚群效應）
+    const jitter = Math.floor(Math.random() * 60) + 30
+    console.log(`⏳ 報告 ${reportId} 排隊中（目前 ${generatingCount} 份生成中，上限 ${MAX_CONCURRENT_REPORTS}），${jitter} 秒後重試`)
+    throw new RetryableError(
+      `併發上限：目前 ${generatingCount} 份報告正在生成，等待空位`,
+      { retryAfter: `${jitter}s` },
+    )
+  }
+
   // 用原子操作搶佔：只有從 pending/failed 轉為 generating 才繼續
   // 這可以防止 Webhook + Fallback + Cron 同時觸發時的競態條件
   const { data: updated, error: updateErr } = await supabase.from('paid_reports').update({
@@ -709,7 +752,7 @@ async function claudeStreamingCall(
     res = await fetch(CLAUDE_API, {
       method: 'POST',
       headers: {
-        'x-api-key': CLAUDE_API_KEY,
+        'x-api-key': getNextClaudeKey(),
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
@@ -735,16 +778,24 @@ async function claudeStreamingCall(
     clearTimeout(timeout)
     const errText = await res.text()
     if (res.status === 429) {
-      throw new RetryableError(`Claude API 429 限流`, { retryAfter: '30s' })
+      // 指數退避 + 隨機抖動：防止 1000 人同時重試造成 429 瀑布
+      // 解析 Anthropic 的 retry-after header（如果有的話）
+      const retryAfterHeader = res.headers.get('retry-after')
+      const baseDelay = retryAfterHeader ? parseInt(retryAfterHeader) : 60
+      const jitter = Math.floor(Math.random() * 30) + 15 // 15-45 秒隨機
+      const delay = baseDelay + jitter
+      throw new RetryableError(`Claude API 429 限流，${delay}s 後重試`, { retryAfter: `${delay}s` })
     }
     if (res.status === 529) {
-      throw new RetryableError(`Claude API 529 過載，等待 120 秒後重試`, { retryAfter: '120s' })
+      const jitter529 = Math.floor(Math.random() * 60) + 90 // 90-150 秒隨機
+      throw new RetryableError(`Claude API 529 過載，${jitter529}s 後重試`, { retryAfter: `${jitter529}s` })
     }
     if (res.status === 402) {
       throw new FatalError(`Claude API 402 額度不足：請到 console.anthropic.com 充值。${errText.slice(0, 200)}`)
     }
     if (res.status >= 500) {
-      throw new RetryableError(`Claude API ${res.status}: ${errText.slice(0, 300)}`, { retryAfter: '15s' })
+      const jitter5xx = Math.floor(Math.random() * 15) + 15 // 15-30 秒隨機
+      throw new RetryableError(`Claude API ${res.status}: ${errText.slice(0, 300)}`, { retryAfter: `${jitter5xx}s` })
     }
     throw new FatalError(`Claude API ${res.status}: ${errText.slice(0, 300)}`)
   }
@@ -975,7 +1026,7 @@ async function callClaudeOnly(
   systemPrompt: string, userPrompt: string, maxTokens: number, label: string,
   reportId?: string,
 ): Promise<{ content: string; model: string }> {
-  if (!CLAUDE_API_KEY) {
+  if (getClaudeApiKeys().length === 0) {
     throw new FatalError(`${label}: 缺少 CLAUDE_API_KEY，付費報告必須使用 Claude Opus。請到 console.anthropic.com 充值。`)
   }
   const content = await claudeStreamingCall(systemPrompt, userPrompt, maxTokens, reportId, label)
@@ -1060,7 +1111,7 @@ export async function aiGenerateGeneric(
   const localizedPrompt = localizePrompt(systemPrompt, birthData.locale)
 
   // 付費報告只用 Claude Opus，不降級
-  if (!CLAUDE_API_KEY) {
+  if (getClaudeApiKeys().length === 0) {
     throw new FatalError(`方案 ${planCode}: 缺少 CLAUDE_API_KEY，付費報告必須使用 Claude Opus。請到 console.anthropic.com 充值。`)
   }
   const content = await claudeStreamingCall(localizedPrompt, userPrompt, 32768, reportId, `${planCode}_main`)
@@ -1240,7 +1291,7 @@ export async function aiGenerateG15(
 
   const localizedPrompt = localizePrompt(systemPrompt, familyReports[0]?.birthData?.locale)
 
-  if (!CLAUDE_API_KEY) {
+  if (getClaudeApiKeys().length === 0) {
     throw new FatalError('G15 家族藍圖：缺少 CLAUDE_API_KEY，付費報告必須使用 Claude Opus。')
   }
   const content = await claudeStreamingCall(localizedPrompt, userPrompt, 32768, reportId, 'G15_main')
@@ -1323,7 +1374,7 @@ export async function aiGenerateR(
 
   const localizedPrompt = localizePrompt(systemPrompt, birthData.locale)
 
-  if (!CLAUDE_API_KEY) {
+  if (getClaudeApiKeys().length === 0) {
     throw new FatalError('R 方案合否：缺少 CLAUDE_API_KEY，付費報告必須使用 Claude Opus。')
   }
   const content = await claudeStreamingCall(localizedPrompt, userPrompt, 32768, reportId, 'R_main')
