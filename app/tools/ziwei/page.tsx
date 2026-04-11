@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { searchCities, searchLocations, type LocationSearchResult } from '@/lib/cities'
 
 const SHICHEN = [
   { label: '子時 (23:00-01:00)', value: 0 }, { label: '丑時 (01:00-03:00)', value: 2 },
@@ -85,7 +86,10 @@ export default function ZiweiToolPage() {
     calendarType: 'solar' as 'solar' | 'lunar',
     timeMode: 'shichen' as 'unknown' | 'shichen' | 'exact',
     exactHour: '12', exactMinute: '0',
+    city: '', cityLat: 0, cityLng: 0, cityTz: 8,
   })
+  const [cityResults, setCityResults] = useState<LocationSearchResult[]>([])
+  const [needCityForCountry, setNeedCityForCountry] = useState('')
   const [result, setResult] = useState<ZiweiResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -95,6 +99,7 @@ export default function ZiweiToolPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.name.trim()) { setError('請輸入姓名'); return }
+    if (!form.city.trim() || form.cityLat === 0) { setError('請選擇出生地區'); return }
     setLoading(true); setError(''); setResult(null)
     setCurrentStep(0); setCompletedSteps([])
 
@@ -211,6 +216,68 @@ export default function ZiweiToolPage() {
                 </div>
               </div>
 
+              {/* 出生地區 */}
+              <div className="relative">
+                <label className="block text-sm text-text-muted mb-1.5">出生地區 <span className="text-red-accent">*</span></label>
+                {needCityForCountry && (
+                  <p className="text-xs text-gold/80 mb-1.5">已選擇「{needCityForCountry}」（多時區），請輸入城市名</p>
+                )}
+                <input type="text" placeholder={needCityForCountry ? `輸入${needCityForCountry}的城市名` : '輸入地區名（如：台灣、香港、日本）'} value={form.city}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setForm({...form, city: val})
+                    if (needCityForCountry) {
+                      const cities = searchCities(val).filter(c => c.country === needCityForCountry || c.name.includes(val) || c.name_en.toLowerCase().includes(val.toLowerCase()))
+                      setCityResults(cities.map(c => ({ type: 'city' as const, city: c })))
+                    } else {
+                      setCityResults(val.length >= 1 ? searchLocations(val) : [])
+                    }
+                  }}
+                  className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-3 text-cream text-base focus:border-gold/40 focus:outline-none" />
+                {cityResults.length > 0 && (
+                  <div className="absolute z-20 w-full mt-1 glass rounded-lg border border-gold/20 max-h-48 overflow-y-auto">
+                    {cityResults.map((r, idx) => r.type === 'country' ? (
+                      <button key={`country-${r.country.name}`} type="button"
+                        onClick={() => {
+                          if (r.isMultiTz) {
+                            setNeedCityForCountry(r.country.name)
+                            setForm({...form, city: ''})
+                            setCityResults([])
+                          } else {
+                            setForm({...form, city: r.country.name, cityLat: r.country.lat, cityLng: r.country.lng, cityTz: r.country.tz})
+                            setCityResults([])
+                            setNeedCityForCountry('')
+                          }
+                        }}
+                        className="w-full text-left px-4 py-2.5 hover:bg-gold/10 transition-colors flex justify-between items-center">
+                        <span className="text-sm text-cream">{r.country.name}</span>
+                        <span className="text-[10px] text-text-muted/60">
+                          {r.isMultiTz ? '多時區，請選擇城市' : `UTC${r.country.tz >= 0 ? '+' : ''}${r.country.tz}`}
+                        </span>
+                      </button>
+                    ) : (
+                      <button key={`city-${r.city.name_en}-${idx}`} type="button"
+                        onClick={() => {
+                          setForm({...form, city: `${r.city.name}（${r.city.country}）`, cityLat: r.city.lat, cityLng: r.city.lng, cityTz: r.city.tz})
+                          setCityResults([])
+                          setNeedCityForCountry('')
+                        }}
+                        className="w-full text-left px-4 py-2.5 hover:bg-gold/10 transition-colors flex justify-between items-center">
+                        <span className="text-sm text-cream">{r.city.name} <span className="text-text-muted">({r.city.country})</span></span>
+                        <span className="text-[10px] text-text-muted/60">UTC{r.city.tz >= 0 ? '+' : ''}{r.city.tz}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {needCityForCountry && (
+                  <button type="button" onClick={() => { setNeedCityForCountry(''); setForm({...form, city: ''}); setCityResults([]) }}
+                    className="text-xs text-gold/60 hover:text-gold mt-1 underline">取消，重新選擇國家</button>
+                )}
+                {form.cityLat !== 0 && (
+                  <p className="text-[10px] text-text-muted/50 mt-1">經度 {form.cityLng.toFixed(2)}° | 時區 UTC{form.cityTz >= 0 ? '+' : ''}{form.cityTz}</p>
+                )}
+              </div>
+
               {/* 國曆/農曆 */}
               <div>
                 <label className="block text-sm text-text-muted mb-1.5">曆法</label>
@@ -293,8 +360,12 @@ export default function ZiweiToolPage() {
                 )}
               </div>
 
-              <button type="submit" disabled={loading}
-                className="w-full py-4 bg-gold text-dark font-bold rounded-xl text-lg btn-glow disabled:opacity-50">
+              <button type="submit" disabled={loading || !form.name.trim() || form.cityLat === 0}
+                className={`w-full py-4 font-bold rounded-xl text-lg transition-all ${
+                  form.name.trim() && form.cityLat !== 0
+                    ? 'bg-gold text-dark btn-glow disabled:opacity-50'
+                    : 'bg-white/10 text-text-muted cursor-not-allowed'
+                }`}>
                 開始紫微排盤
               </button>
               {error && <p className="text-red-400 text-sm text-center mt-2">{error}</p>}
@@ -469,6 +540,10 @@ export default function ZiweiToolPage() {
                         minute: form.timeMode === 'exact' ? form.exactMinute : '0',
                         gender: form.gender,
                         timeMode: form.timeMode,
+                        city: form.city,
+                        cityLat: String(form.cityLat),
+                        cityLng: String(form.cityLng),
+                        cityTz: String(form.cityTz),
                       })
                       const label = idx === 0 ? '解鎖人生藍圖完整報告 $89' : '聚焦單一困惑深度分析 $39'
                       const cls = idx === 0
