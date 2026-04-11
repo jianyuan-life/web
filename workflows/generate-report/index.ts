@@ -383,6 +383,8 @@ export async function generateReportWorkflow(reportId: string) {
       console.log(`Top5 吉時解析成功: ${top5Timings?.length || 0} 項`)
     } catch (e) {
       console.error('Top5 JSON 解析失敗:', e)
+      // 解析失敗仍然要移除 JSON 標記，避免原始 JSON 顯示給客戶
+      reportContent = reportContent.replace(/===TOP5_JSON_START===[\s\S]*?===TOP5_JSON_END===/g, '').trim()
     }
   }
 

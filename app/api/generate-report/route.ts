@@ -1019,6 +1019,8 @@ ${analyses.length}套系統排盤完整數據：
         console.log(`✅ 解析到 ${top5Timings.length} 筆吉時資料`)
       } catch (e) {
         console.error('Top5 JSON 解析失敗:', e)
+        // 解析失敗仍然要移除 JSON 標記，避免原始 JSON 顯示給客戶
+        reportContent = reportContent.replace(/===TOP5_JSON_START===[\s\S]*?===TOP5_JSON_END===/g, '').trim()
       }
     }
 

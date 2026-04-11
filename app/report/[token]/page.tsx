@@ -331,10 +331,18 @@ function renderInlineMarkdown(text: string): string {
     // 清理 Markdown 殘留和 prompt 結構標籤
     .replace(/^---+$/gm, '')
     .replace(/^\|[-:]+\|[-:| ]*$/gm, '') // 表格分隔線
+    // Markdown 表格數據行 → 可讀格式（移除首尾 | 後用 ｜ 分隔）
+    .replace(/^\|(.+)\|$/gm, (_m: string, inner: string) => {
+      const cells = inner.split('|').map(c => c.trim()).filter(Boolean)
+      return '<div style="padding:6px 12px;margin:4px 0;border-radius:6px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);font-size:13px;line-height:1.8">' + cells.join(' ｜ ') + '</div>'
+    })
     .replace(/^→ 完整分析請繼續閱讀.*$/gm, '')
-    .replace(/^# 第[一二三]幕.*$/gm, '')
-    .replace(/^# 壓軸.*$/gm, '')
-    .replace(/^# 收尾.*$/gm, '')
+    // 清理所有 H1 標題（# 開頭）— 前端不顯示 H1 原始 markdown
+    .replace(/^# .+$/gm, '')
+    // 清理出門訣 JSON 標記（正常情況下已在後端移除，這是安全網）
+    .replace(/===TOP5_JSON_START===[\s\S]*?===TOP5_JSON_END===/g, '')
+    .replace(/===TOP5_JSON_START===/g, '')
+    .replace(/===TOP5_JSON_END===/g, '')
     .replace(/\*\*(.+?)\*\*/g, '<strong class="report-bold">$1</strong>')
     .replace(/✅/g, '<span style="color:#6ab04c">✅</span>')
     .replace(/⚠️/g, '<span style="color:#e0963a">⚠️</span>')
