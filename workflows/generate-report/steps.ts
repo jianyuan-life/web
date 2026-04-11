@@ -1465,12 +1465,36 @@ export async function generatePDF(
   }
   const planName = planNames[planCode] || '命理分析報告'
 
-  // PDF 專用預處理：清除殘留橫線（各種變體）
+  // PDF 專用預處理：清除殘留橫線 + 轉換 Markdown 格式為 PDF 友好格式
   const pdfContent = reportContent
     .replace(/^---+$/gm, '')           // 標準 markdown 橫線
     .replace(/^___+$/gm, '')           // 底線型橫線
     .replace(/^\*\*\*+$/gm, '')        // 星號型橫線
     .replace(/^[\s]*[-─—═]+[\s]*$/gm, '') // 全形橫線/裝飾線
+    // 引言框：> 開頭 → 去掉 > 前綴，Python ReportLab 會處理為引用段落
+    .replace(/^>\s*(.+)$/gm, '「$1」')
+    // Emoji → 文字替代（PDF 字體無法渲染 emoji，會變成 ◆◆）
+    .replace(/🟢/g, '【好】')
+    .replace(/🟡/g, '【注意】')
+    .replace(/🔵/g, '【改善】')
+    .replace(/📌/g, '【重點】')
+    .replace(/✅/g, '【✓】')
+    .replace(/⚠️/g, '【!】')
+    .replace(/🔧/g, '【建議】')
+    .replace(/🎯/g, '【核心】')
+    .replace(/💡/g, '【提示】')
+    .replace(/❤️/g, '【愛】')
+    .replace(/⭐/g, '【星】')
+    .replace(/🔑/g, '【關鍵】')
+    // 清理其他可能的 emoji（BMP 以外的 Unicode 字元會在 PDF 中變成方塊）
+    .replace(/[\u{1F600}-\u{1F64F}]/gu, '')   // 表情符號
+    .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')   // 雜項符號
+    .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')   // 交通符號
+    .replace(/[\u{1F900}-\u{1F9FF}]/gu, '')   // 補充符號
+    .replace(/[\u{1FA00}-\u{1FA6F}]/gu, '')   // 棋牌符號
+    .replace(/[\u{1FA70}-\u{1FAFF}]/gu, '')   // 擴展符號
+    .replace(/[\u{2702}-\u{27B0}]/gu, '')     // 裝飾符號
+    .replace(/[\u{FE00}-\u{FE0F}]/gu, '')     // 變體選擇器
     .replace(/\n{3,}/g, '\n\n')        // 清理後的連續空行
 
   const pdfRes = await fetch(`${PYTHON_API}/api/generate-pdf`, {
@@ -1810,7 +1834,7 @@ function getEmailHighlights(planCode: string, reportContent: string, isCN: boole
     if (keywordMatch) {
       highlights.push(isCN ? `年度关键词：${keywordMatch.trim()}` : `年度關鍵詞：${keywordMatch.trim()}`)
     }
-    highlights.push(isCN ? '15 套命理系统已完成交叉验证' : '15 套命理系統已完成交叉驗證')
+    highlights.push(isCN ? '东西方命理系统已完成交叉验证' : '東西方命理系統已完成交叉驗證')
   } else if (planCode === 'D') {
     highlights.push(isCN ? '你的问题已从多个角度深度分析' : '你的問題已從多個角度深度分析')
     highlights.push(isCN ? '结合命理与心理学给出具体建议' : '結合命理與心理學給出具體建議')
@@ -1895,7 +1919,9 @@ export async function sendReportEmail(
       ? (isCN ? `${planName} · 奇门遁甲精算` : `${planName} · 奇門遁甲精算`)
       : planCode === 'G15'
       ? (isCN ? `${planName} · 家族互动分析` : `${planName} · 家族互動分析`)
-      : (isCN ? `${planName} · ${analysesCount} 套命理系统分析` : `${planName} · ${analysesCount} 套命理系統分析`),
+      : planCode === 'C'
+      ? (isCN ? `${planName} · 东西方命理系统深度分析` : `${planName} · 東西方命理系統深度分析`)
+      : (isCN ? `${planName} · 精选相关命理系统分析` : `${planName} · 精選相關命理系統分析`),
     cta: getEmailCta(planCode, isCN),
     linkNote: isCN ? '此链接专属于您，无需登录即可查看' : '此連結專屬於您，無需登入即可查看',
     promoTitle: isCN ? '🧭 加强您的命理能量' : '🧭 加強您的命理能量',

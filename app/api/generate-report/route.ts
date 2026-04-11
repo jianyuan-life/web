@@ -42,7 +42,7 @@ function getEmailHighlights(planCode: string, reportContent: string, isCN: boole
     if (keywordMatch) {
       highlights.push(isCN ? `年度关键词：${keywordMatch.trim()}` : `年度關鍵詞：${keywordMatch.trim()}`)
     }
-    highlights.push(isCN ? '15 套命理系统已完成交叉验证' : '15 套命理系統已完成交叉驗證')
+    highlights.push(isCN ? '东西方命理系统已完成交叉验证' : '東西方命理系統已完成交叉驗證')
   } else if (planCode === 'D') {
     highlights.push(isCN ? '你的问题已从多个角度深度分析' : '你的問題已從多個角度深度分析')
     highlights.push(isCN ? '结合命理与心理学给出具体建议' : '結合命理與心理學給出具體建議')
@@ -1046,6 +1046,37 @@ ${analyses.length}套系統排盤完整數據：
     if (!['E1', 'E2'].includes(planCode)) {
       try {
         console.log('呼叫 Python API 生成 PDF...')
+        // PDF 專用預處理：轉換 Markdown 格式為 PDF 友好格式
+        const pdfContent = reportContent
+          .replace(/^---+$/gm, '')           // 標準 markdown 橫線
+          .replace(/^___+$/gm, '')           // 底線型橫線
+          .replace(/^\*\*\*+$/gm, '')        // 星號型橫線
+          .replace(/^[\s]*[-─—═]+[\s]*$/gm, '') // 全形橫線/裝飾線
+          // 引言框：> 開頭 → 去掉 > 前綴，轉為引用格式
+          .replace(/^>\s*(.+)$/gm, '「$1」')
+          // Emoji → 文字替代（PDF 字體無法渲染 emoji）
+          .replace(/🟢/g, '【好】')
+          .replace(/🟡/g, '【注意】')
+          .replace(/🔵/g, '【改善】')
+          .replace(/📌/g, '【重點】')
+          .replace(/✅/g, '【✓】')
+          .replace(/⚠️/g, '【!】')
+          .replace(/🔧/g, '【建議】')
+          .replace(/🎯/g, '【核心】')
+          .replace(/💡/g, '【提示】')
+          .replace(/❤️/g, '【愛】')
+          .replace(/⭐/g, '【星】')
+          .replace(/🔑/g, '【關鍵】')
+          // 清理其他 emoji（BMP 以外的 Unicode 會在 PDF 中變成方塊）
+          .replace(/[\u{1F600}-\u{1F64F}]/gu, '')
+          .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')
+          .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')
+          .replace(/[\u{1F900}-\u{1F9FF}]/gu, '')
+          .replace(/[\u{1FA00}-\u{1FA6F}]/gu, '')
+          .replace(/[\u{1FA70}-\u{1FAFF}]/gu, '')
+          .replace(/[\u{2702}-\u{27B0}]/gu, '')
+          .replace(/[\u{FE00}-\u{FE0F}]/gu, '')
+          .replace(/\n{3,}/g, '\n\n')
         const pdfRes = await fetch(`${PYTHON_API}/api/generate-pdf`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1054,7 +1085,7 @@ ${analyses.length}套系統排盤完整數據：
             plan_code: planCode,
             client_name: birthData.name,
             plan_name: planName,
-            ai_content: reportContent,
+            ai_content: pdfContent,
             locale: birthData.locale || 'zh-TW',
             analyses_summary: analyses.map((a: { system: string; score: number }) => ({
               system: a.system,
@@ -1122,7 +1153,9 @@ ${analyses.length}套系統排盤完整數據：
         ? (isCN ? `${planName} · 奇门遁甲精算` : `${planName} · 奇門遁甲精算`)
         : planCode === 'G15'
         ? (isCN ? `${planName} · 家族互动分析` : `${planName} · 家族互動分析`)
-        : (isCN ? `${planName} · ${analyses.length} 套命理系统分析` : `${planName} · ${analyses.length} 套命理系統分析`),
+        : planCode === 'C'
+        ? (isCN ? `${planName} · 东西方命理系统深度分析` : `${planName} · 東西方命理系統深度分析`)
+        : (isCN ? `${planName} · 精选相关命理系统分析` : `${planName} · 精選相關命理系統分析`),
       cta: getEmailCta(planCode, isCN),
       linkNote: isCN ? '此链接专属于您，无需登录即可查看' : '此連結專屬於您，無需登入即可查看',
       promoTitle: isCN ? '🧭 加强您的命理能量' : '🧭 加強您的命理能量',

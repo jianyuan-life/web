@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import ReportClientButtons from './ReportClientButtons'
+import ReportFeedback from '@/components/ReportFeedback'
 
 // ============================================================
 // 報告閱讀頁 — 透過 access_token 讀取真實報告（無需登入）
@@ -24,6 +25,7 @@ interface Top5Timing {
 interface ReportData {
   id: string
   client_name: string
+  customer_email: string
   plan_code: string
   amount_usd: number
   pdf_url: string | null
@@ -105,11 +107,17 @@ function parsePersonalityCard(markdown: string): PersonalityCardData | null {
 
   // 提取人格封號（擴大搜尋範圍到全文）
   let title = ''
-  // 先在命格名片章節找
+  // 先在命格名片章節找（支援「命格封號：精鋼利刃」同行格式）
   const titleMatch = content.match(/(?:人格封號|命格封號|你的封號)\*{0,2}[：:]\s*\*{0,2}(.+?)\*{0,2}\s*$/m)
   if (titleMatch) {
     title = cleanMd(titleMatch[1])
-  } else {
+  }
+  // 支援「### 1. 命格封號」標題格式，封號在下一行粗體（如「**江河大海**」）
+  if (!title) {
+    const headingTitleMatch = content.match(/(?:人格封號|命格封號|你的封號)\s*\n+\s*\*{1,2}([^*\n]+?)\*{1,2}/m)
+    if (headingTitleMatch) title = cleanMd(headingTitleMatch[1])
+  }
+  if (!title) {
     // 在全文找封號（可能在人生速覽等其他章節）
     const globalTitleMatch = fullText.match(/(?:人格封號|命格封號|你的封號|封號)\*{0,2}[：:]\s*\*{0,2}(.+?)\*{0,2}\s*$/m)
       || fullText.match(/命格就像[^，,]*?\*{0,2}(.{2,8}(?:利刃|大樹|烈火|星光|磐石|清風|深海|明月|雷霆|瀑布|鑽石|寶劍|孤狼|鳳凰|蛟龍|精鋼))\*{0,2}/)
@@ -125,12 +133,18 @@ function parsePersonalityCard(markdown: string): PersonalityCardData | null {
   }
 
   // 提取「一句話定義你」
-  // AI 格式多樣：「一句話定義你：...」或引言框 > 「你就是那種...」
+  // AI 格式多樣：「一句話定義你：...」同行 / 標題後下一行粗體 / 引言框
   let definition: string | undefined
   const defMatch = content.match(/一句話定義[你您]?\*{0,2}[：:]\s*(.+?)$/m)
   if (defMatch) {
     definition = cleanMd(defMatch[1]).replace(/^[「「"']|[」」"']$/g, '')
-  } else {
+  }
+  // 支援「### 2. 一句話定義你」標題格式，定義在下一行（可能是粗體或普通段落）
+  if (!definition) {
+    const defHeadingMatch = content.match(/一句話定義[你您]?\s*\n+\s*\*{0,2}([^#\n][^\n]{5,150}?)\*{0,2}\s*$/m)
+    if (defHeadingMatch) definition = cleanMd(defHeadingMatch[1]).replace(/^[「「"']|[」」"']$/g, '')
+  }
+  if (!definition) {
     // AI 可能用引言框開頭作為定義（> 「你就是那種...」）
     const quoteMatch = content.match(/^>\s*[「「"']?(.+?)[」」"']?\s*$/m)
       || content.match(/^[「「"'](.{10,100})[」」"']\s*$/m)
@@ -140,12 +154,22 @@ function parsePersonalityCard(markdown: string): PersonalityCardData | null {
   // 提取天賦 Top 3（從命格名片章節或全文搜尋）
   const talents: string[] = []
   const searchContent = content + '\n' + (fullText.match(/人生速覽[\s\S]*?(?=\n##?\s|$)/)?.[0] || '')
-  const talentSection = searchContent.match(/(?:天賦|優勢|天生強項|你最大的天賦)\s*(?:Top\s*\d+)?\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\s*(?:\d+\.\s*\*{0,2}(?:課題|挑戰|需要注意|第一印象|真實的你|關鍵字|2026|你最該)|(?:課題|挑戰|需要注意|第一印象|真實的你|關鍵字|2026|你最該))|$)/i)
+  const talentSection = searchContent.match(/(?:天賦|優勢|天生強項|你最大的天賦)\s*(?:Top\s*\d+)?\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\s*(?:###?\s*\d+\.\s*(?:課題|挑戰|需要注意|第一印象|真實的你|關鍵字|2026|你最該)|(?:課題|挑戰|需要注意|第一印象|真實的你|關鍵字|2026|你最該))|$)/i)
     || searchContent.match(/(?:天賦|優勢)\s*(?:Top\s*\d+)\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\n)/i)
   if (talentSection) {
     for (const line of talentSection[1].split('\n')) {
+      // 支援 markdown 表格行：「| 1 | **洞察力碾壓級別** | 八字偏印格... |」
+      const tableMatch = line.match(/\|\s*\d+\s*\|\s*\*{0,2}([^|*]+?)\*{0,2}\s*\|/)
+      if (tableMatch) {
+        const label = tableMatch[1].trim()
+        if (label && label.length > 1 && label.length < 60) talents.push(label)
+        continue
+      }
+      // 支援 bullet / numbered list 格式
       const cleaned = line.replace(/^[\s\-•·*>]+/, '').replace(/\*{1,2}/g, '').trim()
       if (cleaned && cleaned.length > 1 && cleaned.length < 80) {
+        // 跳過表格表頭行（排名、天賦、佐證等）
+        if (/^[|｜]?\s*排名/.test(cleaned) || /^[-:]+$/.test(cleaned.replace(/\|/g, ''))) continue
         const labelMatch = cleaned.match(/^(.+?)[：:—–]\s*/)
         talents.push(labelMatch ? labelMatch[1].trim() : cleaned)
       }
@@ -159,12 +183,22 @@ function parsePersonalityCard(markdown: string): PersonalityCardData | null {
 
   // 提取課題 Top 3
   const challenges: string[] = []
-  const challengeSection = searchContent.match(/(?:課題|挑戰|需要注意|你最該注意的課題)\s*(?:Top\s*\d+)?\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\s*(?:\d+\.\s*\*{0,2}(?:天賦|第一印象|真實的你|關鍵字|2026)|(?:第一印象|真實的你|關鍵字|2026))|$)/i)
+  const challengeSection = searchContent.match(/(?:課題|挑戰|需要注意|你最該注意的課題)\s*(?:Top\s*\d+)?\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\s*(?:###?\s*\d+\.\s*(?:天賦|第一印象|真實的你|關鍵字|2026)|(?:第一印象|真實的你|關鍵字|2026))|$)/i)
     || searchContent.match(/(?:課題|挑戰)\s*(?:Top\s*\d+)\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\n)/i)
   if (challengeSection) {
     for (const line of challengeSection[1].split('\n')) {
+      // 支援 markdown 表格行：「| 1 | **孤島症候群** | 八字偏印格... |」
+      const tableMatch = line.match(/\|\s*\d+\s*\|\s*\*{0,2}([^|*]+?)\*{0,2}\s*\|/)
+      if (tableMatch) {
+        const label = tableMatch[1].trim()
+        if (label && label.length > 1 && label.length < 60) challenges.push(label)
+        continue
+      }
+      // 支援 bullet / numbered list 格式
       const cleaned = line.replace(/^[\s\-•·*>]+/, '').replace(/\*{1,2}/g, '').trim()
       if (cleaned && cleaned.length > 1 && cleaned.length < 80) {
+        // 跳過表格表頭行
+        if (/^[|｜]?\s*排名/.test(cleaned) || /^[-:]+$/.test(cleaned.replace(/\|/g, ''))) continue
         const labelMatch = cleaned.match(/^(.+?)[：:—–]\s*/)
         challenges.push(labelMatch ? labelMatch[1].trim() : cleaned)
       }
@@ -183,10 +217,14 @@ function parsePersonalityCard(markdown: string): PersonalityCardData | null {
   // 嘗試單行格式
   const impressionMatch = content.match(/第一印象[（(]?外在[）)]?[：:]\s*(.+?)$/m)
     || content.match(/第一印象[：:]\s*(.+?)$/m)
+    // 支援「**別人第一次見你會覺得：** 穩重、...」格式
+    || content.match(/別人第一次見你(?:會覺得|的印象)\*{0,2}[：:]\s*\*{0,2}\s*(.+?)$/m)
   if (impressionMatch) firstImpression = cleanMd(impressionMatch[1]).replace(/^[「「"']|[」」"']$/g, '')
 
   const trueselfMatch = content.match(/真實的你[（(]?內在[）)]?[：:]\s*(.+?)$/m)
     || content.match(/真實的你[：:]\s*(.+?)$/m)
+    // 支援「**但其實你：** 內心比任何人...」格式
+    || content.match(/但其實你\*{0,2}[：:]\s*\*{0,2}\s*(.+?)$/m)
   if (trueselfMatch) trueself = cleanMd(trueselfMatch[1]).replace(/^[「「"']|[」」"']$/g, '')
 
   // 如果第一印象/真實的你是多行段落，嘗試提取段落
@@ -209,8 +247,11 @@ function parsePersonalityCard(markdown: string): PersonalityCardData | null {
   let keywords: string[] | undefined
   const kwMatch = content.match(/關鍵字\*{0,2}[：:]\s*(.+?)$/m)
     || fullText.match(/關鍵字\*{0,2}[：:]\s*(.+?)$/m)
+    // 支援「### 6. 關鍵字」標題格式，關鍵字在下一行（粗體或普通）
+    || content.match(/關鍵字\s*\n+\s*\*{0,2}([^#\n][^\n]+?)\*{0,2}\s*$/m)
+    || fullText.match(/關鍵字\s*\n+\s*\*{0,2}([^#\n][^\n]+?)\*{0,2}\s*$/m)
   if (kwMatch) {
-    keywords = kwMatch[1].replace(/\*{1,2}/g, '').split(/[、，,／\/|｜\s]+/).map(k => k.trim()).filter(k => k.length > 0 && k.length < 20)
+    keywords = kwMatch[1].replace(/\*{1,2}/g, '').split(/[、，,／\/|｜∣\s]+/).map(k => k.trim()).filter(k => k.length > 0 && k.length < 20)
   }
 
   // 提取「2026一句話」— 從命格名片或全文搜尋
@@ -218,6 +259,8 @@ function parsePersonalityCard(markdown: string): PersonalityCardData | null {
   const yearMatch = content.match(/2026\s*一句話\*{0,2}[：:]\s*(.+?)$/m)
     || content.match(/2026\s*年?.*?核心主題\*{0,2}[：:]\s*(.+?)$/m)
     || content.match(/2026\s*丙午年?\*{0,2}[：:]\s*(.+?)$/m)
+    // 支援「### 7. 2026 一句話」或「### 7. 2026一句話」標題格式，內容在下一行
+    || content.match(/2026\s*一句話\s*\n+\s*\*{0,2}([^#\n][^\n]{5,200}?)\*{0,2}\s*$/m)
     || fullText.match(/2026\s*(?:年|丙午年)?你現在該做什麼\*{0,2}[：:]\s*(.+?)$/m)
     || fullText.match(/2026一句話\*{0,2}[：:]\s*(.+?)$/m)
   if (yearMatch) yearTheme = cleanMd(yearMatch[1]).replace(/^[「「"']|[」」"']$/g, '')
@@ -1092,6 +1135,15 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               下載 PDF 完整報告
             </a>
           </div>
+        )}
+
+        {/* ──── 客戶反饋 ──── */}
+        {report.status === 'completed' && (
+          <ReportFeedback
+            reportId={report.id}
+            planCode={report.plan_code}
+            customerEmail={report.customer_email}
+          />
         )}
 
         {/* ──── 頁尾 ──── */}
