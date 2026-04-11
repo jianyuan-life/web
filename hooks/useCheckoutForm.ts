@@ -311,7 +311,8 @@ export function useCheckoutForm() {
         alert('請至少選擇 2 位家庭成員的人生藍圖報告')
         return
       }
-    } else {
+    } else if (planCode !== 'R') {
+      // R 方案用 rMembers，不用 form，所以跳過 form 驗證
       if (!form.name.trim()) { alert('請輸入姓名'); return }
       const yr = parseInt(form.year)
       if (yr < 1900 || yr > new Date().getFullYear()) { alert('出生年份範圍需在 1900 至今年之間'); return }
