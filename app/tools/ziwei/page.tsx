@@ -28,12 +28,16 @@ const ANALYSIS_STEPS = [
 type ZiweiResult = {
   mainStar: string
   starNature: string
+  starTitle: string
   personality: string
   strengths: string
   challenges: string
   career: string
   love: string
-  palaceStars: Record<string, string[]>
+  health: string
+  lucky: string
+  year2026: string
+  palaceData: Record<string, { branch: string; mainStars: string; minorStars: string }>
   sihua: string[]
   yearTG: string
   wuxingju: number
@@ -48,7 +52,32 @@ const PALACE_COLORS: Record<string, string> = {
   '夫妻宮': 'border-pink-500/20 bg-pink-500/[0.04]',
   '福德宮': 'border-purple-500/20 bg-purple-500/[0.04]',
   '遷移宮': 'border-cyan-500/20 bg-cyan-500/[0.04]',
+  '子女宮': 'border-orange-500/20 bg-orange-500/[0.04]',
+  '兄弟宮': 'border-teal-500/20 bg-teal-500/[0.04]',
+  '疾厄宮': 'border-red-500/20 bg-red-500/[0.04]',
+  '交友宮': 'border-indigo-500/20 bg-indigo-500/[0.04]',
+  '田宅宮': 'border-amber-500/20 bg-amber-500/[0.04]',
+  '父母宮': 'border-rose-500/20 bg-rose-500/[0.04]',
 }
+
+// 十二宮位說明
+const PALACE_DESC: Record<string, string> = {
+  '命宮': '先天性格與命運格局',
+  '兄弟宮': '兄弟姐妹緣分與合作關係',
+  '夫妻宮': '感情婚姻與伴侶特質',
+  '子女宮': '子女緣分與親子關係',
+  '財帛宮': '財運與理財能力',
+  '疾厄宮': '健康狀況與體質',
+  '遷移宮': '外出運與社會際遇',
+  '交友宮': '人際關係與部下緣',
+  '事業宮': '事業格局與職業方向',
+  '田宅宮': '不動產運與家庭環境',
+  '福德宮': '精神生活與享受',
+  '父母宮': '與父母長輩的關係',
+}
+
+// 十二宮位標準順序
+const PALACE_ORDER = ['命宮', '兄弟宮', '夫妻宮', '子女宮', '財帛宮', '疾厄宮', '遷移宮', '交友宮', '事業宮', '田宅宮', '福德宮', '父母宮']
 
 export default function ZiweiToolPage() {
   const [form, setForm] = useState({
@@ -280,42 +309,54 @@ export default function ZiweiToolPage() {
               <button onClick={() => setResult(null)} className="text-sm text-gold hover:underline">&larr; 重新排盤</button>
             </div>
 
-            {/* 命宮主星 */}
+            {/* 命宮主星 — 人格封號 */}
             <div className="glass rounded-2xl p-8">
               <div className="text-center mb-6">
                 <div className="inline-block px-4 py-1.5 rounded-full bg-gold/20 text-gold text-sm font-semibold mb-3">
                   {form.name} 的紫微命盤
                 </div>
-                <h2 className="text-2xl font-bold text-white mb-2">
-                  命宮主星：<span className="text-gradient-gold">{result.mainStar}</span>
+                <h2 className="text-2xl font-bold text-white mb-1">
+                  您是「<span className="text-gradient-gold">{result.starTitle}</span>」型人格
                 </h2>
                 <p className="text-sm text-text-muted">
-                  {result.starNature} &middot; {result.yearTG}年生 &middot; {['水二局', '木三局', '金四局', '土五局', '火六局'][result.wuxingju - 2] || `${result.wuxingju}局`}
+                  命宮主星：{result.mainStar}（{result.starNature}）&middot; {result.yearTG}年生 &middot; {['水二局', '木三局', '金四局', '土五局', '火六局'][result.wuxingju - 2] || `${result.wuxingju}局`}
                 </p>
               </div>
               <p className="text-base text-text leading-[1.9] mb-6">{result.personality}</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-5">
-                  <h4 className="text-sm font-bold text-green-400 mb-2">&#10003; 天生優勢</h4>
+                  <h4 className="text-sm font-bold text-green-400 mb-2">&#10003; 您的天生優勢</h4>
                   <p className="text-sm text-text leading-relaxed">{result.strengths}</p>
                 </div>
                 <div className="rounded-xl bg-orange-500/10 border border-orange-500/20 p-5">
-                  <h4 className="text-sm font-bold text-orange-400 mb-2">&#9888; 需要留意</h4>
+                  <h4 className="text-sm font-bold text-orange-400 mb-2">&#9888; 需要留意的地方</h4>
                   <p className="text-sm text-text leading-relaxed">{result.challenges}</p>
                 </div>
               </div>
             </div>
 
-            {/* 事業 & 感情 */}
+            {/* 六大維度分析 — 跟八字一樣豐富 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-5">
-                <h4 className="text-base font-bold text-white mb-2">&#128188; 事業方向</h4>
-                <p className="text-sm text-text leading-[1.8]">{result.career}</p>
-              </div>
-              <div className="rounded-xl border border-pink-500/20 bg-pink-500/5 p-5">
-                <h4 className="text-base font-bold text-white mb-2">&#10084;&#65039; 感情特質</h4>
-                <p className="text-sm text-text leading-[1.8]">{result.love}</p>
-              </div>
+              {[
+                { title: '事業方向', text: result.career, icon: '&#128188;', color: 'border-blue-500/20 bg-blue-500/5' },
+                { title: '感情特質', text: result.love, icon: '&#10084;&#65039;', color: 'border-pink-500/20 bg-pink-500/5' },
+                { title: '健康提醒', text: result.health, icon: '&#127973;', color: 'border-green-500/20 bg-green-500/5' },
+                { title: '2026年運勢', text: result.year2026, icon: '&#9733;', color: 'border-yellow-500/20 bg-yellow-500/5' },
+              ].map(item => (
+                <div key={item.title} className={`rounded-xl border p-5 ${item.color}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg" dangerouslySetInnerHTML={{ __html: item.icon }} />
+                    <h4 className="text-base font-bold text-white">{item.title}</h4>
+                  </div>
+                  <p className="text-sm text-text leading-[1.8]">{item.text}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* 幸運元素 — 開運指南 */}
+            <div className="glass rounded-2xl p-6">
+              <h3 className="text-base font-bold text-gold mb-3">&#128161; 您的開運指南</h3>
+              <p className="text-base text-text leading-[1.8]">{result.lucky}</p>
             </div>
 
             {/* 四化星 */}
@@ -342,21 +383,35 @@ export default function ZiweiToolPage() {
               </p>
             </div>
 
-            {/* 十二宮位 */}
-            <div className="glass rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-1 h-6 bg-gold rounded-full" />
-                <h2 className="text-lg font-bold text-white">十二宮位星曜</h2>
+            {/* 十二宮位星曜 */}
+            {Object.keys(result.palaceData).length > 0 && (
+              <div className="glass rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1 h-6 bg-gold rounded-full" />
+                  <h2 className="text-lg font-bold text-white">十二宮位星曜</h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {PALACE_ORDER.map(palace => {
+                    const data = result.palaceData[palace]
+                    if (!data) return null
+                    const allStars = [data.mainStars, data.minorStars].filter(Boolean).join('、')
+                    return (
+                      <div key={palace} className={`rounded-xl border p-4 ${PALACE_COLORS[palace] || 'border-white/10 bg-white/[0.02]'}`}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-sm font-bold text-white">{palace}</span>
+                          <span className="text-[10px] text-text-muted/50">{data.branch}</span>
+                        </div>
+                        <div className="text-sm text-gold mb-1">{data.mainStars || '無主星'}</div>
+                        {data.minorStars && (
+                          <div className="text-xs text-text-muted/70 mb-1.5">{data.minorStars}</div>
+                        )}
+                        <div className="text-[11px] text-text-muted/60">{PALACE_DESC[palace] || ''}</div>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {Object.entries(result.palaceStars).map(([palace, stars]) => (
-                  <div key={palace} className={`rounded-xl border p-4 ${PALACE_COLORS[palace] || 'border-white/10 bg-white/[0.02]'}`}>
-                    <div className="text-xs text-text-muted mb-1">{palace}</div>
-                    <div className="text-sm font-bold text-white">{stars.join('、')}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            )}
 
             {/* AI 深度解讀 */}
             {result.hasAi && result.aiAnalysis && (

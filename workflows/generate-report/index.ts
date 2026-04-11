@@ -9,7 +9,6 @@ import {
   aiGenerateCall1,
   aiGenerateCall2,
   aiGenerateCall3,
-  aiGenerateCall4,
   aiGenerateGeneric,
   loadFamilyReports,
   loadFamilyReportsByIds,
@@ -24,6 +23,7 @@ import {
   sendReportEmail,
   markReportFailed,
   closeProgressStream,
+  buildAppendix,
   PLAN_SYSTEM_PROMPT,
   type BirthData,
 } from './steps'
@@ -61,7 +61,7 @@ export async function generateReportWorkflow(reportId: string) {
 
       // AI 生成家族互動分析
       const systemPrompt = PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C']
-      const result = await aiGenerateG15(familyReports, planCode, systemPrompt)
+      const result = await aiGenerateG15(familyReports, planCode, systemPrompt, reportId)
       const reportContent = result.content
 
       if (!reportContent) {
@@ -157,7 +157,7 @@ export async function generateReportWorkflow(reportId: string) {
 
       // AI 生成合盤分析
       const systemPrompt = PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C']
-      const result = await aiGenerateR(memberResults, birthData, systemPrompt)
+      const result = await aiGenerateR(memberResults, birthData, systemPrompt, reportId)
       let reportContent = result.content
 
       if (!reportContent) {
@@ -263,37 +263,40 @@ export async function generateReportWorkflow(reportId: string) {
 
   try {
     if (planCode === 'C') {
-      // ── C 方案：4 個 AI call 順序執行（避免並行導致截斷/超時）──
-      const r1 = await aiGenerateCall1(calcResult, birthData, birthData.question || birthData.topic)
-      const r2 = await aiGenerateCall2(calcResult, birthData)
-      const r3 = await aiGenerateCall3(calcResult, birthData)
-      const r4 = await aiGenerateCall4(calcResult, birthData)
+      // ── C 方案：3 個 AI call 順序執行 + 附錄自動生成 ──
+      console.log('C 方案開始：3-call 順序執行')
+      const r1 = await aiGenerateCall1(calcResult, birthData, birthData.question || birthData.topic, reportId)
+      const r2 = await aiGenerateCall2(calcResult, birthData, r1.content, reportId)
+      const r3 = await aiGenerateCall3(calcResult, birthData, r1.content, r2.content, undefined, undefined, reportId)
 
-      // Call D 完整性檢查
-      let call4Content = r4.content
-      const hasDeliberatePractice = call4Content.includes('刻意練習')
-      const hasClosingLetter = call4Content.includes('寫給') && (call4Content.includes('的話') || call4Content.includes('們的話'))
+      // Call 3 完整性檢查
+      let call3Content = r3.content
+      const hasDeliberatePractice = call3Content.includes('刻意練習')
+      const hasClosingLetter = call3Content.includes('寫給') && (call3Content.includes('的話') || call3Content.includes('們的話'))
 
       if (!hasDeliberatePractice || !hasClosingLetter) {
         const missingParts: string[] = []
         if (!hasDeliberatePractice) missingParts.push('刻意練習（投資/感情/事業/健康/人際五大面向，每項至少200字）')
         if (!hasClosingLetter) missingParts.push('寫給客戶的話（至少3段，帶命理依據的回顧過去+看見現在+展望未來）')
 
-        // 重試 Call 4
-        const retryR4 = await aiGenerateCall4(calcResult, birthData, true, missingParts)
-        call4Content = retryR4.content
+        // 重試 Call 3
+        const retryR3 = await aiGenerateCall3(calcResult, birthData, r1.content, r2.content, true, missingParts, reportId)
+        call3Content = retryR3.content
       }
 
-      const rawContent = [r1.content, r2.content, r3.content, call4Content].join('\n\n')
+      // 附錄由程式碼自動生成（不走 AI）
+      const appendix = buildAppendix(calcResult.analyses)
+
+      const rawContent = [r1.content, r2.content, call3Content, appendix].join('\n\n')
       reportContent = cleanFinalReport(rawContent, birthData.name)
-      // 記錄使用的模型（以 call1 為主要參考）
       aiModelUsed = r1.model
+      console.log(`C 方案完成：${reportContent.length} 字（含附錄）`)
     } else {
       // ── 其他方案：單次 AI 呼叫 ──
       const systemPrompt = PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C']
       const result = await aiGenerateGeneric(
         calcResult, birthData, planCode, systemPrompt,
-        birthData.topic, birthData.question,
+        birthData.topic, birthData.question, reportId,
       )
       reportContent = result.content
       aiModelUsed = result.model
@@ -336,26 +339,26 @@ export async function generateReportWorkflow(reportId: string) {
       console.warn(`品質閘門未通過（第${attempt+1}次）: ${qResult.warnings.join('; ')}`)
 
       if (attempt === 0 && planCode === 'C') {
-        // 第一次不通過：重新生成（順序執行）
+        // 第一次不通過：重��生成（3-call 順序執行）
         console.log('品質不通過，嘗試重新生成...')
-        const r1 = await aiGenerateCall1(calcResult, birthData, birthData.question || birthData.topic)
-        const r2 = await aiGenerateCall2(calcResult, birthData)
-        const r3 = await aiGenerateCall3(calcResult, birthData)
-        const r4 = await aiGenerateCall4(calcResult, birthData)
+        const r1 = await aiGenerateCall1(calcResult, birthData, birthData.question || birthData.topic, reportId)
+        const r2 = await aiGenerateCall2(calcResult, birthData, r1.content, reportId)
+        const r3 = await aiGenerateCall3(calcResult, birthData, r1.content, r2.content, undefined, undefined, reportId)
 
-        // Call D 完整性檢查（與主流程一致）
-        let retryCall4Content = r4.content
-        const retryHasDP = retryCall4Content.includes('刻意練習')
-        const retryHasCL = retryCall4Content.includes('寫給') && (retryCall4Content.includes('的話') || retryCall4Content.includes('們的話'))
+        // Call 3 完整性檢查（與主流程一致）
+        let retryCall3Content = r3.content
+        const retryHasDP = retryCall3Content.includes('刻意練習')
+        const retryHasCL = retryCall3Content.includes('寫給') && (retryCall3Content.includes('的話') || retryCall3Content.includes('們的話'))
         if (!retryHasDP || !retryHasCL) {
           const missingParts: string[] = []
           if (!retryHasDP) missingParts.push('刻意練習（投資/感情/事業/健康/人際五大面向，每項至少200字）')
           if (!retryHasCL) missingParts.push('寫給客戶的話（至少3段，帶命理依據的回顧過去+看見現在+展望未來）')
-          const retryR4 = await aiGenerateCall4(calcResult, birthData, true, missingParts)
-          retryCall4Content = retryR4.content
+          const retryR3 = await aiGenerateCall3(calcResult, birthData, r1.content, r2.content, true, missingParts, reportId)
+          retryCall3Content = retryR3.content
         }
 
-        const rawContent = [r1.content, r2.content, r3.content, retryCall4Content].join('\n\n')
+        const appendix = buildAppendix(calcResult.analyses)
+        const rawContent = [r1.content, r2.content, retryCall3Content, appendix].join('\n\n')
         reportContent = cleanFinalReport(rawContent, birthData.name)
         aiModelUsed = r1.model
       }

@@ -3,8 +3,10 @@ import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import {
   getAgeGroup,
-  buildCall1Prompt, buildCall2Prompt, buildCall3Prompt, buildCall4Prompt,
-  buildUserPrompt, SYSTEM_GROUPS,
+  buildCall1Prompt, buildCall2Prompt, buildCall3Prompt,
+  buildUserPrompt, buildAppendix,
+  extractCall1Summary, extractCall1And2Summary,
+  SYSTEM_GROUPS,
 } from '@/prompts/c_plan_v2'
 import { validateReportAgainstData } from '@/workflows/generate-report/steps'
 

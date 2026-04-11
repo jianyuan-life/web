@@ -30,6 +30,7 @@ type Result = {
   solar_time?: { original:string; corrected:string; diff_minutes:number; longitude:number } | null
   lunar_converted?: boolean
   time_unknown?: boolean
+  is_fallback?: boolean
 }
 
 // 分析步驟動畫
@@ -358,7 +359,7 @@ export default function FreeToolPage() {
             )}
 
             {/* ═══ 校正提示 ═══ */}
-            {(result.solar_time || result.lunar_converted || result.time_unknown) && (
+            {(result.solar_time || result.lunar_converted || result.time_unknown || result.is_fallback) && (
               <div className="glass rounded-xl p-4 text-xs text-text-muted space-y-1">
                 {result.lunar_converted && (
                   <p>&#9672; 已將農曆日期自動轉換為國曆進行排盤計算</p>
@@ -368,6 +369,9 @@ export default function FreeToolPage() {
                 )}
                 {result.time_unknown && (
                   <p>&#9888; 未提供出生時間，以午時（12:00）預設。八字時柱、上升星座等可能有偏差。</p>
+                )}
+                {result.is_fallback && (
+                  <p>&#9888; 此為速算結果（精確度約 95%），完整精確排盤請查看付費報告</p>
                 )}
               </div>
             )}
@@ -565,6 +569,11 @@ export default function FreeToolPage() {
                 })()}
               </div>
             </div>
+
+            {/* 速算提示 */}
+            <p className="text-center text-xs text-text-muted/50 leading-relaxed">
+              以上為日主速算概覽，完整報告將根據您的完整命盤做 15 系統個人化深度分析
+            </p>
 
             {/* ═══ 升級引導 ═══ */}
             <div className="rounded-2xl overflow-hidden" style={{background:'linear-gradient(135deg, rgba(184,134,11,0.12), rgba(26,58,92,0.4))'}}>

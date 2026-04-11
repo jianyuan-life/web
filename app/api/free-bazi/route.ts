@@ -333,11 +333,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Step 1: 嘗試 Python API，超時 8 秒就用 TS fallback
+    // Step 1: 嘗試 Python API，超時 20 秒就用 TS fallback（Fly.io 冷啟動通常 10-15 秒）
     let bazi: ReturnType<typeof localBazi>
+    let isFallback = false
     try {
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 8000)
+      const timeout = setTimeout(() => controller.abort(), 20000)
       const res = await fetch(`${PYTHON_API}/api/free-bazi`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -349,9 +350,11 @@ export async function POST(req: NextRequest) {
         bazi = await res.json()
       } else {
         bazi = localBazi(year, month, day, hour)
+        isFallback = true
       }
     } catch {
       bazi = localBazi(year, month, day, hour)
+      isFallback = true
     }
 
     // Step 2: 補齊生肖（Python API 可能沒返回）
@@ -464,6 +467,8 @@ export async function POST(req: NextRequest) {
       // 農曆轉換資訊
       lunar_converted: lunarConverted,
       time_unknown,
+      // 是否使用 TS fallback（近似節氣表，精確度約 95%）
+      is_fallback: isFallback,
     })
   } catch (err) {
     return NextResponse.json({ detail: err instanceof Error ? err.message : '分析失敗' }, { status: 500 })

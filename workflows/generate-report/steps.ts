@@ -9,8 +9,10 @@ import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import {
   getAgeGroup,
-  buildCall1Prompt, buildCall2Prompt, buildCall3Prompt, buildCall4Prompt,
-  buildUserPrompt, SYSTEM_GROUPS,
+  buildCall1Prompt, buildCall2Prompt, buildCall3Prompt,
+  buildUserPrompt, buildAppendix,
+  extractCall1Summary, extractCall1And2Summary,
+  SYSTEM_GROUPS,
 } from '@/prompts/c_plan_v2'
 
 // ── 常數 ──
@@ -627,8 +629,72 @@ export async function callPythonCalculate(birthData: BirthData) {
 }
 callPythonCalculate.maxRetries = 3
 
-// ── Claude 串流呼叫（內部輔助，非 step）——含 600s 超時 ──
-async function claudeStreamingCall(systemPrompt: string, userPrompt: string, maxTokens: number): Promise<string> {
+// ── 串流存檔：讀取已存的部分內容 ──
+async function loadPartialContent(reportId: string, callLabel: string): Promise<string | null> {
+  if (!reportId) return null
+  try {
+    const supabase = getSupabase()
+    const { data } = await supabase
+      .from('paid_reports')
+      .select('generation_progress')
+      .eq('id', reportId)
+      .single()
+    const progress = data?.generation_progress as Record<string, string> | null
+    return progress?.[callLabel] || null
+  } catch {
+    return null
+  }
+}
+
+// ── 串流存檔：儲存部分內容到 Supabase ──
+async function savePartialContent(reportId: string, callLabel: string, content: string): Promise<void> {
+  if (!reportId) return
+  try {
+    const supabase = getSupabase()
+    // 先讀取現有進度（保留其他 call 的資料）
+    const { data } = await supabase
+      .from('paid_reports')
+      .select('generation_progress')
+      .eq('id', reportId)
+      .single()
+    const existing = (data?.generation_progress as Record<string, unknown>) || {}
+    await supabase
+      .from('paid_reports')
+      .update({
+        generation_progress: {
+          ...existing,
+          [callLabel]: content,
+          [`${callLabel}_updated`]: new Date().toISOString(),
+        },
+      })
+      .eq('id', reportId)
+  } catch (e) {
+    // 存檔失敗不阻塞串流
+    console.warn(`串流存檔失敗（${callLabel}）:`, e)
+  }
+}
+
+// ── Claude 串流呼叫（內部輔助，非 step）——含 600s 超時 + 串流存檔 ──
+async function claudeStreamingCall(
+  systemPrompt: string, userPrompt: string, maxTokens: number,
+  reportId?: string, callLabel?: string,
+): Promise<string> {
+  const checkpointKey = callLabel || 'default'
+
+  // 串流存檔：檢查是否有上次中斷的部分內容，用「從這裡繼續」的 prompt
+  let actualUserPrompt = userPrompt
+  let prefixContent = ''
+  if (reportId && callLabel) {
+    const partial = await loadPartialContent(reportId, checkpointKey)
+    if (partial && partial.length > 1000) {
+      console.log(`發現 ${checkpointKey} 的部分內容（${partial.length} 字），從斷點續寫`)
+      prefixContent = partial
+      // 取最後 2000 字作為上下文，讓 AI 從斷點接續
+      const tail = partial.slice(-2000)
+      actualUserPrompt = `${userPrompt}\n\n【重要】以下是你之前寫到一半的內容（因超時中斷），請從斷點處直接繼續寫完，不要重複已寫的內容：\n\n...${tail}\n\n請從這裡接續，直接輸出後續內容。`
+    }
+  }
+
   // 600 秒超時：Workflow step 支援最長 900s，留足緩衝
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 600000)
@@ -646,7 +712,7 @@ async function claudeStreamingCall(systemPrompt: string, userPrompt: string, max
         model: 'claude-opus-4-6',
         max_tokens: maxTokens,
         stream: true,
-        messages: [{ role: 'user', content: userPrompt }],
+        messages: [{ role: 'user', content: actualUserPrompt }],
         system: systemPrompt,
         temperature: 0.7,
       }),
@@ -687,6 +753,7 @@ async function claudeStreamingCall(systemPrompt: string, userPrompt: string, max
   const decoder = new TextDecoder()
   let result = ''
   let buffer = ''
+  let lastCheckpoint = 0
 
   try {
     while (true) {
@@ -706,19 +773,43 @@ async function claudeStreamingCall(systemPrompt: string, userPrompt: string, max
           }
         } catch { /* 忽略 */ }
       }
+
+      // 串流存檔：每 3000 字存一次到 Supabase
+      if (reportId && callLabel && result.length > lastCheckpoint + 3000) {
+        const fullContent = prefixContent ? prefixContent + result : result
+        savePartialContent(reportId, checkpointKey, fullContent).catch(() => {})
+        lastCheckpoint = result.length
+      }
     }
   } catch (e) {
+    // 超時或斷線：先存檔再拋錯
+    if (reportId && callLabel && result.length > 0) {
+      const fullContent = prefixContent ? prefixContent + result : result
+      try {
+        await savePartialContent(reportId, checkpointKey, fullContent)
+        console.log(`串流中斷，已存檔 ${fullContent.length} 字到 ${checkpointKey}`)
+      } catch { /* 存檔失敗不阻塞 */ }
+    }
+
     if (e instanceof Error && e.name === 'AbortError') {
-      // 串流超時一律重試，不接受截斷的部分結果
       clearTimeout(timeout)
-      throw new RetryableError(`Claude API 串流超時（600秒，已收到 ${result.length} 字）`, { retryAfter: '30s' })
+      throw new RetryableError(`Claude API 串流超時（600秒，已收到 ${result.length} 字，已存檔）`, { retryAfter: '30s' })
     }
     clearTimeout(timeout)
     throw e
   }
 
   clearTimeout(timeout)
-  return result
+
+  // 串流完成：合併 prefix + 新內容，並清除存檔
+  const finalResult = prefixContent ? prefixContent + result : result
+
+  // 清除此 call 的部分存檔（串流已正常完成）
+  if (reportId && callLabel) {
+    savePartialContent(reportId, checkpointKey, '').catch(() => {})
+  }
+
+  return finalResult
 }
 
 // ── DeepSeek 呼叫（內部輔助，非 step）——含 180s 超時 ──
@@ -877,96 +968,87 @@ ${analyses.length}套系統排盤完整數據：
 // 客戶付了錢，就必須給最高品質。Claude 沒額度就報錯，不給次級品質。
 async function callClaudeOnly(
   systemPrompt: string, userPrompt: string, maxTokens: number, label: string,
+  reportId?: string,
 ): Promise<{ content: string; model: string }> {
   if (!CLAUDE_API_KEY) {
     throw new FatalError(`${label}: 缺少 CLAUDE_API_KEY，付費報告必須使用 Claude Opus。請到 console.anthropic.com 充值。`)
   }
-  const content = await claudeStreamingCall(systemPrompt, userPrompt, maxTokens)
+  const content = await claudeStreamingCall(systemPrompt, userPrompt, maxTokens, reportId, label)
   console.log(`${label} 完成 (claude-opus-4-6): ${content.length} 字`)
   return { content, model: 'claude-opus-4-6' }
 }
 
-// ── Step 2a: C 方案 AI 生成 — Call A（系統1-4：東方三大） ──
-// C 方案優先用 Claude Opus，Claude 不可用時自動 fallback DeepSeek
+// ── Step 2a: C 方案 AI 生成 — Call 1（命格名片+你是什麼樣的人+事業+財運） ──
 export async function aiGenerateCall1(
-  calcResult: CalcResult, birthData: BirthData, question?: string,
+  calcResult: CalcResult, birthData: BirthData, question?: string, reportId?: string,
 ) {
   "use step";
-  await emitProgress({ step: 'AI分析', progress: 20, message: '正在分析東方命理系統（八字/紫微/奇門/風水）...' })
+  console.log('Call 1 開始：命格名片+人格畫像+事業+財運')
+  await emitProgress({ step: 'AI分析', progress: 20, message: '正在分析命格名片、人格畫像、事業與財運...' })
 
   const ageGroup = getAgeGroup(birthData.year)
   const clientNeed = question || undefined
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call1, birthData)
   const systemPrompt = buildCall1Prompt(ageGroup, clientNeed, birthData.locale)
 
-  const result = await callClaudeOnly(systemPrompt, userPrompt, 16000, 'Call A')
+  const result = await callClaudeOnly(systemPrompt, userPrompt, 16000, 'Call 1', reportId)
   result.content = cleanAIResponse(result.content)
+  console.log(`Call 1 完成：${result.content.length} 字`)
   return result
 }
 aiGenerateCall1.maxRetries = 3
 
-// ── Step 2b: C 方案 AI 生成 — Call B（系統5-9：西方 + 整合系統） ──
+// ── Step 2b: C 方案 AI 生成 — Call 2（感情+健康+大運+流年） ──
 export async function aiGenerateCall2(
-  calcResult: CalcResult, birthData: BirthData,
+  calcResult: CalcResult, birthData: BirthData, call1Content: string, reportId?: string,
 ) {
   "use step";
-  await emitProgress({ step: 'AI分析', progress: 35, message: '正在分析西方命理系統（占星/吠陀/姓名學/易經/人類圖）...' })
+  console.log('Call 2 開始：感情+健康+大運+流年')
+  await emitProgress({ step: 'AI分析', progress: 40, message: '正在分析感情、健康、大運走勢與流年重點...' })
 
   const ageGroup = getAgeGroup(birthData.year)
+  const call1Summary = extractCall1Summary(call1Content)
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call2, birthData)
-  const systemPrompt = buildCall2Prompt(ageGroup, birthData.locale)
+  const systemPrompt = buildCall2Prompt(ageGroup, call1Summary, birthData.locale)
 
-  const result = await callClaudeOnly(systemPrompt, userPrompt, 16000, 'Call B')
+  const result = await callClaudeOnly(systemPrompt, userPrompt, 16000, 'Call 2', reportId)
   result.content = cleanAIResponse(result.content)
+  console.log(`Call 2 完成：${result.content.length} 字`)
   return result
 }
 aiGenerateCall2.maxRetries = 3
 
-// ── Step 2c: C 方案 AI 生成 — Call C（系統10-15：環境 + 輔助系統） ──
+// ── Step 2c: C 方案 AI 生成 — Call 3（一句話+刻意練習+寫給你的話） ──
 export async function aiGenerateCall3(
-  calcResult: CalcResult, birthData: BirthData,
+  calcResult: CalcResult, birthData: BirthData, call1Content: string, call2Content: string,
+  isRetry?: boolean, missingParts?: string[], reportId?: string,
 ) {
   "use step";
-  await emitProgress({ step: 'AI分析', progress: 50, message: '正在分析輔助命理系統（塔羅/數字能量/古典占星/生肖/生物節律）...' })
+  console.log('Call 3 開始：一句話+刻意練習+寫給你的話')
+  await emitProgress({ step: 'AI分析', progress: 60, message: '正在生成刻意練習與寫給你的話...' })
 
   const ageGroup = getAgeGroup(birthData.year)
-  const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call3, birthData)
-  const systemPrompt = buildCall3Prompt(ageGroup, birthData.locale)
-
-  const result = await callClaudeOnly(systemPrompt, userPrompt, 16000, 'Call C')
-  result.content = cleanAIResponse(result.content)
-  return result
-}
-aiGenerateCall3.maxRetries = 3
-
-// ── Step 2d: C 方案 AI 生成 — Call D（交叉驗證 + 刻意練習 + 寫給你的話） ──
-export async function aiGenerateCall4(
-  calcResult: CalcResult, birthData: BirthData, isRetry?: boolean, missingParts?: string[],
-) {
-  "use step";
-  await emitProgress({ step: 'AI分析', progress: 60, message: '正在生成交叉驗證、刻意練習與寫給你的話...' })
-
-  const ageGroup = getAgeGroup(birthData.year)
-  const allSystems = [...SYSTEM_GROUPS.call1, ...SYSTEM_GROUPS.call2, ...SYSTEM_GROUPS.call3]
-  let userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, allSystems, birthData)
+  const call1and2Summary = extractCall1And2Summary(call1Content, call2Content)
+  let userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call3, birthData)
 
   if (isRetry && missingParts?.length) {
     userPrompt += `\n\n【重要提醒——你上次漏掉了以下章節，這次必須全部補上】\n${missingParts.map((p, i) => `${i + 1}. ${p}`).join('\n')}\n\n不要寫任何前言，直接從章節標題開始。`
   }
 
-  const maxTokens = isRetry ? 20000 : 16000
-  const systemPrompt = buildCall4Prompt(ageGroup, birthData.name, birthData.locale)
+  const maxTokens = isRetry ? 14000 : 10000
+  const systemPrompt = buildCall3Prompt(ageGroup, birthData.name, call1and2Summary, birthData.locale)
 
-  const result = await callClaudeOnly(systemPrompt, userPrompt, maxTokens, 'Call D')
+  const result = await callClaudeOnly(systemPrompt, userPrompt, maxTokens, 'Call 3', reportId)
   result.content = cleanAIResponse(result.content)
+  console.log(`Call 3 完成：${result.content.length} 字`)
   return result
 }
-aiGenerateCall4.maxRetries = 3
+aiGenerateCall3.maxRetries = 3
 
 // ── Step 2e: 非 C 方案 AI 生成（單次呼叫） ──
 export async function aiGenerateGeneric(
   calcResult: CalcResult, birthData: BirthData, planCode: string,
-  systemPrompt: string, topic?: string, question?: string,
+  systemPrompt: string, topic?: string, question?: string, reportId?: string,
 ) {
   "use step";
   const userPrompt = buildGenericUserPrompt(birthData, calcResult.client_data, calcResult.analyses, topic, question)
@@ -976,7 +1058,7 @@ export async function aiGenerateGeneric(
   if (!CLAUDE_API_KEY) {
     throw new FatalError(`方案 ${planCode}: 缺少 CLAUDE_API_KEY，付費報告必須使用 Claude Opus。請到 console.anthropic.com 充值。`)
   }
-  const content = await claudeStreamingCall(localizedPrompt, userPrompt, 32768)
+  const content = await claudeStreamingCall(localizedPrompt, userPrompt, 32768, reportId, `${planCode}_main`)
   const cleaned = cleanAIResponse(content)
   console.log(`方案 ${planCode} AI 完成 (claude-opus-4-6): ${cleaned.length} 字`)
   return { content: cleaned, model: 'claude-opus-4-6' }
@@ -1125,7 +1207,7 @@ function extractKeyDataForFamily(reportContent: string, bd: BirthData): string {
 
 // ── G15 家族藍圖：AI 生成家族互動分析 ──
 export async function aiGenerateG15(
-  familyReports: FamilyMemberReport[], planCode: string, systemPrompt: string,
+  familyReports: FamilyMemberReport[], planCode: string, systemPrompt: string, reportId?: string,
 ) {
   "use step";
   await emitProgress({ step: 'AI分析', progress: 30, message: '正在分析家族成員互動關係...' })
@@ -1156,7 +1238,7 @@ export async function aiGenerateG15(
   if (!CLAUDE_API_KEY) {
     throw new FatalError('G15 家族藍圖：缺少 CLAUDE_API_KEY，付費報告必須使用 Claude Opus。')
   }
-  const content = await claudeStreamingCall(localizedPrompt, userPrompt, 32768)
+  const content = await claudeStreamingCall(localizedPrompt, userPrompt, 32768, reportId, 'G15_main')
   const cleaned = cleanAIResponse(content)
   console.log(`G15 家族藍圖 AI 完成: ${cleaned.length} 字`)
   return { content: cleaned, model: 'claude-opus-4-6' }
@@ -1165,7 +1247,7 @@ aiGenerateG15.maxRetries = 2
 
 // ── R 方案「合否？」：為每位成員分別排盤，合併後 AI 生成合盤分析 ──
 export async function aiGenerateR(
-  memberResults: CalcResult[], birthData: BirthData, systemPrompt: string,
+  memberResults: CalcResult[], birthData: BirthData, systemPrompt: string, reportId?: string,
 ) {
   "use step";
   await emitProgress({ step: 'AI分析', progress: 40, message: '正在分析雙方命格合盤...' })
@@ -1239,7 +1321,7 @@ export async function aiGenerateR(
   if (!CLAUDE_API_KEY) {
     throw new FatalError('R 方案合否：缺少 CLAUDE_API_KEY，付費報告必須使用 Claude Opus。')
   }
-  const content = await claudeStreamingCall(localizedPrompt, userPrompt, 32768)
+  const content = await claudeStreamingCall(localizedPrompt, userPrompt, 32768, reportId, 'R_main')
   const cleaned = cleanAIResponse(content)
   console.log(`R 方案合否 AI 完成: ${cleaned.length} 字`)
   return { content: cleaned, model: 'claude-opus-4-6' }
@@ -1789,3 +1871,5 @@ export async function closeProgressStream() {
 
 // ── 匯出輔助常數（供 workflow 使用） ──
 export { PLAN_SYSTEM_PROMPT } from './plan-prompts'
+// 從 c_plan_v2 re-export 附錄生成函式（供 index.ts 使用）
+export { buildAppendix } from '@/prompts/c_plan_v2'

@@ -65,20 +65,102 @@ interface ContentSection {
   content: string
 }
 
+// 判斷是否為主題式報告（新版按主題分列，非按命理系統分列）
+function isThematicReport(markdown: string, reportResult: ReportData['report_result']): boolean {
+  // 檢查 report_result 中是否有 personality_card 欄位
+  if (reportResult && 'personality_card' in reportResult) return true
+  // 檢查第一章標題是否是「命格名片」
+  if (/^##?\s*[一二三四五六七八九十]+、\s*命格名片/m.test(markdown)) return true
+  // 檢查是否含有主題式標題格式（中文數字編號）
+  const thematicPattern = /^##?\s*[一二三四五六七八九十]+、/m
+  const matches = markdown.match(new RegExp(thematicPattern.source, 'gm'))
+  return (matches?.length || 0) >= 3
+}
+
+// 命格名片數據結構
+interface PersonalityCardData {
+  title: string        // 人格封號
+  talents: string[]    // 天賦
+  challenges: string[] // 課題
+  firstImpression?: string  // 第一印象
+  trueself?: string         // 真實的你
+  rawContent: string   // 原始內容（fallback 用）
+}
+
+// 從 markdown 中提取命格名片數據
+function parsePersonalityCard(markdown: string): PersonalityCardData | null {
+  // 嘗試匹配「命格名片」章節（支援 ## 一、命格名片 或 ## 命格名片）
+  const cardMatch = markdown.match(/^##?\s*(?:[一二三四五六七八九十]+、\s*)?命格名片\s*\n([\s\S]*?)(?=\n##?\s|$)/m)
+  if (!cardMatch) return null
+
+  const content = cardMatch[1].trim()
+
+  // 提取人格封號（通常是第一行粗體或標題）
+  let title = ''
+  const titleMatch = content.match(/(?:人格封號|命格封號|你的封號)[：:]\s*\*{0,2}(.+?)\*{0,2}\s*$/m)
+    || content.match(/^###?\s*(.+?)$/m)
+    || content.match(/^\*\*(.+?)\*\*\s*$/m)
+  if (titleMatch) {
+    title = titleMatch[1].replace(/\*{1,2}/g, '').trim()
+  }
+
+  // 提取天賦（綠色標籤）
+  const talents: string[] = []
+  const talentSection = content.match(/(?:天賦|優勢|天生強項)[：:]*\s*\n?([\s\S]*?)(?=\n(?:課題|挑戰|需要注意|第一印象|真實的你|$))/i)
+  if (talentSection) {
+    const lines = talentSection[1].split('\n')
+    for (const line of lines) {
+      const clean = line.replace(/^[\s\-•·*]+/, '').replace(/\*{1,2}/g, '').trim()
+      if (clean && clean.length > 1 && clean.length < 50) talents.push(clean)
+    }
+  }
+
+  // 提取課題（橙色標籤）
+  const challenges: string[] = []
+  const challengeSection = content.match(/(?:課題|挑戰|需要注意)[：:]*\s*\n?([\s\S]*?)(?=\n(?:天賦|第一印象|真實的你|$))/i)
+  if (challengeSection) {
+    const lines = challengeSection[1].split('\n')
+    for (const line of lines) {
+      const clean = line.replace(/^[\s\-•·*]+/, '').replace(/\*{1,2}/g, '').trim()
+      if (clean && clean.length > 1 && clean.length < 50) challenges.push(clean)
+    }
+  }
+
+  // 提取「第一印象 vs 真實的你」
+  let firstImpression: string | undefined
+  let trueself: string | undefined
+  const impressionMatch = content.match(/第一印象[：:]\s*(.+?)$/m)
+  const trueselfMatch = content.match(/真實的你[：:]\s*(.+?)$/m)
+  if (impressionMatch) firstImpression = impressionMatch[1].replace(/\*{1,2}/g, '').trim()
+  if (trueselfMatch) trueself = trueselfMatch[1].replace(/\*{1,2}/g, '').trim()
+
+  return {
+    title: title || '命格名片',
+    talents,
+    challenges,
+    firstImpression,
+    trueself,
+    rawContent: content,
+  }
+}
+
 function parseStructuredContent(markdown: string): ContentSection[] {
   const sections: ContentSection[] = []
-  // 用 ## 標題拆分區塊
+
+  // 支援兩種格式：
+  // 新版主題式：## 一、命格名片  或  ## 二、你是什麼樣的人
+  // 舊版系統式：## 八字分析  或  ## 紫微斗數
   const parts = markdown.split(/^## /gm).filter(Boolean)
 
   for (const part of parts) {
     const newlineIdx = part.indexOf('\n')
     if (newlineIdx === -1) continue
-    const title = part.slice(0, newlineIdx).trim()
+    let title = part.slice(0, newlineIdx).trim()
     const content = part.slice(newlineIdx + 1).trim()
     if (!content) continue
 
     // 過濾掉「假標題」：超過 35 字元或含中文句子標點的片段是 AI 段落文字，不是章節標題
-    if (title.length > 35 || /[。，！？；：、「」【】]/.test(title)) continue
+    if (title.length > 35 || /[。，！？；「」【】]/.test(title)) continue
 
     let type: ContentSection['type'] = 'general'
     if (/好的地方|好的方面|天賦優勢|你的優勢|你的強項|這個家的祝福|相容性/.test(title)) type = 'positive'
@@ -317,6 +399,12 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   const isFamily = report.plan_code === 'G15'
   const isRelationship = report.plan_code === 'R'
 
+  // 偵測是否為主題式報告（新版）
+  const isThematic = isThematicReport(aiContent, report.report_result)
+
+  // 解析命格名片（主題式報告才有）
+  const personalityCard = isThematic ? parsePersonalityCard(aiContent) : null
+
   // R 方案：從報告內容提取相容度描述（不顯示分數）
   let compatibilityVerdict = ''
   if (isRelationship && aiContent) {
@@ -346,6 +434,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
     if (/第一幕|第二幕|第三幕|壓軸|收尾|完整分析請繼續閱讀/.test(t)) return false
     // 過濾附錄（術語表在 PDF 看就好）
     if (/附錄|術語對照/.test(t)) return false
+    // 主題式報告：命格名片已用專屬卡片渲染，從章節列表中移除
+    if (personalityCard && /命格名片/.test(t)) return false
     // 過濾報告標題行
     if (/全方位命格分析報告/.test(t)) return false
     // 過濾重複的評分表（上面已有可視化圖表）
@@ -355,20 +445,33 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   })
 
   // 網頁版只顯示客戶最關注的重點
-  const summarySections = cleanedSections.filter(sec => {
+  // 主題式報告：全部章節都是重點，不做摘要篩選
+  const summarySections = isThematic ? cleanedSections : cleanedSections.filter(sec => {
     const t = sec.title
     // 一分鐘重點 / 命格名片
     if (/一分鐘|命格重點|命格名片|命格角色/.test(t)) return true
-    // 命格總覽
-    if (/命格總覽|你是誰/.test(t)) return true
+    // 命格總覽 / 你是什麼樣的人
+    if (/命格總覽|你是誰|你是什麼樣的人/.test(t)) return true
+    // 事業與天賦
+    if (/事業與天賦|事業/.test(t)) return true
+    // 財運
+    if (/財運/.test(t)) return true
+    // 感情與人際
+    if (/感情與人際|感情/.test(t)) return true
+    // 健康
+    if (/健康/.test(t)) return true
+    // 大運走勢
+    if (/大運/.test(t)) return true
+    // 流年重點
+    if (/流年/.test(t)) return true
     // 年度運勢 / 月曆
     if (/年度|月曆|月運勢|行事曆|運勢行事/.test(t)) return true
     // 交叉驗證結論
     if (/交叉驗證|全局鳥瞰|十五系統/.test(t)) return true
     // 刻意練習
     if (/刻意練習/.test(t)) return true
-    // 寫給你的話
-    if (/寫給/.test(t)) return true
+    // 寫給你的話 / 給你的一句話
+    if (/寫給|給你的/.test(t)) return true
     // 幸運元素
     if (/幸運元素/.test(t)) return true
     return false
@@ -467,6 +570,94 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           {/* 操作按鈕（Client Component 處理 onClick）*/}
           <ReportClientButtons pdfUrl={report.pdf_url} planCode={report.plan_code} />
         </div>
+
+        {/* ──── 命格名片卡片（主題式報告專屬）──── */}
+        {personalityCard && (
+          <div className="rounded-2xl p-8 mb-8 relative overflow-hidden" style={{
+            background: 'linear-gradient(135deg, rgba(26,42,74,0.6), rgba(15,22,40,0.8))',
+            border: '1px solid rgba(197,150,58,0.3)',
+          }}>
+            {/* 背景裝飾 */}
+            <div className="absolute top-0 right-0 w-40 h-40 opacity-5" style={{
+              background: 'radial-gradient(circle, rgba(197,150,58,1) 0%, transparent 70%)',
+            }} />
+
+            {/* 人格封號 */}
+            <div className="text-center mb-6">
+              <div className="text-gold/50 text-[10px] tracking-[4px] mb-2 uppercase">命格名片</div>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-wide" style={{
+                color: '#c9a84c',
+                fontFamily: 'var(--font-sans)',
+                textShadow: '0 0 20px rgba(197,150,58,0.3)',
+              }}>
+                {personalityCard.title}
+              </h2>
+            </div>
+
+            {/* 第一印象 vs 真實的你（雙欄對比）*/}
+            {personalityCard.firstImpression && personalityCard.trueself && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div className="text-text-muted/50 text-xs mb-2 tracking-wider">第一印象</div>
+                  <p className="text-cream text-sm leading-relaxed">{personalityCard.firstImpression}</p>
+                </div>
+                <div className="rounded-xl p-4" style={{ background: 'rgba(197,150,58,0.06)', border: '1px solid rgba(197,150,58,0.15)' }}>
+                  <div className="text-gold/60 text-xs mb-2 tracking-wider">真實的你</div>
+                  <p className="text-cream text-sm leading-relaxed">{personalityCard.trueself}</p>
+                </div>
+              </div>
+            )}
+
+            {/* 天賦 vs 課題 標籤 */}
+            {(personalityCard.talents.length > 0 || personalityCard.challenges.length > 0) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* 天賦（綠色標籤）*/}
+                {personalityCard.talents.length > 0 && (
+                  <div>
+                    <div className="text-xs font-semibold mb-2.5 flex items-center gap-1.5" style={{ color: '#6ab04c' }}>
+                      <span>&#10003;</span> 天賦
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {personalityCard.talents.map((t, i) => (
+                        <span key={i} className="px-3 py-1.5 rounded-full text-xs font-medium" style={{
+                          background: 'rgba(106,176,76,0.1)',
+                          color: '#6ab04c',
+                          border: '1px solid rgba(106,176,76,0.2)',
+                        }}>
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* 課題（橙色標籤）*/}
+                {personalityCard.challenges.length > 0 && (
+                  <div>
+                    <div className="text-xs font-semibold mb-2.5 flex items-center gap-1.5" style={{ color: '#e0963a' }}>
+                      <span>&#9888;</span> 課題
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {personalityCard.challenges.map((c, i) => (
+                        <span key={i} className="px-3 py-1.5 rounded-full text-xs font-medium" style={{
+                          background: 'rgba(224,150,58,0.1)',
+                          color: '#e0963a',
+                          border: '1px solid rgba(224,150,58,0.2)',
+                        }}>
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 如果沒有結構化數據，顯示原始內容 */}
+            {personalityCard.talents.length === 0 && personalityCard.challenges.length === 0 && !personalityCard.firstImpression && (
+              <div className="report-p mt-2" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(personalityCard.rawContent) }} />
+            )}
+          </div>
+        )}
 
         {/* ──── 摘要提示 + PDF 下載 ──── */}
         {isShowingSummary && report.pdf_url && (

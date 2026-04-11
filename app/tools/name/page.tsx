@@ -1,6 +1,16 @@
 'use client'
 
 import { useState } from 'react'
+import { searchCities, searchLocations, type LocationSearchResult } from '@/lib/cities'
+
+const SHICHEN = [
+  { label: '子時 (23:00-01:00)', value: 0 }, { label: '丑時 (01:00-03:00)', value: 2 },
+  { label: '寅時 (03:00-05:00)', value: 4 }, { label: '卯時 (05:00-07:00)', value: 6 },
+  { label: '辰時 (07:00-09:00)', value: 8 }, { label: '巳時 (09:00-11:00)', value: 10 },
+  { label: '午時 (11:00-13:00)', value: 12 }, { label: '未時 (13:00-15:00)', value: 14 },
+  { label: '申時 (15:00-17:00)', value: 16 }, { label: '酉時 (17:00-19:00)', value: 18 },
+  { label: '戌時 (19:00-21:00)', value: 20 }, { label: '亥時 (21:00-23:00)', value: 22 },
+]
 
 const WX_COLORS: Record<string, string> = { '木': '#22c55e', '火': '#ef4444', '土': '#eab308', '金': '#f59e0b', '水': '#3b82f6' }
 
@@ -53,7 +63,13 @@ export default function NameToolPage() {
   const [form, setForm] = useState({
     surname: '', givenName: '', gender: 'M',
     year: '1990', month: '1', day: '1',
+    hour: '12',
+    timeMode: 'unknown' as 'unknown' | 'shichen' | 'exact',
+    exactHour: '12', exactMinute: '0',
+    city: '', cityLat: 0, cityLng: 0, cityTz: 8,
   })
+  const [cityResults, setCityResults] = useState<LocationSearchResult[]>([])
+  const [needCityForCountry, setNeedCityForCountry] = useState('')
   const [result, setResult] = useState<NameResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -82,6 +98,12 @@ export default function NameToolPage() {
           surname: form.surname, givenName: form.givenName,
           gender: form.gender,
           year: parseInt(form.year), month: parseInt(form.month), day: parseInt(form.day),
+          hour: form.timeMode === 'exact' ? parseInt(form.exactHour) : form.timeMode === 'shichen' ? parseInt(form.hour) : 12,
+          minute: form.timeMode === 'exact' ? parseInt(form.exactMinute) : 0,
+          time_unknown: form.timeMode === 'unknown',
+          latitude: form.cityLat || undefined,
+          longitude: form.cityLng || undefined,
+          timezone_offset: form.cityTz,
         }),
       })
       clearInterval(stepInterval)
@@ -203,9 +225,9 @@ export default function NameToolPage() {
                 </div>
               </div>
 
-              {/* 出生日期（用於結合八字分析） */}
+              {/* 出生日期 */}
               <div>
-                <label className="block text-sm text-text-muted mb-1.5">出生日期 <span className="text-text-muted/50">（選填，可提供更精準分析）</span></label>
+                <label className="block text-sm text-text-muted mb-1.5">出生日期</label>
                 <div className="grid grid-cols-3 gap-3">
                   <input type="number" min="1920" max="2025" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })}
                     className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none" placeholder="年" />
@@ -218,6 +240,110 @@ export default function NameToolPage() {
                     {Array.from({ length: 31 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}日</option>)}
                   </select>
                 </div>
+              </div>
+
+              {/* 出生時間 — 三選一 */}
+              <div>
+                <label className="block text-sm text-text-muted mb-1.5">出生時間</label>
+                <div className="flex rounded-lg overflow-hidden border border-gold/10 mb-3">
+                  {[
+                    { v: 'unknown' as const, l: '不確定' },
+                    { v: 'shichen' as const, l: '知道時辰' },
+                    { v: 'exact' as const, l: '知道精確時間' },
+                  ].map(({ v, l }) => (
+                    <button key={v} type="button"
+                      onClick={() => setForm({ ...form, timeMode: v })}
+                      className={`flex-1 py-2.5 text-xs font-medium transition-all ${form.timeMode === v ? 'bg-gold/20 text-gold' : 'bg-white/3 text-text-muted hover:bg-white/5'}`}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+                {form.timeMode === 'unknown' && (
+                  <p className="text-xs text-text-muted/70 leading-relaxed">
+                    姓名學五格數理不受時辰影響，但命格補救建議需要完整八字。
+                    <span className="text-gold/70"> 建議提供出生時間以獲得更精準的用神分析。</span>
+                  </p>
+                )}
+                {form.timeMode === 'shichen' && (
+                  <select value={form.hour} onChange={(e) => setForm({ ...form, hour: e.target.value })}
+                    className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none">
+                    {SHICHEN.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                )}
+                {form.timeMode === 'exact' && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <select value={form.exactHour} onChange={(e) => setForm({ ...form, exactHour: e.target.value })}
+                      className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none">
+                      {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{String(i).padStart(2, '0')} 時</option>)}
+                    </select>
+                    <select value={form.exactMinute} onChange={(e) => setForm({ ...form, exactMinute: e.target.value })}
+                      className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none">
+                      {Array.from({ length: 60 }, (_, i) => <option key={i} value={i}>{String(i).padStart(2, '0')} 分</option>)}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* 出生地區 */}
+              <div className="relative">
+                <label className="block text-sm text-text-muted mb-1.5">出生地區</label>
+                {needCityForCountry && (
+                  <p className="text-xs text-gold/80 mb-1.5">已選擇「{needCityForCountry}」（多時區），請輸入城市名</p>
+                )}
+                <input type="text" placeholder={needCityForCountry ? `輸入${needCityForCountry}的城市名` : '輸入地區名（如：台灣、香港、日本）'} value={form.city}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setForm({ ...form, city: val })
+                    if (needCityForCountry) {
+                      const cities = searchCities(val).filter(c => c.country === needCityForCountry || c.name.includes(val) || c.name_en.toLowerCase().includes(val.toLowerCase()))
+                      setCityResults(cities.map(c => ({ type: 'city' as const, city: c })))
+                    } else {
+                      setCityResults(val.length >= 1 ? searchLocations(val) : [])
+                    }
+                  }}
+                  className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-3 text-cream text-base focus:border-gold/40 focus:outline-none" />
+                {cityResults.length > 0 && (
+                  <div className="absolute z-20 w-full mt-1 glass rounded-lg border border-gold/20 max-h-48 overflow-y-auto">
+                    {cityResults.map((r, idx) => r.type === 'country' ? (
+                      <button key={`country-${r.country.name}`} type="button"
+                        onClick={() => {
+                          if (r.isMultiTz) {
+                            setNeedCityForCountry(r.country.name)
+                            setForm({ ...form, city: '' })
+                            setCityResults([])
+                          } else {
+                            setForm({ ...form, city: r.country.name, cityLat: r.country.lat, cityLng: r.country.lng, cityTz: r.country.tz })
+                            setCityResults([])
+                            setNeedCityForCountry('')
+                          }
+                        }}
+                        className="w-full text-left px-4 py-2.5 hover:bg-gold/10 transition-colors flex justify-between items-center">
+                        <span className="text-sm text-cream">{r.country.name}</span>
+                        <span className="text-[10px] text-text-muted/60">
+                          {r.isMultiTz ? '多時區，請選擇城市' : `UTC${r.country.tz >= 0 ? '+' : ''}${r.country.tz}`}
+                        </span>
+                      </button>
+                    ) : (
+                      <button key={`city-${r.city.name_en}-${idx}`} type="button"
+                        onClick={() => {
+                          setForm({ ...form, city: `${r.city.name}（${r.city.country}）`, cityLat: r.city.lat, cityLng: r.city.lng, cityTz: r.city.tz })
+                          setCityResults([])
+                          setNeedCityForCountry('')
+                        }}
+                        className="w-full text-left px-4 py-2.5 hover:bg-gold/10 transition-colors flex justify-between items-center">
+                        <span className="text-sm text-cream">{r.city.name} <span className="text-text-muted">({r.city.country})</span></span>
+                        <span className="text-[10px] text-text-muted/60">UTC{r.city.tz >= 0 ? '+' : ''}{r.city.tz}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {needCityForCountry && (
+                  <button type="button" onClick={() => { setNeedCityForCountry(''); setForm({ ...form, city: '' }); setCityResults([]) }}
+                    className="text-xs text-gold/60 hover:text-gold mt-1 underline">取消，重新選擇國家</button>
+                )}
+                {form.cityLat !== 0 && (
+                  <p className="text-[10px] text-text-muted/50 mt-1">經度 {form.cityLng.toFixed(2)}° | 時區 UTC{form.cityTz >= 0 ? '+' : ''}{form.cityTz} | 將自動校正真太陽時</p>
+                )}
               </div>
 
               <button type="submit" disabled={loading}
@@ -354,6 +480,11 @@ export default function NameToolPage() {
               </div>
             )}
 
+            {/* 速算提示 */}
+            <p className="text-center text-xs text-text-muted/50 leading-relaxed">
+              以上為日主速算概覽，完整報告將根據您的完整命盤做 15 系統個人化深度分析
+            </p>
+
             {/* 升級引導 */}
             <div className="rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(184,134,11,0.12), rgba(26,58,92,0.4))' }}>
               <div className="p-8 md:p-10">
@@ -375,7 +506,10 @@ export default function NameToolPage() {
                         year: form.year,
                         month: form.month,
                         day: form.day,
+                        hour: form.timeMode === 'exact' ? form.exactHour : form.hour,
+                        minute: form.timeMode === 'exact' ? form.exactMinute : '0',
                         gender: form.gender,
+                        timeMode: form.timeMode,
                       })
                       const label = idx === 0 ? '解鎖人生藍圖完整報告 $89' : '聚焦單一困惑深度分析 $39'
                       const cls = idx === 0
