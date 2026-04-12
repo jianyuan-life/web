@@ -1702,7 +1702,30 @@ export async function qualityGate(
     }
   }
 
-  // 2e. G15 家族藍圖必要章節檢查
+  // 2e. D 方案「心之所惑」必要章節檢查
+  if (planCode === 'D') {
+    const dRequired = [
+      { pattern: /你的問題/, name: '你的問題（客戶原文引用）' },
+      { pattern: /你的答案/, name: '你的答案（直接回答）' },
+      { pattern: /深入解析|命格.*看/, name: '深入解析' },
+      { pattern: /根源剖析|為什麼.*卡/, name: '根源剖析' },
+      { pattern: /你的路|怎麼走/, name: '你的路' },
+      { pattern: /好的地方/, name: '好的地方' },
+      { pattern: /需要注意/, name: '需要注意的地方' },
+      { pattern: /改善建議/, name: '改善建議' },
+      { pattern: /寫給.*的話/, name: '寫給你的話' },
+    ]
+    for (const sec of dRequired) {
+      if (!sec.pattern.test(reportContent)) {
+        warnings.push(`心之所惑缺少必要章節: ${sec.name}`)
+      }
+    }
+    if (reportContent.length < 8000) {
+      warnings.push(`心之所惑內容偏短: ${reportContent.length} 字（期望 > 8,000 字）`)
+    }
+  }
+
+  // 2f. G15 家族藍圖必要章節檢查
   if (planCode === 'G15') {
     const g15Required = [
       { pattern: /家族能量|能量圖譜|能量全貌/, name: '家族能量圖譜' },
@@ -1777,7 +1800,7 @@ export async function qualityGate(
 // ── Step 3.5: AI 自我審核（全文審查，用客戶視角評分）──
 export async function aiReviewReport(reportContent: string, planCode: string): Promise<{ score: number; issues: string[] }> {
   "use step";
-  if (!['C', 'R', 'E1', 'E2', 'G15'].includes(planCode)) return { score: 85, issues: [] }
+  if (!['C', 'D', 'R', 'E1', 'E2', 'G15'].includes(planCode)) return { score: 85, issues: [] }
 
   await emitProgress({ step: 'AI審核', progress: 72, message: '正在進行全文品質審核...' })
 
