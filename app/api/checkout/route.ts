@@ -72,8 +72,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '金額低於方案最低定價' }, { status: 400 })
     }
 
-    // 套用優惠碼折扣（伺服器端二次驗證）
-    let finalAmount = baseAmount
+    // 1. 檢查全網促銷活動
+    let promoDiscountPercent = 0
+    let promoName = ''
+    {
+      const supabase = getSupabase()
+      const now = new Date().toISOString()
+      const { data: promo } = await supabase
+        .from('promotions')
+        .select('name, discount_percent, applicable_plans')
+        .eq('is_active', true)
+        .lte('start_at', now)
+        .gte('end_at', now)
+        .order('discount_percent', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (promo) {
+        const planAllowed = !promo.applicable_plans || promo.applicable_plans.includes(planCode)
+        if (planAllowed) {
+          promoDiscountPercent = promo.discount_percent
+          promoName = promo.name
+        }
+      }
+    }
+
+    // 2. 驗證優惠碼
+    let couponDiscountPercent = 0
+    let couponFixedAmount = 0
+    let couponIsFree = false
     let verifiedCouponCode = ''
     if (couponCode) {
       const supabase = getSupabase()
@@ -93,14 +120,35 @@ export async function POST(req: NextRequest) {
         if (notExpired && notExhausted && planAllowed) {
           verifiedCouponCode = coupon.code
           if (coupon.discount_type === 'percentage') {
-            finalAmount = Math.round(baseAmount * (1 - coupon.discount_value / 100))
+            couponDiscountPercent = coupon.discount_value
           } else if (coupon.discount_type === 'fixed') {
-            finalAmount = Math.max(0, baseAmount - Math.round(coupon.discount_value * 100))
+            couponFixedAmount = Math.round(coupon.discount_value * 100)
           } else if (coupon.discount_type === 'free') {
-            finalAmount = 0
+            couponIsFree = true
           }
         }
       }
+    }
+
+    // 3. 計算最終金額：促銷 vs 優惠碼，取較高折扣（不疊加）
+    let finalAmount = baseAmount
+    if (couponIsFree) {
+      // 免費碼優先
+      finalAmount = 0
+    } else {
+      // 計算促銷折扣後金額
+      const promoAmount = promoDiscountPercent > 0
+        ? Math.round(baseAmount * (1 - promoDiscountPercent / 100))
+        : baseAmount
+      // 計算優惠碼折扣後金額
+      let couponAmount = baseAmount
+      if (couponDiscountPercent > 0) {
+        couponAmount = Math.round(baseAmount * (1 - couponDiscountPercent / 100))
+      } else if (couponFixedAmount > 0) {
+        couponAmount = Math.max(0, baseAmount - couponFixedAmount)
+      }
+      // 取較低金額（= 較高折扣）
+      finalAmount = Math.min(promoAmount, couponAmount)
     }
 
     // 免費方案：跳過 Stripe，直接建立訂單
@@ -241,6 +289,7 @@ export async function POST(req: NextRequest) {
     params.set('line_items[0][quantity]', '1')
     params.set('metadata[plan_code]', planCode)
     if (verifiedCouponCode) params.set('metadata[coupon_code]', verifiedCouponCode)
+    if (promoName) params.set('metadata[promotion]', promoName)
     // locale 單獨存，不佔 birth_data 500 字元額度
     if (locale) {
       params.set('metadata[locale]', locale)

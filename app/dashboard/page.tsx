@@ -53,6 +53,23 @@ function DashboardContent() {
   const [authFailed, setAuthFailed] = useState(false)
   // 追蹤剛完成的報告 ID（用於顯示完成提示動畫）
   const [justCompletedIds, setJustCompletedIds] = useState<Set<string>>(new Set())
+  // 已送過推播的報告 ID（避免重複通知）
+  const [notifiedIds] = useState<Set<string>>(() => new Set())
+
+  // 推播通知：報告完成時通知用戶
+  const sendNotification = (report: Report) => {
+    if (notifiedIds.has(report.id)) return
+    notifiedIds.add(report.id)
+    const planName = PLAN_NAMES[report.plan_code] || report.plan_code
+    if (Notification.permission === 'granted') {
+      new Notification('鑒源命理', {
+        body: `您的${planName}報告已完成！`,
+        icon: '/favicon.ico',
+      })
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission()
+    }
+  }
 
   // 建立帶 auth 的 fetch headers
   const getAuthHeaders = (): HeadersInit => {
@@ -240,6 +257,11 @@ function DashboardContent() {
       .then(rpts => {
         setReports(rpts)
         setLoading(false)
+        // 有 pending/generating 報告時，請求通知權限
+        const hasPendingReports = rpts.some((r: Report) => r.status === 'pending' || r.status === 'generating')
+        if (hasPendingReports && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+          Notification.requestPermission()
+        }
       })
       .catch(() => setLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -268,6 +290,8 @@ function DashboardContent() {
               newlyCompleted.forEach((r: Report) => next.add(r.id))
               return next
             })
+            // 推播通知
+            newlyCompleted.forEach((r: Report) => sendNotification(r))
             setTimeout(() => {
               setJustCompletedIds(prev => {
                 const next = new Set(prev)
@@ -313,6 +337,8 @@ function DashboardContent() {
               newlyCompleted.forEach((r: Report) => next.add(r.id))
               return next
             })
+            // 推播通知
+            newlyCompleted.forEach((r: Report) => sendNotification(r))
             setTimeout(() => {
               setJustCompletedIds(prev => {
                 const next = new Set(prev)

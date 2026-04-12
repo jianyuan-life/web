@@ -24,12 +24,16 @@ import {
   markReportFailed,
   closeProgressStream,
   buildAppendix,
+  setCurrentReportId,
   PLAN_SYSTEM_PROMPT,
   type BirthData,
 } from './steps'
 
 export async function generateReportWorkflow(reportId: string) {
   "use workflow";
+
+  // 設定全域 reportId，讓 emitProgress 能同步寫入 Supabase
+  setCurrentReportId(reportId)
 
   // Step 0: 從 Supabase 載入報告記錄
   let record

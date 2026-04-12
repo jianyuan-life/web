@@ -262,6 +262,165 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // === 推薦碼首次購買點數發放 ===
+    try {
+      if (customerEmail) {
+        // 1. 從 auth.users 找 user_id
+        const { data: authUser } = await supabase
+          .from('auth_users_view')
+          .select('id')
+          .eq('email', customerEmail)
+          .maybeSingle()
+
+        // 如果沒有 view，改用 auth.users（需 service role）
+        let userId = authUser?.id
+        if (!userId) {
+          const { data: { users }, error: listErr } = await supabase.auth.admin.listUsers()
+          if (!listErr && users) {
+            const matched = users.find((u: { email?: string }) => u.email?.toLowerCase() === customerEmail)
+            userId = matched?.id
+          }
+        }
+
+        if (userId) {
+          // 2. 查詢 referrals 表：是否有 status='registered' 的推薦記錄
+          const { data: referral } = await supabase
+            .from('referrals')
+            .select('id, referrer_user_id, referral_code')
+            .eq('referred_user_id', userId)
+            .eq('status', 'registered')
+            .maybeSingle()
+
+          if (referral) {
+            // 3. 確認是首次付費購買（paid_reports 中該 email 只有 1 筆）
+            const { count: reportCount } = await supabase
+              .from('paid_reports')
+              .select('id', { count: 'exact', head: true })
+              .eq('customer_email', customerEmail)
+              .in('status', ['completed', 'generating', 'pending'])
+
+            if (reportCount !== null && reportCount <= 1) {
+              const now = new Date().toISOString()
+              const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+              const referrerId = referral.referrer_user_id
+              const REFERRER_POINTS = 10
+              const REFERRED_POINTS = 5
+
+              // 更新 referrals 狀態
+              await supabase
+                .from('referrals')
+                .update({
+                  status: 'purchased',
+                  purchased_at: now,
+                  referrer_points_awarded: REFERRER_POINTS,
+                  referred_points_awarded: REFERRED_POINTS,
+                })
+                .eq('id', referral.id)
+
+              // 推薦人加點數（upsert）
+              const { data: referrerPoints } = await supabase
+                .from('user_points')
+                .select('id, balance, total_earned')
+                .eq('user_id', referrerId)
+                .maybeSingle()
+
+              if (referrerPoints) {
+                await supabase
+                  .from('user_points')
+                  .update({
+                    balance: (referrerPoints.balance || 0) + REFERRER_POINTS,
+                    total_earned: (referrerPoints.total_earned || 0) + REFERRER_POINTS,
+                  })
+                  .eq('user_id', referrerId)
+              } else {
+                await supabase
+                  .from('user_points')
+                  .insert({
+                    user_id: referrerId,
+                    balance: REFERRER_POINTS,
+                    total_earned: REFERRER_POINTS,
+                    total_used: 0,
+                  })
+              }
+
+              // 被推薦人加點數（upsert）
+              const { data: referredPoints } = await supabase
+                .from('user_points')
+                .select('id, balance, total_earned')
+                .eq('user_id', userId)
+                .maybeSingle()
+
+              if (referredPoints) {
+                await supabase
+                  .from('user_points')
+                  .update({
+                    balance: (referredPoints.balance || 0) + REFERRED_POINTS,
+                    total_earned: (referredPoints.total_earned || 0) + REFERRED_POINTS,
+                  })
+                  .eq('user_id', userId)
+              } else {
+                await supabase
+                  .from('user_points')
+                  .insert({
+                    user_id: userId,
+                    balance: REFERRED_POINTS,
+                    total_earned: REFERRED_POINTS,
+                    total_used: 0,
+                  })
+              }
+
+              // 寫入 point_transactions（含 balance_after）
+              const referrerNewBalance = (referrerPoints?.balance || 0) + REFERRER_POINTS
+              const referredNewBalance = (referredPoints?.balance || 0) + REFERRED_POINTS
+              await supabase.from('point_transactions').insert([
+                {
+                  user_id: referrerId,
+                  type: 'earn_referral',
+                  amount: REFERRER_POINTS,
+                  balance_after: referrerNewBalance,
+                  description: `推薦用戶首次購買獎勵`,
+                  reference_id: referral.id,
+                  expires_at: expiresAt,
+                },
+                {
+                  user_id: userId,
+                  type: 'earn_referral',
+                  amount: REFERRED_POINTS,
+                  balance_after: referredNewBalance,
+                  description: '透過推薦碼註冊並首次購買獎勵',
+                  reference_id: referral.id,
+                  expires_at: expiresAt,
+                },
+              ])
+
+              // 更新 referral_codes.total_referrals
+              if (referral.referral_code) {
+                const { data: codeRow } = await supabase
+                  .from('referral_codes')
+                  .select('total_referrals')
+                  .eq('code', referral.referral_code)
+                  .single()
+
+                if (codeRow) {
+                  await supabase
+                    .from('referral_codes')
+                    .update({ total_referrals: (codeRow.total_referrals || 0) + 1 })
+                    .eq('code', referral.referral_code)
+                }
+              }
+
+              console.log(`✅ 推薦碼點數發放完成：推薦人 ${referrerId} +${REFERRER_POINTS}點，被推薦人 ${userId} +${REFERRED_POINTS}點`)
+            } else {
+              console.log('ℹ️ 非首次購買，跳過推薦碼點數發放')
+            }
+          }
+        }
+      }
+    } catch (referralErr) {
+      // 推薦碼邏輯失敗不影響報告生成
+      console.error('⚠️ 推薦碼點數發放失敗（不影響報告生成）:', referralErr)
+    }
+
   }
 
   return NextResponse.json({ received: true })

@@ -106,6 +106,13 @@ function getSupabase() {
 }
 
 // ── 進度串流輔助 ──
+// 同時寫入 writable stream + Supabase generation_progress，讓前端能讀到真實進度
+let _currentReportId: string | null = null
+
+export function setCurrentReportId(id: string) {
+  _currentReportId = id
+}
+
 async function emitProgress(update: ProgressUpdate) {
   "use step";
   const writable = getWritable<ProgressUpdate>()
@@ -114,6 +121,34 @@ async function emitProgress(update: ProgressUpdate) {
     await writer.write(update)
   } finally {
     writer.releaseLock()
+  }
+
+  // 同步寫入 Supabase，讓前端 polling 能取得真實進度
+  if (_currentReportId) {
+    try {
+      const supabase = getSupabase()
+      const { data } = await supabase
+        .from('paid_reports')
+        .select('generation_progress')
+        .eq('id', _currentReportId)
+        .single()
+      const existing = (data?.generation_progress as Record<string, unknown>) || {}
+      await supabase
+        .from('paid_reports')
+        .update({
+          generation_progress: {
+            ...existing,
+            step: update.step,
+            progress: update.progress,
+            message: update.message,
+            progress_updated_at: new Date().toISOString(),
+          },
+        })
+        .eq('id', _currentReportId)
+    } catch (e) {
+      // 進度更新失敗不阻塞報告生成
+      console.warn(`[emitProgress] Supabase 進度寫入失敗:`, e)
+    }
   }
 }
 

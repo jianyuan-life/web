@@ -101,15 +101,46 @@ function getPhaseIndex(pct: number) {
   return 3
 }
 
-export default function ReportProgress({ createdAt, planCode }: { createdAt: string; planCode: string }) {
+interface GenerationProgress {
+  step?: string
+  progress?: number
+  message?: string
+  progress_updated_at?: string
+  [key: string]: unknown
+}
+
+export default function ReportProgress({ createdAt, planCode, generationProgress }: {
+  createdAt: string
+  planCode: string
+  generationProgress?: GenerationProgress | null
+}) {
   const [pct, setPct] = useState(0)
   const [completed, setCompleted] = useState(0)
+  const [realMessage, setRealMessage] = useState<string | null>(null)
 
   const cfg = PLAN_CONFIG[planCode] ?? PLAN_CONFIG['C']
   const systems = ALL_SYSTEMS.slice(0, cfg.systems)
   const totalMs = cfg.totalMinutes * 60 * 1000
 
+  // 判斷真實進度是否有效（30 秒內有更新）
+  const hasRealProgress = !!(
+    generationProgress?.progress != null &&
+    generationProgress?.progress_updated_at &&
+    (Date.now() - new Date(generationProgress.progress_updated_at).getTime()) < 120_000
+  )
+
   useEffect(() => {
+    if (hasRealProgress && generationProgress) {
+      // 使用後端真實進度
+      const realPct = Math.min(Math.max(generationProgress.progress || 0, 0), 97)
+      setPct(realPct)
+      setCompleted(Math.min(Math.floor((realPct / 100) * cfg.systems), cfg.systems - 1))
+      setRealMessage(generationProgress.message || null)
+      return
+    }
+
+    // Fallback：用時間比例估算進度
+    setRealMessage(null)
     const update = () => {
       const createdTime = new Date(createdAt).getTime()
       // 防護：createdAt 無效時不計算進度
@@ -125,7 +156,7 @@ export default function ReportProgress({ createdAt, planCode }: { createdAt: str
     update()
     const timer = setInterval(update, 15_000)
     return () => clearInterval(timer)
-  }, [createdAt, totalMs, cfg.systems])
+  }, [createdAt, totalMs, cfg.systems, hasRealProgress, generationProgress])
 
   const phases = getPhases(planCode)
   const phaseIdx = getPhaseIndex(pct)
@@ -133,6 +164,8 @@ export default function ReportProgress({ createdAt, planCode }: { createdAt: str
   const createdTime = new Date(createdAt).getTime()
   const elapsedMin = isNaN(createdTime) ? 0 : Math.round((Date.now() - createdTime) / 60000)
   const remainMin = Math.max(cfg.totalMinutes - elapsedMin, 1)
+  // 如果有真實訊息就用真實訊息，否則用階段描述
+  const progressDesc = realMessage || phase.desc
 
   return (
     <div className="mt-4 space-y-4">
