@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import * as gtag from '@/lib/gtag'
+import * as fbpixel from '@/lib/fbpixel'
 import { searchCities, searchLocations, type City, type LocationSearchResult, type Country } from '@/lib/cities'
 import {
   PLANS, D_TOPICS, TIME_BLOCKS,
@@ -467,6 +468,12 @@ export function useCheckoutForm() {
           value: finalPrice,
           plan_code: planCode,
           plan_name: plan.name,
+        })
+        // Meta Pixel: InitiateCheckout
+        fbpixel.trackEvent('InitiateCheckout', {
+          currency: 'USD',
+          value: finalPrice,
+          content_name: plan.name,
         })
         window.location.href = data.url
       } else {

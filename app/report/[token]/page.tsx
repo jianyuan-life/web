@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import ReportClientButtons from './ReportClientButtons'
 import ReportTracker from './ReportTracker'
 import ReportFeedback from '@/components/ReportFeedback'
+import ShareCard from '@/components/ShareCard'
 import SectionExpander from '@/components/SectionExpander'
 
 // ============================================================
@@ -1164,6 +1165,16 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               下載 PDF 完整報告
             </a>
           </div>
+        )}
+
+        {/* ──── 分享精華卡片 ──── */}
+        {report.status === 'completed' && (
+          <ShareCard
+            planCode={report.plan_code}
+            clientName={report.client_name}
+            aiContent={report.report_result?.ai_content || ''}
+            top5Timings={report.report_result?.top5_timings}
+          />
         )}
 
         {/* ──── 客戶反饋 ──── */}

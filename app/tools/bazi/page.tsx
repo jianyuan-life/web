@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import * as gtag from '@/lib/gtag'
+import * as fbpixel from '@/lib/fbpixel'
 import { searchCities, searchLocations, type City, type LocationSearchResult } from '@/lib/cities'
 import FamilyMemberPicker from '@/components/checkout/FamilyMemberPicker'
 import type { SavedFamilyMember } from '@/components/FamilyMembersManager'
@@ -125,7 +127,11 @@ export default function FreeToolPage() {
 
       // 短暫停留讓用戶看到最後一步完成
       await new Promise(r => setTimeout(r, 500))
-      setResult(await res.json())
+      const resultData = await res.json()
+      setResult(resultData)
+      // GA4 + Meta Pixel: 免費工具提交 = Lead
+      gtag.event('generate_lead', { event_category: 'free_tool', tool: 'bazi' })
+      fbpixel.trackEvent('Lead', { content_name: '免費命理速算' })
     } catch (err: unknown) {
       clearInterval(stepInterval)
       setError(err instanceof Error ? err.message : '分析失敗')

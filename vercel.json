@@ -14,6 +14,14 @@
     {
       "path": "/api/cron/expire-points",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/feedback-reminder",
+      "schedule": "0 */4 * * *"
+    },
+    {
+      "path": "/api/cron/followup-email",
+      "schedule": "0 */1 * * *"
     }
   ]
 }

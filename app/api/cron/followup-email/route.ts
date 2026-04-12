@@ -1,0 +1,228 @@
+// ============================================================
+// Cron 跟進信端點 — 報告完成 3 天後自動發送跟進郵件
+// 每小時由 Vercel Cron 呼叫一次
+//
+// 設計邏輯：
+// 1. 查詢 status = 'completed' 且 updated_at 在 70-74 小時前的報告
+// 2. 排除 generation_progress.followup_sent = true 的已發送記錄
+// 3. 從報告內容提取 3 個重點發現
+// 4. 發送跟進信 + 出門訣引導 CTA
+// 5. 標記 followup_sent = true
+// ============================================================
+
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { Resend } from 'resend'
+
+export const maxDuration = 60
+
+const PLAN_NAMES: Record<string, string> = {
+  C: '人生藍圖', D: '心之所惑', G15: '家族藍圖',
+  R: '合否？', E1: '事件出門訣', E2: '月盤出門訣',
+}
+
+// 從報告內容提取 3 個重點發現
+function extractKeyFindings(planCode: string, reportContent: string): string[] {
+  const findings: string[] = []
+  const text = (reportContent || '').replace(/[#*`]/g, '')
+
+  if (planCode === 'C') {
+    // 人生藍圖：命格角色 + 年度關鍵詞 + 天賦特質
+    const role = text.match(/命格角色[：:]\s*(.{2,20})/)?.[1]
+      || text.match(/角色名稱[：:]\s*(.{2,20})/)?.[1]
+    if (role) findings.push(`你的命格角色是「${role.trim()}」— 這背後藏著你的核心天賦`)
+
+    const keyword = text.match(/年度關鍵[詞词][：:]\s*(.{2,30})/)?.[1]
+    if (keyword) findings.push(`今年的年度關鍵詞：${keyword.trim()}`)
+
+    const talent = text.match(/(?:天賦|核心優勢|最大的優勢)[：:]\s*(.{5,40})/)?.[1]
+    if (talent) findings.push(talent.trim().slice(0, 40))
+  } else if (planCode === 'D') {
+    // 心之所惑：提取核心分析要點
+    const core = text.match(/(?:核心分析|深度分析|關鍵發現)[：:]\s*(.{10,50})/)?.[1]
+    if (core) findings.push(core.trim().slice(0, 45))
+    findings.push('多個命理系統交叉比對了你的疑問')
+  } else if (planCode === 'G15') {
+    findings.push('家族成員之間的能量互動模式已解析完成')
+    findings.push('每位成員的角色定位與互動建議已整理')
+  } else if (planCode === 'E1' || planCode === 'E2') {
+    const bestTime = text.match(/(?:最佳|第一|Top\s*1)[吉時时]*[：:]\s*(.{2,20})/)?.[1]
+    if (bestTime) findings.push(`最佳吉時：${bestTime.trim()}`)
+    const direction = text.match(/(?:最佳|建議)方位[：:]\s*(.{2,10})/)?.[1]
+    if (direction) findings.push(`建議方位：${direction.trim()}`)
+    findings.push('奇門遁甲 25+ 步精算完成，吉時排名已確定')
+  } else if (planCode === 'R') {
+    findings.push('雙方命格交叉比對完成，互動模式已解析')
+    findings.push('關係中的契合點與需要注意的地方已整理')
+  }
+
+  // 通用提取：嘗試從報告結論提取
+  if (findings.length < 3) {
+    const conclusion = text.match(/(?:總結|結語|最後)[：:]\s*(.{10,60})/)?.[1]
+    if (conclusion && findings.length < 3) {
+      findings.push(conclusion.trim().slice(0, 50))
+    }
+  }
+
+  // 保底
+  while (findings.length < 3) {
+    const fallbacks = [
+      '報告中有針對你個人的具體行動建議',
+      '東西方命理系統已完成交叉驗證',
+      '你的報告包含了深度個人化分析',
+    ]
+    const f = fallbacks[findings.length] || fallbacks[0]
+    if (!findings.includes(f)) findings.push(f)
+    else break
+  }
+
+  return findings.slice(0, 3)
+}
+
+export async function GET(req: NextRequest) {
+  // 驗證 cron secret
+  const authHeader = req.headers.get('authorization')
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+  )
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
+
+  // 查詢 70-74 小時前完成的報告（約 3 天，4 小時視窗避免漏發）
+  const now = Date.now()
+  const seventyHoursAgo = new Date(now - 70 * 60 * 60 * 1000).toISOString()
+  const seventyFourHoursAgo = new Date(now - 74 * 60 * 60 * 1000).toISOString()
+
+  const { data: reports, error: queryErr } = await supabase
+    .from('paid_reports')
+    .select('id, client_name, plan_code, customer_email, access_token, report_result, generation_progress, birth_data')
+    .eq('status', 'completed')
+    .lt('updated_at', seventyHoursAgo)
+    .gt('updated_at', seventyFourHoursAgo)
+    .order('updated_at', { ascending: true })
+    .limit(50)
+
+  if (queryErr) {
+    console.error('❌ 查詢跟進信報告失敗:', queryErr)
+    return NextResponse.json({ error: '查詢失敗' }, { status: 500 })
+  }
+
+  let sentCount = 0
+  let skippedCount = 0
+
+  const resend = new Resend(process.env.RESEND_API_KEY || '')
+
+  for (const report of (reports || [])) {
+    // 排除已發過跟進信的
+    const progress = report.generation_progress as Record<string, unknown> | null
+    if (progress?.followup_sent) {
+      skippedCount++
+      continue
+    }
+
+    // 排除無 email 的
+    if (!report.customer_email) {
+      skippedCount++
+      continue
+    }
+
+    // 出門訣報告不發跟進信（已含出門訣引導 CTA，改為引導其他方案）
+    const planCode = report.plan_code || 'C'
+    const planName = PLAN_NAMES[planCode] || '命理分析'
+    const clientName = report.client_name || '您'
+    const isChumenji = planCode === 'E1' || planCode === 'E2'
+
+    // 提取報告內容
+    const reportContent = typeof report.report_result === 'string'
+      ? report.report_result
+      : JSON.stringify(report.report_result || '')
+
+    const findings = extractKeyFindings(planCode, reportContent)
+    const reportUrl = `${siteUrl}/report/${report.access_token}`
+
+    // 底部 CTA：非出門訣方案引導出門訣；出門訣方案引導人生藍圖
+    const bottomCta = isChumenji
+      ? { text: '想更深入了解自己的命格？', link: `${siteUrl}/pricing`, label: '探索人生藍圖 →' }
+      : { text: '想把握最佳時機行動？', link: `${siteUrl}/pricing`, label: '了解出門訣 →' }
+
+    const birthData = report.birth_data as Record<string, string> | null
+    const isCN = birthData?.locale === 'zh-CN'
+    const emailFont = isCN
+      ? "'PingFang SC','Microsoft YaHei','Noto Sans SC',sans-serif"
+      : "'PingFang TC','Microsoft JhengHei','Noto Sans TC',sans-serif"
+
+    try {
+      await resend.emails.send({
+        from: '鑒源命理 <noreply@jianyuan.life>',
+        to: report.customer_email,
+        subject: `${clientName}，你報告中最重要的 3 個發現`,
+        html: `
+          <div style="font-family: ${emailFont}; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #333;">
+            <!-- 品牌頭部 -->
+            <div style="text-align: center; margin-bottom: 24px;">
+              <span style="font-size: 18px; font-weight: bold; color: #1a1a2e; letter-spacing: 4px;">鑒 源</span>
+              <div style="font-size: 11px; color: #999; margin-top: 4px;">JIANYUAN</div>
+            </div>
+
+            <h2 style="color: #1a1a2e; margin-bottom: 8px; font-size: 18px;">${clientName}，你的「${planName}」報告中有幾個重要發現</h2>
+            <p style="color: #666; font-size: 14px; margin-bottom: 24px;">你的報告已完成 3 天，以下是我們從分析中挑出的 3 個關鍵重點：</p>
+
+            <!-- 3 個重點發現 -->
+            ${findings.map((f, i) => `
+              <div style="background: #f8f6f0; padding: 14px 16px; border-radius: 8px; margin-bottom: 12px; border-left: 3px solid #c9a84c;">
+                <span style="color: #c9a84c; font-weight: bold; margin-right: 8px;">${i + 1}.</span>
+                <span style="color: #333; font-size: 14px;"><strong>${f}</strong></span>
+              </div>
+            `).join('')}
+
+            <p style="color: #666; font-size: 14px; margin-top: 20px;">這些只是報告中的冰山一角。完整報告裡還有更多個人化的深度分析與行動建議。</p>
+
+            <!-- 主要 CTA：回去看報告 -->
+            <div style="text-align: center; margin: 28px 0;">
+              <a href="${reportUrl}" style="display: inline-block; background: #c9a84c; color: #1a1a2e; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: bold; font-size: 15px;">回顧完整報告 →</a>
+            </div>
+
+            <!-- 分隔線 -->
+            <hr style="border: none; border-top: 1px solid #eee; margin: 28px 0;" />
+
+            <!-- 底部引導 CTA -->
+            <div style="background: #faf8f3; padding: 16px; border-radius: 8px; text-align: center;">
+              <p style="color: #666; font-size: 13px; margin-bottom: 12px;">${bottomCta.text}</p>
+              <a href="${bottomCta.link}" style="color: #c9a84c; font-weight: bold; text-decoration: none; font-size: 14px;">${bottomCta.label}</a>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid #eee; margin: 28px 0;" />
+            <p style="font-size: 11px; color: #bbb; text-align: center;">鑒源命理 jianyuan.life<br/>如不想收到此類郵件，請回覆此信告知。</p>
+          </div>
+        `,
+      })
+
+      // 標記已發送
+      const existing = (progress || {}) as Record<string, unknown>
+      await supabase.from('paid_reports').update({
+        generation_progress: {
+          ...existing,
+          followup_sent: true,
+          followup_sent_at: new Date().toISOString(),
+        },
+      }).eq('id', report.id)
+
+      sentCount++
+      console.log(`✅ 跟進信已發送: ${report.customer_email} (${planName})`)
+    } catch (emailErr) {
+      console.error(`❌ 跟進信發送失敗 ${report.id}:`, emailErr)
+    }
+  }
+
+  return NextResponse.json({
+    message: '跟進信處理完成',
+    sentCount,
+    skippedCount,
+    totalChecked: reports?.length || 0,
+  })
+}

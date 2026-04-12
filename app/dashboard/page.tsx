@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { supabase } from '@/lib/supabase'
+import * as gtag from '@/lib/gtag'
+import * as fbpixel from '@/lib/fbpixel'
 import ReportProgress from '@/components/ReportProgress'
 import FamilyMembersManager from '@/components/FamilyMembersManager'
 import ReferralCard from '@/components/ReferralCard'
@@ -60,6 +62,8 @@ function DashboardContent() {
   const [authFailed, setAuthFailed] = useState(false)
   // 追蹤剛完成的報告 ID（用於顯示完成提示動畫）
   const [justCompletedIds, setJustCompletedIds] = useState<Set<string>>(new Set())
+  // 付款成功事件只觸發一次
+  const purchaseTracked = useRef(false)
   // 已送過推播的報告 ID（避免重複通知）
   const [notifiedIds] = useState<Set<string>>(() => new Set())
 
@@ -273,6 +277,31 @@ function DashboardContent() {
       .catch(() => setLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userEmail, stripeSessionId])
+
+  // 付款成功時觸發 GA4 purchase + Meta Purchase 事件（只觸發一次）
+  useEffect(() => {
+    if (!paymentSuccess || loading || purchaseTracked.current) return
+    if (reports.length === 0) return
+    purchaseTracked.current = true
+    // 取最新一筆報告的金額與方案
+    const latestReport = reports[0]
+    const value = latestReport?.amount_usd || 0
+    const planCode = latestReport?.plan_code || ''
+    const planName = PLAN_NAMES[planCode] || planCode
+    // GA4 purchase 事件
+    gtag.event('purchase', {
+      currency: 'USD',
+      value,
+      plan_code: planCode,
+      plan_name: planName,
+    })
+    // Meta Pixel Purchase 事件
+    fbpixel.trackEvent('Purchase', {
+      currency: 'USD',
+      value,
+      content_name: planName,
+    })
+  }, [paymentSuccess, loading, reports])
 
   // 付款成功後輪詢等待報告生成（5秒間隔，60分鐘上限）
   useEffect(() => {

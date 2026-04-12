@@ -174,24 +174,86 @@ export async function POST(req: NextRequest) {
           const resend = new Resend(process.env.RESEND_API_KEY || '')
           const planName = PLAN_NAMES[planCode] || planCode
           const dashboardUrl = `${siteUrl}/dashboard?session_id=${session.id}`
+
+          // 組裝客戶填寫的資料確認區塊
+          const clientName = birthData?.name || birthData?.client_name || ''
+          const orderInfoRows: string[] = []
+          if (clientName) orderInfoRows.push(`<tr><td style="color:#999;padding:4px 12px 4px 0;white-space:nowrap;">姓名</td><td style="padding:4px 0;">${clientName}</td></tr>`)
+
+          // 出生日期
+          const birthDate = birthData?.birthDate || birthData?.birth_date || ''
+          if (birthDate) orderInfoRows.push(`<tr><td style="color:#999;padding:4px 12px 4px 0;white-space:nowrap;">出生日期</td><td style="padding:4px 0;">${birthDate}</td></tr>`)
+
+          // 出生時辰
+          const birthTime = birthData?.birthTime || birthData?.birth_time || birthData?.time || ''
+          if (birthTime) orderInfoRows.push(`<tr><td style="color:#999;padding:4px 12px 4px 0;white-space:nowrap;">出生時辰</td><td style="padding:4px 0;">${birthTime}</td></tr>`)
+
+          // 出生地區
+          const birthPlace = birthData?.birthCity || birthData?.birth_city || birthData?.city || birthData?.region || ''
+          if (birthPlace) orderInfoRows.push(`<tr><td style="color:#999;padding:4px 12px 4px 0;white-space:nowrap;">出生地區</td><td style="padding:4px 0;">${birthPlace}</td></tr>`)
+
+          // R方案（合否？）顯示雙方姓名
+          if (planCode === 'R' && birthData?.members && Array.isArray(birthData.members)) {
+            const memberNames = (birthData.members as Array<{ name?: string }>).map(m => m.name).filter(Boolean).join(' × ')
+            if (memberNames) orderInfoRows.push(`<tr><td style="color:#999;padding:4px 12px 4px 0;white-space:nowrap;">比對對象</td><td style="padding:4px 0;">${memberNames}</td></tr>`)
+          }
+
+          // G15方案（家族藍圖）顯示家族成員
+          if (planCode === 'G15') {
+            const familyNames = birthData?.member_names
+              ? (birthData.member_names as string[]).filter(Boolean).join('、')
+              : birthData?.members
+              ? (birthData.members as Array<{ name?: string }>).map(m => m.name).filter(Boolean).join('、')
+              : ''
+            if (familyNames) orderInfoRows.push(`<tr><td style="color:#999;padding:4px 12px 4px 0;white-space:nowrap;">家族成員</td><td style="padding:4px 0;">${familyNames}</td></tr>`)
+          }
+
+          // D方案（心之所惑）顯示主題
+          const topic = birthData?.topic || birthData?.analysis_topic || ''
+          if (topic) orderInfoRows.push(`<tr><td style="color:#999;padding:4px 12px 4px 0;white-space:nowrap;">分析主題</td><td style="padding:4px 0;">${topic}</td></tr>`)
+
+          // 出門訣顯示事件
+          if ((planCode === 'E1' || planCode === 'E2') && (birthData?.event_description || birthData?.eventDescription)) {
+            const eventDesc = (birthData.event_description || birthData.eventDescription || '') as string
+            if (eventDesc) orderInfoRows.push(`<tr><td style="color:#999;padding:4px 12px 4px 0;white-space:nowrap;">事件描述</td><td style="padding:4px 0;">${eventDesc.slice(0, 50)}</td></tr>`)
+          }
+
+          const orderInfoHtml = orderInfoRows.length > 0
+            ? `
+              <div style="background: #faf8f3; padding: 16px; border-radius: 8px; margin: 16px 0;">
+                <p style="font-size: 13px; color: #999; margin: 0 0 8px 0;">您填寫的資料確認：</p>
+                <table style="font-size: 14px; color: #333; border-collapse: collapse;">${orderInfoRows.join('')}</table>
+              </div>
+            `
+            : ''
+
           await resend.emails.send({
             from: '鑒源命理 <noreply@jianyuan.life>',
             to: customerEmail,
-            subject: `已收到您的訂單 — ${planName}`,
+            subject: `${clientName || '您'}，已收到您的「${planName}」訂單`,
             html: `
-              <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #333;">
-                <h2 style="color: #1a1a2e; margin-bottom: 16px;">感謝您的購買</h2>
-                <p>您好，</p>
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Microsoft JhengHei', sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #333;">
+                <!-- 品牌頭部 -->
+                <div style="text-align: center; margin-bottom: 24px;">
+                  <span style="font-size: 18px; font-weight: bold; color: #1a1a2e; letter-spacing: 4px;">鑒 源</span>
+                  <div style="font-size: 11px; color: #999; margin-top: 4px;">JIANYUAN</div>
+                </div>
+
+                <h2 style="color: #1a1a2e; margin-bottom: 16px; font-size: 18px;">感謝您的購買</h2>
+                <p>${clientName ? `${clientName}，您好！` : '您好！'}</p>
                 <p>我們已收到您的<strong>「${planName}」</strong>訂單，系統正在啟動分析。</p>
+
+                ${orderInfoHtml}
+
                 <p style="background: #f8f6f0; padding: 16px; border-radius: 8px; border-left: 3px solid #c9a84c;">
                   報告預計 <strong>30-60 分鐘</strong>內完成。完成後會再寄信通知您。<br/>
                   您也可以隨時到儀表板查看進度。
                 </p>
-                <p style="margin-top: 24px;">
+                <p style="margin-top: 24px; text-align: center;">
                   <a href="${dashboardUrl}" style="display: inline-block; background: #c9a84c; color: #1a1a2e; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold;">查看報告進度</a>
                 </p>
                 <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
-                <p style="font-size: 12px; color: #999;">鑒源命理 jianyuan.life — 十五大命理系統精準分析</p>
+                <p style="font-size: 11px; color: #bbb; text-align: center;">鑒源命理 jianyuan.life</p>
               </div>
             `,
           })
