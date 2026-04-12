@@ -43,6 +43,12 @@ const PUBLIC_PATTERNS = [
   /coupons\/validate/,                     // 優惠碼驗證（客戶端呼叫）
   /report-progress/,                       // 報告進度查詢（SSE，含 runId）
   /\/feedback\/route\.ts$/,                // 客戶反饋提交
+  /\/report-view\//,                       // 報告瀏覽追蹤（不需認證，報告頁自帶 token）
+  /\/promotions\/active/,                  // 促銷活動查詢（前端定價頁用）
+  /\/referral\/validate/,                  // 推薦碼驗證（註冊頁用，不需登入）
+  /\/referral\/my-code/,                   // 取得推薦碼（需登入，cookie auth）
+  /\/points\/balance/,                     // 點數餘額查詢（需登入，cookie auth）
+  /\/points\/use/,                         // 點數折抵（需登入，cookie auth）
 ]
 
 // 需要 ADMIN_KEY 的端點
