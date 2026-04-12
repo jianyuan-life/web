@@ -452,7 +452,7 @@ export function useCheckoutForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           planCode,
-          totalPrice: ['G15', 'R'].includes(planCode) ? finalPrice : undefined,
+          totalPrice: ['G15', 'R'].includes(planCode) ? totalPrice : undefined,
           birthData,
           locale: userLocale,
           couponCode: couponApplied?.code || undefined,
