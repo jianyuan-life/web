@@ -1676,11 +1676,15 @@ export async function qualityGate(
   // 2d. R 方案「合否？」必要章節檢查
   if (planCode === 'R') {
     const rRequired = [
-      { pattern: /相容度總評/, name: '相容度總評' },
-      { pattern: /好的地方/, name: '好的地方' },
-      { pattern: /需要注意/, name: '需要注意的地方' },
-      { pattern: /改善建議/, name: '改善建議' },
+      { pattern: /你們的問題|關係描述/, name: '你們的問題' },
+      { pattern: /你們的答案|合否結論/, name: '你們的答案' },
+      { pattern: /化學反應|合盤分析/, name: '化學反應' },
+      { pattern: /好的地方|最好的/, name: '好的地方' },
+      { pattern: /需要注意|最該注意/, name: '需要注意的地方' },
+      { pattern: /改善建議|關係處方/, name: '改善建議' },
       { pattern: /刻意練習/, name: '刻意練習' },
+      { pattern: /流年|2026|2027/, name: '關係流年' },
+      { pattern: /寫給.*的話/, name: '寫給你們的話' },
     ]
     for (const sec of rRequired) {
       if (!sec.pattern.test(reportContent)) {

@@ -331,12 +331,29 @@ function renderInlineMarkdown(text: string): string {
   let html = escapeHtml(text)
     // 清理 Markdown 殘留和 prompt 結構標籤
     .replace(/^---+$/gm, '')
-    .replace(/^\|[-:]+\|[-:| ]*$/gm, '') // 表格分隔線
-    // Markdown 表格數據行 → 可讀格式（移除首尾 | 後用 ｜ 分隔）
+    .replace(/^\|[-:]+\|[-:| ]*$/gm, '___TABLE_SEP___') // 標記表格分隔線
+    // Markdown 表格 → 正式 HTML table
     .replace(/^\|(.+)\|$/gm, (_m: string, inner: string) => {
       const cells = inner.split('|').map(c => c.trim()).filter(Boolean)
-      return '<div style="padding:6px 12px;margin:4px 0;border-radius:6px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);font-size:13px;line-height:1.8">' + cells.join(' ｜ ') + '</div>'
+      const cellsHtml = cells.map(c => {
+        const bold = c.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        return `<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;line-height:1.7">${bold}</td>`
+      }).join('')
+      return `<tr style="transition:background 0.2s" onmouseover="this.style.background='rgba(201,168,76,0.05)'" onmouseout="this.style.background='transparent'">${cellsHtml}</tr>`
     })
+    // 把連續的 <tr> 包成 <table>
+    .replace(/((?:<tr[^]*?<\/tr>\s*)+)/g, (_m: string, rows: string) => {
+      // 如果第一行後面緊跟 ___TABLE_SEP___，第一行是表頭
+      const cleanRows = rows.replace(/___TABLE_SEP___\s*/g, '')
+      const trList = cleanRows.match(/<tr[^]*?<\/tr>/g) || []
+      if (trList.length === 0) return ''
+      // 第一行當表頭
+      const firstRow = trList[0] || ''
+      const headerRow = firstRow.replace(/<td/g, '<th').replace(/<\/td>/g, '</th>').replace(/style="[^"]*"/g, 'style="padding:10px 14px;border-bottom:2px solid rgba(201,168,76,0.3);font-size:12px;font-weight:600;color:rgba(201,168,76,0.8);text-align:left;white-space:nowrap"')
+      const bodyRows = trList.slice(1).join('')
+      return `<div style="overflow-x:auto;margin:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><table style="width:100%;border-collapse:collapse">${headerRow}${bodyRows}</table></div>`
+    })
+    .replace(/___TABLE_SEP___/g, '')
     .replace(/^→ 完整分析請繼續閱讀.*$/gm, '')
     // 清理所有 H1 標題（# 開頭）— 前端不顯示 H1 原始 markdown
     .replace(/^# .+$/gm, '')
