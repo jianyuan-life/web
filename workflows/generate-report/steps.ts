@@ -1722,7 +1722,7 @@ export async function qualityGate(
       }
     }
     // 內容長度檢查（依家庭人數，對齊 Prompt 字數要求）
-    const memberCount = analysesCount || 2
+    const memberCount = systemsCount || 2
     const minG15Length = memberCount <= 2 ? 8000 : memberCount <= 3 ? 10000 : 12000
     if (reportContent.length < minG15Length) {
       warnings.push(`家族藍圖內容偏短: ${reportContent.length} 字（期望 > ${minG15Length} 字）`)
