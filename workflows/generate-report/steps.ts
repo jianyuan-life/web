@@ -1707,8 +1707,12 @@ export async function qualityGate(
     const g15Required = [
       { pattern: /家族能量|能量圖譜|能量全貌/, name: '家族能量圖譜' },
       { pattern: /互動關係|成員互動|互動.*分析/, name: '成員互動關係深度分析' },
+      { pattern: /好的地方/, name: '好的地方' },
+      { pattern: /需要注意/, name: '需要注意的地方' },
+      { pattern: /改善建議/, name: '改善建議' },
+      { pattern: /刻意練習/, name: '刻意練習' },
       { pattern: /溝通模式/, name: '家庭溝通模式' },
-      { pattern: /家運走勢|家運/, name: '家運走勢' },
+      { pattern: /家族流年|流年運勢|家運走勢|家運/, name: '家族流年運勢' },
       { pattern: /行動指南|家族行動/, name: '家族行動指南' },
       { pattern: /寫給.*家|寫給這個家/, name: '寫給這個家的話' },
     ]
@@ -1717,10 +1721,17 @@ export async function qualityGate(
         warnings.push(`家族藍圖缺少必要章節: ${sec.name}`)
       }
     }
-    // 內容長度檢查（依家庭人數）
-    if (reportContent.length < 4000) {
-      warnings.push(`家族藍圖內容偏短: ${reportContent.length} 字（期望 > 4,000 字）`)
+    // 內容長度檢查（依家庭人數，對齊 Prompt 字數要求）
+    const memberCount = analysesCount || 2
+    const minG15Length = memberCount <= 2 ? 8000 : memberCount <= 3 ? 10000 : 12000
+    if (reportContent.length < minG15Length) {
+      warnings.push(`家族藍圖內容偏短: ${reportContent.length} 字（期望 > ${minG15Length} 字）`)
     }
+  }
+
+  // 2f. C 方案字數下限（預期 30,000+ 字）
+  if (planCode === 'C' && reportContent.length < 20000) {
+    warnings.push(`人生藍圖內容偏短: ${reportContent.length} 字（期望 > 20,000 字）`)
   }
 
   // 3. 禁止字眼檢查（命理報告禁用語）
@@ -1730,6 +1741,12 @@ export async function qualityGate(
     { pattern: /前世業障/, replacement: '命格中的成長課題' },
     { pattern: /別想太多/, replacement: '你的感受是合理的' },
     { pattern: /想開一點/, replacement: '你的感受是合理的' },
+    { pattern: /跳過/, replacement: '（不應出現在報告中）' },
+    { pattern: /數據不足/, replacement: '（不應出現在報告中）' },
+    { pattern: /待分析/, replacement: '（不應出現在報告中）' },
+    { pattern: /不適用/, replacement: '（不應出現在報告中）' },
+    { pattern: /__TABLE__/, replacement: '（排盤原始標記外洩）' },
+    { pattern: /從命理角度來看/, replacement: '（廢話，整篇都是命理）' },
   ]
   for (const fp of forbiddenPatterns) {
     if (fp.pattern.test(reportContent)) {
