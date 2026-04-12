@@ -1446,7 +1446,7 @@ export async function aiGenerateR(
     const analyses = calc.analyses || []
     userPrompt += `${analyses.length} 套系統排盤數據：\n`
     for (const a of analyses.slice(0, 15)) {
-      userPrompt += `\n【${a.system}】評分：${a.score}分`
+      userPrompt += `\n【${a.system}】`
       if (a.summary) userPrompt += `\n摘要：${a.summary}`
       if (a.good_points?.length) {
         userPrompt += `\n好的地方：`

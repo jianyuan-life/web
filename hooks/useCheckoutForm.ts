@@ -105,7 +105,7 @@ export function useCheckoutForm() {
       return g15Selected.length >= 2
     }
     if (planCode === 'R') {
-      const allMembersValid = rMembers.every(m => m.name.trim() !== '' && (m.birthCity || '').trim() !== '')
+      const allMembersValid = rMembers.every(m => m.name.trim() !== '' && (m.birthCity || '').trim() !== '' && (m.cityLat || 0) !== 0)
       return allMembersValid && rRelationDesc.trim() !== ''
     }
     // 單人表單驗證
