@@ -1,5 +1,6 @@
 import PriceTag from '@/components/PriceTag'
 import PricingButton from '@/components/PricingButton'
+import { PromotionTopBanner, PromotionPrice } from '@/components/PromotionBanner'
 
 const PLANS = {
   personal: [
@@ -74,7 +75,9 @@ function Section({ title, subtitle, plans }: { title: string; subtitle: string; 
               </p>
             )}
             <div className="mb-4">
-              <PriceTag usd={plan.price} size="lg" />
+              <PromotionPrice planCode={plan.code} originalPrice={plan.price}>
+                <PriceTag usd={plan.price} size="lg" />
+              </PromotionPrice>
               {plan.addPrice && <span className="text-xs text-text-muted ml-2">加人 +${plan.addPrice}/人</span>}
             </div>
             <ul className="space-y-2 mb-6 flex-1">
@@ -102,9 +105,11 @@ export default function PricingPage() {
         <p className="text-center text-text-muted mb-4 max-w-xl mx-auto text-sm">
           6 種方案，從個人到家庭，從了解自己到採取行動。每份報告含網頁展示 + PDF 永久保存。
         </p>
-        <p className="text-center text-xs text-gold mb-12">
+        <p className="text-center text-xs text-gold mb-8">
           &#128274; 購買前需先<a href="/auth/signup" className="underline">免費註冊</a>或<a href="/auth/login" className="underline">登入</a>
         </p>
+
+        <PromotionTopBanner />
 
         <Section title="個人命格分析" subtitle="了解自己，掌握人生方向" plans={PLANS.personal} />
         <Section title="家庭與關係" subtitle="家人之間的命格交織與互動" plans={PLANS.family} />
