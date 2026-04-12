@@ -927,7 +927,7 @@ ${analyses.length}套系統排盤完整數據：
     }
 
     console.log(`方案 ${planCode}：開始 AI 生成...`)
-    console.log(`CLAUDE_API_KEY 狀態: ${CLAUDE_API_KEY ? `已設定（長度 ${CLAUDE_API_KEY.length}，前綴 ${CLAUDE_API_KEY.slice(0, 8)}...）` : '❌ 未設定！'}`)
+    console.log(`CLAUDE_API_KEY 狀態: ${CLAUDE_API_KEY ? '已設定' : '❌ 未設定！'}`)
 
     if (planCode === 'C') {
       // ============================================================
