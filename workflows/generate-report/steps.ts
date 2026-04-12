@@ -2026,8 +2026,8 @@ export async function sendReportEmail(
         ? ((birthData.members as Array<{ name?: string }> | undefined)?.map(m => m.name).filter(Boolean).join('、') || '')
         : (birthData.name || '')
       return isCN
-        ? `【鉴源命理】您的${planName}报告已完成 — ${subjectName}`
-        : `【鑒源命理】您的${planName}報告已完成 — ${subjectName}`
+        ? `${subjectName}，您的${planName}已完成`
+        : `${subjectName}，您的${planName}已完成`
     })(),
     from: isCN ? '鉴源命理 <reports@jianyuan.life>' : '鑒源命理 <reports@jianyuan.life>',
   }

@@ -18,10 +18,10 @@
   --color-surface-hover: rgba(15, 22, 40, 0.8);
   --color-border: rgba(201, 168, 76, 0.12);
 
-  /* 文字 */
-  --color-cream: #e8eaf0;          /* 月光白 */
-  --color-cream-dark: #c8ccd8;     /* 冷灰白 */
-  --color-text: #d0d4e0;           /* 冷灰文字 */
+  /* 文字（暖白調，減少長文閱讀疲勞） */
+  --color-cream: #E8E4DE;          /* 暖月白 */
+  --color-cream-dark: #c8c4be;     /* 暖灰白 */
+  --color-text: #d4d0ca;           /* 暖灰文字 */
   --color-text-muted: #6880a0;     /* 星塵灰 */
 
   /* 功能色 */
