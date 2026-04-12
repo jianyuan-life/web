@@ -1,10 +1,13 @@
 import PriceTag from '@/components/PriceTag'
 import PricingButton from '@/components/PricingButton'
 import { PromotionTopBanner, PromotionPrice } from '@/components/PromotionBanner'
+import SocialProof from '@/components/SocialProof'
+import FreeTryBanner from '@/components/FreeTryBanner'
 
 const PLANS = {
   personal: [
     { code: 'C', name: '人生藍圖', price: 89, popular: true, systems: 15,
+      valueHint: '每套系統僅 $5.9',
       desc: '一份報告，看清人生全貌——性格天賦、事業方向、財運走勢、感情歸宿、大運機遇，十五套系統交叉驗證，給你最完整的答案',
       suitableFor: '如果你想一次看清自己的全貌，或者站在人生十字路口需要方向',
       features: ['命格名片——一眼看清你是誰', '性格天賦+行為模式深度解析', '事業方向+財運走向+投資風格', '感情婚姻+人際貴人分析', '健康養生+大運走勢', '2026 流年重點月份提醒', '刻意練習——具體可執行的改善計劃', '網頁重點版+PDF 完整版（30,000字+）'],
@@ -32,11 +35,13 @@ const PLANS = {
   fortune: [] as never[],
   chumenji: [
     { code: 'E1', name: '事件出門訣', price: 119,
+      valueHint: '含 Top5 吉時 + Google 日曆一鍵加入',
       desc: '針對特定重要事件，以 25 層古籍評分體系精算前後所有時辰的奇門局，套入個人年命宮驗證，交出最精準的 Top5 出行方案',
       features: ['描述事件背景+期望結果（200字）', '25 層評分（門/星/神/干/格局/九遁）', '15 種事件精準匹配（面試/簽約/求財等）', 'Top5 吉時+方位+信心指數+命理依據', 'Google Calendar 一鍵新增', '神煞過濾（太歲/三煞/五黃自動避開）'],
       hasQuestion: true,
     },
     { code: 'E2', name: '月盤出門訣', price: 89,
+      valueHint: '含 Top5 吉時 + Google 日曆一鍵加入',
       desc: '排算未來一個月所有時辰的奇門局，以三吉門、九遁、天地盤干生剋等 25 層古籍理論評分，套入個人年命宮找出最佳出行時機',
       suitableFor: '期望每月持續補運、把握最佳時機的人',
       features: ['排算未來 30 天全時段奇門局', '25 層古籍評分體系逐時辰分析', '個人年命宮交叉驗證', 'Top5 精選吉時+方位+信心指數+使用指南', 'Google Calendar 一鍵新增', '附補運操作法（朝吉方500公尺+靜坐40分鐘）'],
@@ -44,7 +49,7 @@ const PLANS = {
   ],
 }
 
-type Plan = { code: string; name: string; price: number; desc: string; features: string[]; systems?: number; popular?: boolean; locked?: boolean; seasonal?: boolean; hasQuestion?: boolean; addPrice?: number; suitableFor?: string }
+type Plan = { code: string; name: string; price: number; desc: string; features: string[]; systems?: number; popular?: boolean; locked?: boolean; seasonal?: boolean; hasQuestion?: boolean; addPrice?: number; suitableFor?: string; valueHint?: string }
 
 function Section({ title, subtitle, plans }: { title: string; subtitle: string; plans: Plan[] }) {
   return (
@@ -57,10 +62,10 @@ function Section({ title, subtitle, plans }: { title: string; subtitle: string; 
         {plans.map((plan) => (
           <div key={plan.code}
             className={`relative glass rounded-2xl p-6 flex flex-col transition-all ${
-              plan.popular ? 'border-gold/40 ring-1 ring-gold/20' : ''
+              plan.popular ? 'border-gold/40 ring-1 ring-gold/20 scale-105 shadow-lg shadow-gold/20' : ''
             } ${plan.seasonal ? 'opacity-60' : ''}`}>
             {plan.popular && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-gold text-dark text-[10px] font-bold rounded-full">推薦</div>
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-gold text-dark text-[10px] font-bold rounded-full">最超值</div>
             )}
             {plan.seasonal && (
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-red-accent text-cream text-[10px] font-bold rounded-full">2027年1月開放</div>
@@ -79,6 +84,7 @@ function Section({ title, subtitle, plans }: { title: string; subtitle: string; 
                 <PriceTag usd={plan.price} size="lg" />
               </PromotionPrice>
               {plan.addPrice && <span className="text-xs text-text-muted ml-2">加人 +${plan.addPrice}/人</span>}
+              {plan.valueHint && <div className="text-[10px] text-gold/60 mt-1">{plan.valueHint}</div>}
             </div>
             <ul className="space-y-2 mb-6 flex-1">
               {plan.features.map((f) => (
@@ -99,6 +105,7 @@ export default function PricingPage() {
   return (
     <div className="py-20">
       <div className="max-w-7xl mx-auto px-6">
+        <FreeTryBanner />
         <h1 className="text-3xl font-bold text-center mb-2" style={{ fontFamily: 'var(--font-sans)' }}>
           <span className="text-gradient-gold">方案與定價</span>
         </h1>
@@ -110,6 +117,8 @@ export default function PricingPage() {
         </p>
 
         <PromotionTopBanner />
+
+        <SocialProof />
 
         <Section title="個人命格分析" subtitle="了解自己，掌握人生方向" plans={PLANS.personal} />
         <Section title="家庭與關係" subtitle="家人之間的命格交織與互動" plans={PLANS.family} />
@@ -146,7 +155,10 @@ export default function PricingPage() {
                 <div className="text-xs text-gold/70 font-mono mb-1">方案 {plan.code}</div>
                 <h3 className="text-lg font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>{plan.name}</h3>
                 <p className="text-xs text-text-muted mt-1 mb-2">{plan.desc}</p>
-                <div className="mb-4"><PriceTag usd={plan.price} size="lg" /></div>
+                <div className="mb-4">
+                  <PriceTag usd={plan.price} size="lg" />
+                  {plan.valueHint && <div className="text-[10px] text-gold/60 mt-1">{plan.valueHint}</div>}
+                </div>
                 <ul className="space-y-2 mb-6 flex-1">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-start gap-2 text-xs text-text">
