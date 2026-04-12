@@ -196,7 +196,7 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
       {/* 進度條 */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-gold/80 font-medium">{phase.desc}</span>
+          <span className="text-gold/80 font-medium">{progressDesc}</span>
           <span className="text-gold tabular-nums font-semibold">{pct}%</span>
         </div>
         <div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">

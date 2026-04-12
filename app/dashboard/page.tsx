@@ -29,6 +29,13 @@ type Report = {
   created_at: string
   error_message?: string | null
   retry_count?: number
+  generation_progress?: {
+    step?: string
+    progress?: number
+    message?: string
+    progress_updated_at?: string
+    [key: string]: unknown
+  } | null
 }
 
 // 各方案使用的命理系統數量（0 表示不顯示系統數）
@@ -551,7 +558,7 @@ function DashboardContent() {
                 )}
                 {/* pending 時顯示進度條 */}
                 {(r.status === 'pending' || r.status === 'generating') && (
-                  <ReportProgress createdAt={r.created_at} planCode={r.plan_code} />
+                  <ReportProgress createdAt={r.created_at} planCode={r.plan_code} generationProgress={r.generation_progress} />
                 )}
                 {/* 刪除確認 */}
                 {confirmId === r.id && (
