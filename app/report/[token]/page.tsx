@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import ReportClientButtons from './ReportClientButtons'
 import ReportTracker from './ReportTracker'
 import ReportFeedback from '@/components/ReportFeedback'
+import SectionExpander from '@/components/SectionExpander'
 
 // ============================================================
 // 報告閱讀頁 — 透過 access_token 讀取真實報告（無需登入）
@@ -1096,7 +1097,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   <h2 className="text-lg font-semibold" style={{ color: style.titleColor, fontFamily: 'var(--font-sans)' }}>{sec.title}</h2>
                   <span className="ml-auto text-xs opacity-30 font-mono">{chapterNum}/{sections.length}</span>
                 </div>
-                <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
+                <div className="report-p">
+                  <SectionExpander fullHtml={renderSectionMarkdown(sec.content)} sectionTitle={sec.title} />
+                </div>
               </div>
             )
           }
@@ -1108,7 +1111,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 <span className="text-xs text-gold/40 font-mono font-bold">{String(chapterNum).padStart(2, '0')}</span>
                 <h2 className="text-lg font-semibold text-gold" style={{ fontFamily: 'var(--font-sans)' }}>{sec.title}</h2>
               </div>
-              <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
+              <div className="report-p">
+                <SectionExpander fullHtml={renderSectionMarkdown(sec.content)} sectionTitle={sec.title} />
+              </div>
             </div>
           )
         })}
